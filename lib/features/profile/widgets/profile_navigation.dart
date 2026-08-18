@@ -44,36 +44,72 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
       final box = Hive.box('user');
       final userData = box.get('user');
 
-      if (userData != null) {
-        final userId = userData['id'];
-        if (userId != null) {
-          // Используем существующий репозиторий
-          final dio = Dio(BaseOptions(
-            baseUrl: 'https://hashtagg.ru',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          ));
-          final repository = ShopApiRepository(dio);
+      if (userData == null) {
+        print('⚠️ [ProfileNavigation] No user data');
+        setState(() {
+          _shopId = null;
+        });
+        return;
+      }
 
-          final shops = await repository.getShops();
-          print('🔍 [ProfileNavigation] shops: $shops');
+      final userId = userData['id'];
+      if (userId == null) {
+        print('⚠️ [ProfileNavigation] No user id');
+        setState(() {
+          _shopId = null;
+        });
+        return;
+      }
 
-          if (shops.isNotEmpty) {
-            // Находим магазин пользователя
-            final userShop = shops.firstWhere(
-                  (shop) => shop.userId == userId,
-              orElse: () => shops.first,
-            );
+      print('🔍 [ProfileNavigation] Checking shops for user: $userId');
 
-            setState(() {
-              _shopId = userShop.id.toString();
-            });
-            print('✅ [ProfileNavigation] shopId loaded: $_shopId');
-          }
-        }
+      // Получаем список магазинов через API
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://hashtagg.ru',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      ));
+      final repository = ShopApiRepository(dio);
+      final shops = await repository.getShops();
+
+      print('📦 [ProfileNavigation] Found ${shops.length} shops');
+
+      // Ищем магазин текущего пользователя
+      final userShop = shops.where((shop) => shop.userId == userId).firstOrNull;
+
+      if (userShop != null) {
+        setState(() {
+          _shopId = userShop.id.toString();
+        });
+        print('✅ [ProfileNavigation] Shop found: id=${userShop.id}');
+      } else {
+        // 👇 ГЛАВНОЕ! ОЧИЩАЕМ _shopId, ЕСЛИ МАГАЗИНА НЕТ
+        setState(() {
+          _shopId = null;
+        });
+        print('⚠️ [ProfileNavigation] No shop for user: $userId');
       }
     } catch (e) {
       print('⚠️ [ProfileNavigation] Error loading shopId: $e');
+      // 👇 ПРИ ОШИБКЕ ТОЖЕ ОЧИЩАЕМ
+      setState(() {
+        _shopId = null;
+      });
     }
+  }
+
+  // 👇 ДОБАВЬ ЭТОТ МЕТОД СЮДА (ПОСЛЕ _loadShopId)
+  bool _checkTariff() {
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      if (userData != null) {
+        final activeServices = userData['activeServices'] as List? ?? [];
+        return activeServices.contains('shop');
+      }
+    } catch (e) {
+      print('⚠️ [ProfileNavigation] Error checking tariff: $e');
+    }
+    return false;
   }
 
 
@@ -183,18 +219,16 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
           ),
         ),
 
-        // ===== 4. МАГАЗИН (ВОЗВРАЩАЕМ КАК БЫЛО) =====
+        // ===== 4. МАГАЗИН =====
         InkWell(
           onTap: () {
             if (_shopId != null && _shopId!.isNotEmpty) {
+              // ✅ ЕСТЬ МАГАЗИН → ОТКРЫВАЕМ
               context.push('/shop/$_shopId');
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('У вас пока нет магазина'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              // ❌ НЕТ МАГАЗИНА → ПРОВЕРЯЕМ ТАРИФ И ПОКАЗЫВАЕМ ПРОМО
+              final hasTariff = _checkTariff(); // Проверяем, есть ли услуга "shop"
+              context.push('/shop/empty?hasTariff=$hasTariff');
             }
           },
           splashColor: const Color(0xff917dfa).withOpacity(0.3),

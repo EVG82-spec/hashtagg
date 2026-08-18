@@ -38,6 +38,8 @@ import 'package:hashtagg/shared/presentation/widgets/navigation_bar.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/catalog/screens/catalog_screen.dart';
 import 'package:hashtagg/features/shop/screens/shop_public_screen.dart';
+import 'package:hashtagg/features/shop/screens/shop_empty_promo_screen.dart';
+import 'package:hashtagg/features/shop/screens/shop_edit_screen.dart';
 
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -304,6 +306,26 @@ final router = GoRouter(
     ),
     GoRoute(
       parentNavigatorKey: _rootNavigatorKey,
+      path: '/shop/empty',
+      pageBuilder: (context, state) {
+        final hasTariff = state.uri.queryParameters['hasTariff'] == 'true';
+        return CupertinoPage(
+          child: ShopEmptyPromoScreen(hasTariff: hasTariff),
+        );
+      },
+    ),
+    GoRoute(
+      parentNavigatorKey: _rootNavigatorKey,
+      path: '/shop/edit/:shopId',
+      pageBuilder: (context, state) {
+        final shopId = state.pathParameters['shopId']!;
+        return CupertinoPage(
+          child: ShopEditScreen(shopId: shopId),
+        );
+      },
+    ),
+    GoRoute(
+      parentNavigatorKey: _rootNavigatorKey,
       path: '/shop/:shopId',
       pageBuilder: (context, state) {
         // 👇 ДОБАВЬ ЭТИ СТРОКИ
@@ -317,6 +339,7 @@ final router = GoRouter(
         );
       },
     ),
+
     GoRoute(
       parentNavigatorKey: _rootNavigatorKey,
       path: '/search',

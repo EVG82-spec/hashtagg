@@ -59,7 +59,12 @@ class LoadShopForEdit extends ShopEvent {
     required this.userId,
     required this.token,
     required this.shopId,
-  });
+  }) {
+    print('🔵🔵🔵 [LoadShopForEdit] CONSTRUCTOR');
+    print('   userId: $userId');
+    print('   shopId: $shopId');
+    print('   shopId type: ${shopId.runtimeType}');
+  }
 }
 
 class AddShopPage extends ShopEvent {

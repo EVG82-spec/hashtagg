@@ -63,6 +63,10 @@ class ShopApiRepository {
     required String token,
     required int shopId,
   }) async {
+    print('🔵🔵🔵 [ShopApi] getShopData() START');
+    print('   userId: $userId');
+    print('   shopId: $shopId');
+    print('   shopId type: ${shopId.runtimeType}');
     try {
       _log('📋 Getting shop data for editing');
 
@@ -93,8 +97,6 @@ class ShopApiRepository {
     required String token,
   }) async {
     try {
-      _log('🏪 Creating shop');
-
       final response = await _dio.post(
         '/systems/api/controller.php',
         queryParameters: {
@@ -106,13 +108,9 @@ class ShopApiRepository {
           'token': token,
         },
       );
-
-      final responseData = _parseResponse(response.data);
-      _log('✅ Shop created: ${responseData['id']}');
-
-      return responseData;
+      return _parseResponse(response.data);
     } catch (e) {
-      _log('❌ Error creating shop: $e');
+      print('❌ [ShopApi] Error creating shop: $e');
       rethrow;
     }
   }

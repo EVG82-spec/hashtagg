@@ -31,22 +31,26 @@ class Shop {
   // ГЕТТЕРЫ ДЛЯ МЕДИА
   // ============================================================
 
-  String? get bannerUrl {
-    if (sliders != null && sliders!.isNotEmpty) {
-      return sliders!.first.link;
+  String? get avatarUrl {
+    // ✅ ЕСЛИ ЧЕРНОВИК (3) — ВОЗВРАЩАЕМ null (виджет покажет дефолт)
+    if (status == 3) {
+      return null;
     }
-    if (userId > 0 && idHash.isNotEmpty) {
-      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg';
+
+    if (logo != null && logo!.isNotEmpty) {
+      return logo;
     }
     return null;
   }
 
-  String? get avatarUrl {
-    if (logo != null && logo!.isNotEmpty) {
-      return logo;
+  String? get bannerUrl {
+    // ✅ ЕСЛИ ЧЕРНОВИК (3) — ВОЗВРАЩАЕМ null (виджет покажет дефолт)
+    if (status == 3) {
+      return null;
     }
-    if (userId > 0 && idHash.isNotEmpty) {
-      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg';
+
+    if (sliders != null && sliders!.isNotEmpty) {
+      return sliders!.first.link;
     }
     return null;
   }
@@ -130,11 +134,15 @@ class Shop {
     print('   🔍 isOwner: $isOwner');
 
     // ============================================================
-    // 5. ПАРСИМ ОСТАЛЬНЫЕ ПОЛЯ
+    // 5. ПАРСИМ idHash (ВСЕГДА БЕРЕМ ПРАВИЛЬНЫЙ ХЕШ МАГАЗИНА)
     // ============================================================
-    final idHash = hasPrefix
-        ? (json['clients_shops_id_hash'] as String? ?? '')
-        : (json['id_hash'] as String? ?? '');
+    final idHash = json['clients_shops_id_hash'] as String? ??
+        json['id_hash'] as String? ??
+        json['shop_id_hash'] as String? ?? '';
+
+    print('🔍 [Shop.fromJson] idHash: "$idHash"');
+    print('🔍 [Shop.fromJson] clients_shops_id_hash: ${json['clients_shops_id_hash']}');
+    print('🔍 [Shop.fromJson] id_hash: ${json['id_hash']}');
 
     final title = hasPrefix
         ? (json['clients_shops_title'] as String? ?? '')
@@ -145,26 +153,27 @@ class Shop {
         : (json['description'] as String?);
 
     // ============================================================
-    // 6. ФОРМИРУЕМ АВАТАРКУ (avatar.jpg) ПО НОВОЙ СТРУКТУРЕ
-    // ============================================================
+// 6. ФОРМИРУЕМ АВАТАРКУ (avatar.jpg) — ТОЛЬКО ЕСЛИ ЕСТЬ ЛОГО
+// ============================================================
     String? logoUrl;
     final logoRaw = hasPrefix
         ? (json['clients_shops_logo'] as String?)
         : (json['logo'] as String?);
 
-    if (userId > 0 && idHash.isNotEmpty) {
-      logoUrl = 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg';
-      print('   ✅ AvatarUrl (new structure): $logoUrl');
-    } else if (logoRaw != null && logoRaw.isNotEmpty) {
+// ✅ ЕСЛИ ЛОГО ЕСТЬ — ИСПОЛЬЗУЕМ ЕГО
+    if (logoRaw != null && logoRaw.isNotEmpty) {
       if (logoRaw.startsWith('http')) {
         logoUrl = logoRaw;
       } else {
         logoUrl = 'https://hashtagg.ru/media/others/$logoRaw';
       }
-      print('   ✅ AvatarUrl (fallback): $logoUrl');
+      print('   ✅ AvatarUrl (from logo): $logoUrl');
     } else {
-      print('   ❌ No avatar available');
+      // ❌ НЕТ ЛОГО — НЕ ГЕНЕРИРУЕМ ПУТЬ!
+      logoUrl = null;
+      print('   ⚠️ No logo, avatar will be default');
     }
+    print('   🖼️ LogoUrl: $logoUrl');
 
     final themeCategoryId = hasPrefix
         ? _parseInt(json['clients_shops_id_theme_category'])

@@ -4,8 +4,15 @@ import 'package:hashtagg/features/shop/models/shop.dart';
 
 class ShopNavigation extends StatelessWidget {
   final Shop shop;
+  final bool isEditing;
+  final VoidCallback? onAddPage;
 
-  const ShopNavigation({Key? key, required this.shop}) : super(key: key);
+  const ShopNavigation({
+    Key? key,
+    required this.shop,
+    this.isEditing = false,
+    this.onAddPage,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

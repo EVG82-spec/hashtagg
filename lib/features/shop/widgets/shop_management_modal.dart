@@ -39,9 +39,10 @@ class ShopManagementModal extends StatelessWidget {
             SizedBox(height: 20),
 
             // 1. Редактировать магазин
+            // Кнопка "Редактировать магазин"
             _ModalButton(
               title: 'Редактировать магазин',
-              color: Color(0xFF8956FF),
+              color: const Color(0xFF8956FF),
               icon: Icons.edit,
               onTap: () {
                 Navigator.pop(context);

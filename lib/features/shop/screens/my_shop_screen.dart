@@ -751,7 +751,7 @@ class _EditShopButton extends StatelessWidget {
         onPressed: () async {
           final result = await Navigator.of(context, rootNavigator: true).push(
             createSwipeableRoute(
-              builder: (_) => ShopEditScreen(shopId: shop.id),
+              builder: (_) => ShopEditScreen(shopId: shop.id.toString()),
             ),
           );
 

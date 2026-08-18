@@ -19,7 +19,12 @@ class ShopEditDataLoaded extends ShopState {
   ShopEditDataLoaded({
     required this.data,
     required this.categories,
-  });
+  }) {
+    print('🔍🔍🔍 [ShopEditDataLoaded] CONSTRUCTOR');
+    data.forEach((key, value) {
+      print('   $key: $value (${value.runtimeType})');
+    });
+  }
 }
 
 class ShopCreated extends ShopState {

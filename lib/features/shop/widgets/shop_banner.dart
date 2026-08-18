@@ -5,35 +5,69 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class ShopBanner extends StatelessWidget {
   final Shop shop;
+  final bool isEditing;
+  final VoidCallback? onBannerTap;
 
-  const ShopBanner({Key? key, required this.shop}) : super(key: key);
+  const ShopBanner({
+    Key? key,
+    required this.shop,
+    this.isEditing = false,
+    this.onBannerTap,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final bannerUrl = shop.bannerUrl; // Используем геттер
-    print('🖼️ [ShopBanner] bannerUrl: $bannerUrl');
+    final bannerUrl = shop.bannerUrl;
 
-    return Container(
-      height: 250,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        image: bannerUrl != null && bannerUrl.isNotEmpty
-            ? DecorationImage(
-          image: CachedNetworkImageProvider(bannerUrl),
-          fit: BoxFit.cover,
+    print('🖼️ [ShopBanner] bannerUrl: $bannerUrl');
+    print('🖼️ [ShopBanner] isEditing: $isEditing');
+
+    return GestureDetector(
+      onTap: isEditing ? onBannerTap : null,
+      child: Container(
+        height: 250,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          image: bannerUrl != null && bannerUrl.isNotEmpty
+              ? DecorationImage(
+            image: CachedNetworkImageProvider(bannerUrl),
+            fit: BoxFit.cover,
+          )
+              : const DecorationImage(
+            image: NetworkImage('https://hashtagg.ru/templates/img/bg.png'),
+            fit: BoxFit.cover,
+          ),
+          color: Colors.grey.shade200,
+        ),
+        child: isEditing
+            ? Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.camera_alt,
+                  size: 48,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Нажмите чтобы изменить баннер',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         )
             : null,
-        color: Colors.grey.shade200,
       ),
-      child: bannerUrl == null || bannerUrl.isEmpty
-          ? Center(
-        child: Icon(
-          Icons.storefront,
-          size: 64,
-          color: Colors.grey.shade400,
-        ),
-      )
-          : null,
     );
   }
 }

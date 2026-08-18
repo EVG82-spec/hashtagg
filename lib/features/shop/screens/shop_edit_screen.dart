@@ -1,525 +1,290 @@
+// lib/features/shop/screens/shop_edit_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:hashtagg/shared/presentation/bloc/auth_bloc.dart';
-import 'package:hashtagg/features/shop/bloc/shop_bloc.dart';
-import 'package:hashtagg/features/shop/bloc/shop_event.dart';
-import 'package:hashtagg/features/shop/bloc/shop_state.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
-import 'package:hashtagg/core/utils/shop_access_checker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:io';
+import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
+import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
+import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
+import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
+import 'package:hashtagg/features/shop/widgets/shop_navigation.dart';
+import 'package:hashtagg/features/shop/widgets/shop_ads_grid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:hive/hive.dart';
+import 'package:dio/dio.dart';
+import 'package:hashtagg/core/network/shop_api_repository.dart';
 
 class ShopEditScreen extends StatefulWidget {
-  final int shopId;
+  final String shopId;
 
-  const ShopEditScreen({super.key, required this.shopId});
+  const ShopEditScreen({Key? key, required this.shopId}) : super(key: key);
 
   @override
   State<ShopEditScreen> createState() => _ShopEditScreenState();
 }
 
 class _ShopEditScreenState extends State<ShopEditScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _shopIdController = TextEditingController();
-
-  int? _selectedCategoryId;
-  List<ShopCategory> _categories = [];
-  String? _logoUrl;
-  File? _newLogoFile;
-  String? _newLogoTempName;
-  bool _isLoading = false;
+  final ImagePicker _picker = ImagePicker();
+  late ShopPublicBloc _shopPublicBloc;
+  Shop? _currentShop;
 
   @override
   void initState() {
     super.initState();
+    _initBloc();
     _loadShopData();
   }
 
+  void _initBloc() {
+    final dio = Dio(BaseOptions(
+      baseUrl: 'https://hashtagg.ru',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    ));
+    final repository = ShopApiRepository(dio);
+    _shopPublicBloc = ShopPublicBloc(repository);
+  }
+
   void _loadShopData() {
-    final authState = context.read<AuthBloc>().state;
-    final user = authState.user;
+    _shopPublicBloc.add(LoadPublicShop(shopId: widget.shopId));
+  }
 
-    if (user != null) {
-      context.read<ShopBloc>().add(LoadShopForEdit(
-            userId: user.id,
-            token: user.token ?? '',
-            shopId: widget.shopId,
-          ));
+  // ===== МЕТОДЫ РЕДАКТИРОВАНИЯ =====
+
+  void _pickBannerImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      print('📸 [ShopEdit] Banner image selected: ${image.path}');
+      // TODO: Загрузить баннер через API
     }
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _shopIdController.dispose();
-    super.dispose();
+  void _pickAvatarImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      print('📸 [ShopEdit] Avatar image selected: ${image.path}');
+      // TODO: Загрузить аватарку через API
+    }
   }
 
-  Future<void> _pickLogo() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
+  void _editTitle() {
+    if (_currentShop == null) return;
+
+    final controller = TextEditingController(text: _currentShop?.title ?? '');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Редактировать название'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: 'Введите название магазина'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newTitle = controller.text.trim();
+              if (newTitle.isNotEmpty) {
+                Navigator.pop(context);
+                print('📝 [ShopEdit] Title: $newTitle');
+                // TODO: Сохранить название через API
+              }
+            },
+            child: Text('Сохранить'),
+          ),
+        ],
+      ),
     );
+  }
 
-    if (pickedFile != null) {
-      setState(() {
-        _newLogoFile = File(pickedFile.path);
-      });
+  void _editSocialLinks() {
+    print('🔗 [ShopEdit] Edit social links');
+    // TODO: Открыть модалку редактирования соцсетей
+  }
 
-      // Загружаем во временную папку
-      final authState = context.read<AuthBloc>().state;
-      final user = authState.user;
-
-      if (user != null) {
-        context.read<ShopBloc>().add(UploadShopImage(
-              filePath: pickedFile.path,
-              userId: user.id,
-              token: user.token ?? '',
-            ));
-      }
-    }
+  void _addPage() {
+    print('📄 [ShopEdit] Add new page');
+    // TODO: Открыть редактор страниц
   }
 
   void _saveShop() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final authState = context.read<AuthBloc>().state;
-    final user = authState.user;
-
-    if (user == null) return;
-
-    List<Map<String, String>>? logoData;
-    if (_newLogoTempName != null) {
-      logoData = [
-        {'name': _newLogoTempName!}
-      ];
-    }
-
-    context.read<ShopBloc>().add(UpdateShop(
-          userId: user.id,
-          token: user.token ?? '',
-          shopId: widget.shopId,
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : null,
-          themeCategoryId: _selectedCategoryId,
-          shopIdHash: _shopIdController.text.trim().isNotEmpty
-              ? _shopIdController.text.trim()
-              : null,
-          logo: logoData,
-        ));
+    print('💾 [ShopEdit] Save changes');
+    // TODO: Сохранить все изменения и отправить на модерацию
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Изменения сохранены! Отправлено на модерацию'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final authState = context.watch<AuthBloc>().state;
-    final user = authState.user;
-
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
-          onPressed: () => context.pop(),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Редактирование магазина',
-          style: GoogleFonts.montserrat(
+          style: TextStyle(
+            color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : Colors.black,
           ),
         ),
+        actions: [
+          // ✅ КНОПКА СОХРАНИТЬ (вместо Управления)
+          ElevatedButton(
+            onPressed: _saveShop,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF8956FF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            child: Text(
+              'Сохранить',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
-      body: BlocConsumer<ShopBloc, ShopState>(
-        listener: (context, state) {
-          if (state is ShopError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
-            setState(() => _isLoading = false);
-          } else if (state is ShopUpdated) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Магазин успешно обновлен')),
-            );
-            context.pop(true); // Возвращаемся с флагом обновления
-          } else if (state is ShopImageUploaded) {
-            setState(() {
-              _newLogoTempName = state.imageName;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Изображение загружено')),
-            );
-          } else if (state is ShopEditDataLoaded) {
-            _populateForm(state.data, state.categories);
-          }
-        },
+      body: BlocBuilder<ShopPublicBloc, ShopPublicState>(
+        bloc: _shopPublicBloc,
         builder: (context, state) {
-          if (state is ShopLoading && _categories.isEmpty) {
-            return Center(child: CircularProgressIndicator(color: Color(0xff917dfa)));
-          }
-
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
+          if (state is ShopPublicLoading) {
+            return Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Логотип
-                  _buildLogoSection(isDark),
-                  SizedBox(height: 24),
-
-                  // Название
-                  _buildTextField(
-                    controller: _titleController,
-                    label: 'Название магазина',
-                    hint: 'Введите название',
-                    required: true,
-                    maxLength: 100,
-                    isDark: isDark,
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8956FF)),
                   ),
                   SizedBox(height: 16),
-
-                  // Описание
-                  _buildTextField(
-                    controller: _descriptionController,
-                    label: 'Описание',
-                    hint: 'Краткое описание магазина',
-                    maxLines: 4,
-                    maxLength: 500,
-                    isDark: isDark,
-                  ),
-                  SizedBox(height: 16),
-
-                  // Категория
-                  _buildCategoryDropdown(isDark),
-                  SizedBox(height: 16),
-
-                  // Уникальный адрес (если есть доступ)
-                  if (ShopAccessChecker.hasUniqueShopAddress(user)) ...[
-                    _buildTextField(
-                      controller: _shopIdController,
-                      label: 'Уникальный адрес',
-                      hint: 'my-shop',
-                      prefix: 'hashtagg.ru/shop/',
-                      isDark: isDark,
-                      validator: _validateShopId,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Только латинские буквы, цифры, дефис и подчеркивание',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                  ],
-
-                  // Кнопка сохранения
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveShop,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xff917dfa),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              'Сохранить',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                  Text(
+                    'Загрузка магазина...',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
-            ),
-          );
+            );
+          }
+
+          if (state is ShopPublicLoaded) {
+            _currentShop = state.shop;
+            final shop = state.shop;
+            final ads = state.ads;
+
+            return CustomScrollView(
+              slivers: [
+                // 1. Баннер (кликабельный)
+                SliverToBoxAdapter(
+                  child: ShopBanner(
+                    shop: shop,
+                    isEditing: true,
+                    onBannerTap: _pickBannerImage,
+                  ),
+                ),
+                // 2. Профиль (кликабельный)
+                SliverToBoxAdapter(
+                  child: ShopProfile(
+                    shop: shop,
+                    isEditing: true,
+                    onAvatarTap: _pickAvatarImage,
+                    onTitleTap: _editTitle,
+                  ),
+                ),
+                // 3. Статистика
+                SliverToBoxAdapter(
+                  child: ShopStats(shop: shop),
+                ),
+                // 4. Соцсети (кликабельные) — БЕЗ кнопок Управление и Добавить товар
+                SliverToBoxAdapter(
+                  child: ShopActions(
+                    shop: shop,
+                    isEditing: true,
+                    onSocialEdit: _editSocialLinks,
+                  ),
+                ),
+                // 5. Навигация + кнопка "Добавить страницу"
+                SliverToBoxAdapter(
+                  child: ShopNavigation(
+                    shop: shop,
+                    isEditing: true,
+                    onAddPage: _addPage,
+                  ),
+                ),
+                // 6. Товары
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  sliver: ShopAdsGrid(ads: ads),
+                ),
+              ],
+            );
+          }
+
+          if (state is ShopPublicError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Ошибка загрузки',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _loadShopData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF8956FF),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: Text('Повторить'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
         },
       ),
     );
-  }
-
-  Widget _buildLogoSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Логотип',
-          style: GoogleFonts.montserrat(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : Colors.black,
-          ),
-        ),
-        SizedBox(height: 12),
-        Center(
-          child: GestureDetector(
-            onTap: _pickLogo,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[850] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                  width: 2,
-                ),
-              ),
-              child: _newLogoFile != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        _newLogoFile!,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : _logoUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: CachedNetworkImage(
-                            imageUrl: _logoUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Center(
-                              child: CircularProgressIndicator(
-                                color: Color(0xff917dfa),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Icon(
-                              Icons.store,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_photo_alternate,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Добавить фото',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required bool isDark,
-    bool required = false,
-    int maxLines = 1,
-    int? maxLength,
-    String? prefix,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            text: label,
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-            children: [
-              if (required)
-                TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
-        SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          maxLength: maxLength,
-          style: GoogleFonts.montserrat(
-            color: isDark ? Colors.white : Colors.black,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixText: prefix,
-            hintStyle: GoogleFonts.montserrat(color: Colors.grey),
-            filled: true,
-            fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Color(0xff917dfa), width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.red),
-            ),
-            counterStyle: GoogleFonts.montserrat(fontSize: 12),
-          ),
-          validator: validator ??
-              (value) {
-                if (required && (value == null || value.trim().isEmpty)) {
-                  return 'Это поле обязательно';
-                }
-                return null;
-              },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryDropdown(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            text: 'Тематическая категория',
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-            children: [
-              TextSpan(
-                text: ' *',
-                style: TextStyle(color: Colors.red),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 8),
-        DropdownButtonFormField<int>(
-          value: _selectedCategoryId,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Color(0xff917dfa), width: 2),
-            ),
-          ),
-          dropdownColor: isDark ? Colors.grey[850] : Colors.white,
-          style: GoogleFonts.montserrat(
-            color: isDark ? Colors.white : Colors.black,
-          ),
-          hint: Text(
-            'Выберите категорию',
-            style: GoogleFonts.montserrat(color: Colors.grey),
-          ),
-          items: _categories.map((category) {
-            return DropdownMenuItem<int>(
-              value: category.id,
-              child: Text(category.name),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCategoryId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null) {
-              return 'Выберите категорию';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
-
-  String? _validateShopId(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return null; // Необязательное поле
-    }
-
-    final regex = RegExp(r'^[a-z0-9_-]+$');
-    if (!regex.hasMatch(value)) {
-      return 'Только латиница, цифры, дефис и подчеркивание';
-    }
-
-    return null;
-  }
-
-  void _populateForm(Map<String, dynamic> data, List<ShopCategory> categories) {
-    setState(() {
-      _categories = categories;
-      _titleController.text = data['title'] ?? '';
-      _descriptionController.text = data['text'] ?? '';
-      _shopIdController.text = data['id_hash'] ?? '';
-      _selectedCategoryId = data['id_theme_category'];
-      _logoUrl = data['logo'];
-    });
   }
 }

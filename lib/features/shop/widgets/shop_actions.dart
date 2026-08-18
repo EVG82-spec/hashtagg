@@ -7,8 +7,15 @@ import 'shop_management_modal.dart';
 
 class ShopActions extends StatelessWidget {
   final Shop shop;
+  final bool isEditing;
+  final VoidCallback? onSocialEdit;
 
-  const ShopActions({Key? key, required this.shop}) : super(key: key);
+  const ShopActions({
+    Key? key,
+    required this.shop,
+    this.isEditing = false,
+    this.onSocialEdit,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
