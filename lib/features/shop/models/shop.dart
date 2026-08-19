@@ -28,30 +28,28 @@ class Shop {
   final int subscribersCount;
 
   // ============================================================
-// ГЕТТЕРЫ ДЛЯ МЕДИА
-// ============================================================
+  // ГЕТТЕРЫ ДЛЯ МЕДИА
+  // ============================================================
 
   String? get avatarUrl {
-    // ✅ ЕСЛИ ЕСТЬ ЛОГО — ПОКАЗЫВАЕМ ЕГО (ДАЖЕ В ЧЕРНОВИКЕ)
-    if (logo != null && logo!.isNotEmpty) {
-      return logo;
+    // ✅ ВСЕГДА ФОРМИРУЕМ ИЗ idHash (игнорируем logo из БД)
+    // Это гарантирует, что аватарка всегда берется из папки магазина
+    // и обновляется сразу после загрузки файла на сервер
+    if (userId > 0 && idHash.isNotEmpty) {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg?t=$timestamp';
     }
 
-    // ✅ ЕСЛИ ЧЕРНОВИК (3) И НЕТ ЛОГО — ВОЗВРАЩАЕМ null (дефолт)
+    // ✅ ЕСЛИ ЧЕРНОВИК (3) — ВОЗВРАЩАЕМ null (дефолт)
     if (status == 3) {
       return null;
-    }
-
-    // ✅ ЕСЛИ НЕ ЧЕРНОВИК И НЕТ ЛОГО — ФОРМИРУЕМ ПУТЬ
-    if (userId > 0 && idHash.isNotEmpty) {
-      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg';
     }
 
     return null;
   }
 
   String? get bannerUrl {
-    // ✅ СНАЧАЛА ПРОВЕРЯЕМ СЛАЙДЕРЫ
+    // 1️⃣ СНАЧАЛА ПРОВЕРЯЕМ СЛАЙДЕРЫ (если есть - показываем их)
     if (sliders != null && sliders!.isNotEmpty) {
       final firstSlider = sliders!.first;
       if (firstSlider.link.isNotEmpty) {
@@ -59,12 +57,13 @@ class Shop {
       }
     }
 
-    // ✅ ЕСЛИ СЛАЙДЕРОВ НЕТ — ФОРМИРУЕМ ПУТЬ К БАННЕРУ
+    // 2️⃣ ЕСЛИ СЛАЙДЕРОВ НЕТ — ФОРМИРУЕМ ПУТЬ К БАННЕРУ
     if (userId > 0 && idHash.isNotEmpty) {
-      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg';
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg?t=$timestamp';
     }
 
-    // ✅ ЕСЛИ ЧЕРНОВИК — null (дефолт)
+    // 3️⃣ ЕСЛИ ЧЕРНОВИК — null (дефолт)
     if (status == 3) {
       return null;
     }
@@ -116,10 +115,7 @@ class Shop {
     // 2. ПАРСИМ userId - ПРОВЕРЯЕМ ВСЕ ВАРИАНТЫ!
     // ============================================================
     final userId = _parseInt(
-        json['id_user'] ??
-            json['user_id'] ??
-            json['clients_shops_id_user'] ??
-            0
+      json['id_user'] ?? json['user_id'] ?? json['clients_shops_id_user'] ?? 0,
     );
     print('   🔍 userId from JSON: $userId');
 
@@ -145,20 +141,24 @@ class Shop {
     // ============================================================
     final bool isOwner =
         json['is_owner'] == true ||
-            json['owner'] == true ||
-            json['owner'] == 1 ||
-            (userId > 0 && currentUserId > 0 && userId == currentUserId);
+        json['owner'] == true ||
+        json['owner'] == 1 ||
+        (userId > 0 && currentUserId > 0 && userId == currentUserId);
     print('   🔍 isOwner: $isOwner');
 
     // ============================================================
     // 5. ПАРСИМ idHash (ВСЕГДА БЕРЕМ ПРАВИЛЬНЫЙ ХЕШ МАГАЗИНА)
     // ============================================================
-    final idHash = json['clients_shops_id_hash'] as String? ??
+    final idHash =
+        json['clients_shops_id_hash'] as String? ??
         json['id_hash'] as String? ??
-        json['shop_id_hash'] as String? ?? '';
+        json['shop_id_hash'] as String? ??
+        '';
 
     print('🔍 [Shop.fromJson] idHash: "$idHash"');
-    print('🔍 [Shop.fromJson] clients_shops_id_hash: ${json['clients_shops_id_hash']}');
+    print(
+      '🔍 [Shop.fromJson] clients_shops_id_hash: ${json['clients_shops_id_hash']}',
+    );
     print('🔍 [Shop.fromJson] id_hash: ${json['id_hash']}');
 
     final title = hasPrefix
@@ -170,14 +170,14 @@ class Shop {
         : (json['description'] as String?);
 
     // ============================================================
-// 6. ФОРМИРУЕМ АВАТАРКУ (avatar.jpg) — ТОЛЬКО ЕСЛИ ЕСТЬ ЛОГО
-// ============================================================
+    // 6. ФОРМИРУЕМ АВАТАРКУ (avatar.jpg) — ТОЛЬКО ЕСЛИ ЕСТЬ ЛОГО
+    // ============================================================
     String? logoUrl;
     final logoRaw = hasPrefix
         ? (json['clients_shops_logo'] as String?)
         : (json['logo'] as String?);
 
-// ✅ ЕСЛИ ЛОГО ЕСТЬ — ИСПОЛЬЗУЕМ ЕГО
+    // ✅ ЕСЛИ ЛОГО ЕСТЬ — ИСПОЛЬЗУЕМ ЕГО
     if (logoRaw != null && logoRaw.isNotEmpty) {
       if (logoRaw.startsWith('http')) {
         logoUrl = logoRaw;
@@ -210,7 +210,10 @@ class Shop {
         ? _parseInt(json['clients_shops_count_view'])
         : (json['count_view'] as int? ?? 0);
 
-    final isActive = json['is_active'] == true || json['activity_shop'] == true || json['activity_shop'] == 1;
+    final isActive =
+        json['is_active'] == true ||
+        json['activity_shop'] == true ||
+        json['activity_shop'] == 1;
 
     // ============================================================
     // 7. ПАРСИМ СЛАЙДЕРЫ
@@ -263,11 +266,7 @@ class Shop {
         if ((text != null && text.isNotEmpty) ||
             (link != null && link.isNotEmpty) ||
             (image != null && image.isNotEmpty)) {
-          linkList.add(ShopLink(
-            text: text,
-            link: link,
-            image: image,
-          ));
+          linkList.add(ShopLink(text: text, link: link, image: image));
         }
       }
       if (linkList.isNotEmpty) links = linkList;
@@ -278,7 +277,9 @@ class Shop {
     // ============================================================
     int adsCount = 0;
     print('📊 [Shop.fromJson] count_ads raw: ${json['count_ads']}');
-    print('📊 [Shop.fromJson] count_ads type: ${json['count_ads'].runtimeType}');
+    print(
+      '📊 [Shop.fromJson] count_ads type: ${json['count_ads'].runtimeType}',
+    );
 
     if (json['clients_shops_count_ads'] != null) {
       adsCount = _parseInt(json['clients_shops_count_ads']);
@@ -302,7 +303,7 @@ class Shop {
 
     print('📊 [Shop.fromJson] FINAL adsCount: $adsCount');
 
-// ✅ ДОБАВЬ ЭТУ СТРОКУ!
+    // ✅ ДОБАВЬ ЭТУ СТРОКУ!
     final subscribersCount = _parseInt(json['subscribers_count']);
 
     return Shop(
@@ -324,7 +325,7 @@ class Shop {
       pages: pages,
       links: links,
       adsCount: adsCount,
-      subscribersCount: subscribersCount,  // 👈 ТЕПЕРЬ ОПРЕДЕЛЕНА!
+      subscribersCount: subscribersCount, // 👈 ТЕПЕРЬ ОПРЕДЕЛЕНА!
     );
   }
 
@@ -389,11 +390,7 @@ class ShopSlider {
   final String name;
   final String link;
 
-  ShopSlider({
-    this.id,
-    required this.name,
-    required this.link,
-  });
+  ShopSlider({this.id, required this.name, required this.link});
 
   factory ShopSlider.fromJson(Map<String, dynamic> json) {
     return ShopSlider(
@@ -404,11 +401,7 @@ class ShopSlider {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id,
-      'name': name,
-      'link': link,
-    };
+    return {if (id != null) 'id': id, 'name': name, 'link': link};
   }
 }
 
@@ -461,11 +454,7 @@ class ShopLink {
   final String? text;
   final String? link;
 
-  ShopLink({
-    this.image,
-    this.text,
-    this.link,
-  });
+  ShopLink({this.image, this.text, this.link});
 
   factory ShopLink.fromJson(Map<String, dynamic> json) {
     return ShopLink(
@@ -493,11 +482,7 @@ class ShopCategory {
   final String name;
   final String? icon;
 
-  ShopCategory({
-    required this.id,
-    required this.name,
-    this.icon,
-  });
+  ShopCategory({required this.id, required this.name, this.icon});
 
   factory ShopCategory.fromJson(Map<String, dynamic> json) {
     return ShopCategory(
@@ -508,10 +493,6 @@ class ShopCategory {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      if (icon != null) 'icon': icon,
-    };
+    return {'id': id, 'name': name, if (icon != null) 'icon': icon};
   }
 }

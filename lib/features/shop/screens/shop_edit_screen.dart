@@ -46,10 +46,12 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
   }
 
   void _initBloc() {
-    final dio = Dio(BaseOptions(
-      baseUrl: 'https://hashtagg.ru',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://hashtagg.ru',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      ),
+    );
     final repository = ShopApiRepository(dio);
     _shopPublicBloc = ShopPublicBloc(repository);
   }
@@ -76,7 +78,9 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       return;
     }
 
-    print('👤 [ShopEdit] Current shop: ${_currentShop!.id} - ${_currentShop!.title}');
+    print(
+      '👤 [ShopEdit] Current shop: ${_currentShop!.id} - ${_currentShop!.title}',
+    );
 
     showDialog(
       context: context,
@@ -94,59 +98,63 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
       print('📂 [ShopEdit] filePath: ${image.path}');
 
-      // 1. Загружаем фото во временную папку
-      print('📤 [ShopEdit] Uploading banner to temp...');
+      // 1. Загружаем баннер на сервер
+      print('📤 [ShopEdit] Uploading banner...');
       final result = await _shopPublicBloc.repository.uploadShopImage(
         filePath: image.path,
         userId: userId,
         token: token,
-        shopHash: _currentShop!.idHash, // 👈 Хеш магазина
+        shopHash: _currentShop!.idHash,
         type: 'banner',
       );
 
-      print('📦 [ShopEdit] uploadTempImage result: $result');
+      print('📦 [ShopEdit] upload result: $result');
 
       Navigator.pop(context); // Закрываем индикатор
 
-      if (result['name'] != null) {
-        final imageName = result['name'];
-        print('✅ [ShopEdit] Image uploaded: $imageName');
+      if (result['status'] == true && result['path'] != null) {
+        print('✅ [ShopEdit] Banner uploaded successfully!');
 
-        // 2. Обновляем магазин с новым баннером
-        print('🔄 [ShopEdit] Updating shop with new banner...');
-        final updateResult = await _shopPublicBloc.repository.updateShop(
-          userId: userId,
-          token: token,
-          shopId: _currentShop!.id,
-          title: _currentShop!.title,
-          sliders: [{'name': 'Баннер', 'link': imageName}],
-        );
+        // ✅ ФОРМИРУЕМ ПОЛНЫЙ URL
+        final baseUrl = 'https://hashtagg.ru';
+        final fullPath = result['path']; // /media/users/474/shop/.../banner.jpg
+        final fullUrl = '$baseUrl$fullPath';
 
-        print('📦 [ShopEdit] updateShop result: $updateResult');
+        print('🔄 [ShopEdit] New banner URL: $fullUrl');
 
-        if (updateResult['status'] == true) {
-          print('✅ [ShopEdit] Banner updated successfully!');
-          _loadShopData();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Баннер обновлен!')),
+        // ✅ ОБНОВЛЯЕМ _currentShop СРАЗУ
+        setState(() {
+          _currentShop = _currentShop!.copyWith(
+            sliders: [ShopSlider(name: 'Баннер', link: fullUrl)],
           );
-        } else {
-          print('❌ [ShopEdit] updateShop failed: ${updateResult['error']}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(updateResult['error'] ?? 'Ошибка обновления баннера')),
-          );
-        }
+          print('✅ [ShopEdit] _currentShop updated with new banner');
+          print('   sliders: ${_currentShop?.sliders}');
+        });
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Баннер обновлен!')));
       } else {
-        print('❌ [ShopEdit] No image name in result');
+        print('🔍🔍🔍 [ShopEdit] BUILD - _currentShop:');
+        print('   title: ${_currentShop?.title}');
+        print('   logo: ${_currentShop?.logo}');
+        print('   sliders: ${_currentShop?.sliders}');
+        print(
+          '   sliders[0]?.link: ${_currentShop?.sliders?.firstOrNull?.link}',
+        );
+        print('❌ [ShopEdit] upload failed: ${result['error']}');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка загрузки изображения')),
+          SnackBar(
+            content: Text(result['error'] ?? 'Ошибка загрузки баннера'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       print('❌❌❌ [ShopEdit] ERROR: $e');
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
+        SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -167,7 +175,9 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       return;
     }
 
-    print('👤 [ShopEdit] Current shop: ${_currentShop!.id} - ${_currentShop!.title}');
+    print(
+      '👤 [ShopEdit] Current shop: ${_currentShop!.id} - ${_currentShop!.title}',
+    );
 
     showDialog(
       context: context,
@@ -185,8 +195,8 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
       print('📂 [ShopEdit] filePath: ${image.path}');
 
-      // 1. Загружаем фото во временную папку
-      print('📤 [ShopEdit] Uploading avatar to temp...');
+      // 1. Загружаем аватар на сервер
+      print('📤 [ShopEdit] Uploading avatar...');
       final result = await _shopPublicBloc.repository.uploadShopImage(
         filePath: image.path,
         userId: userId,
@@ -195,53 +205,54 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         type: 'avatar',
       );
 
-      print('📦 [ShopEdit] uploadTempImage result: $result');
+      print('📦 [ShopEdit] upload result: $result');
 
       Navigator.pop(context); // Закрываем индикатор
 
-      if (result['name'] != null) {
-        final imageName = result['name'];
-        print('✅ [ShopEdit] Avatar uploaded: $imageName');
+      if (result['status'] == true && result['path'] != null) {
+        print('✅ [ShopEdit] Avatar uploaded successfully!');
 
-        // 2. Обновляем магазин с новым логотипом
-        print('🔄 [ShopEdit] Updating shop with new avatar...');
-        final updateResult = await _shopPublicBloc.repository.updateShop(
-          userId: userId,
-          token: token,
-          shopId: _currentShop!.id,
-          title: _currentShop!.title,
-          logo: [{'name': imageName}],
+        // ✅ ФОРМИРУЕМ ПОЛНЫЙ URL
+        final baseUrl = 'https://hashtagg.ru';
+        final fullPath = result['path']; // /media/users/474/shop/.../avatar.jpg
+        final fullUrl = '$baseUrl$fullPath';
+
+        print('🔄 [ShopEdit] New avatar URL: $fullUrl');
+
+        // ✅ ОБНОВЛЯЕМ _currentShop СРАЗУ
+        setState(() {
+          _currentShop = _currentShop!.copyWith(logo: fullUrl);
+          print('✅ [ShopEdit] _currentShop updated with new avatar');
+          print('   logo: ${_currentShop?.logo}');
+        });
+
+        print('🔍🔍🔍 [ShopEdit] BUILD - _currentShop:');
+        print('   title: ${_currentShop?.title}');
+        print('   logo: ${_currentShop?.logo}');
+        print('   sliders: ${_currentShop?.sliders}');
+        print(
+          '   sliders[0]?.link: ${_currentShop?.sliders?.firstOrNull?.link}',
         );
-
-        print('📦 [ShopEdit] updateShop result: $updateResult');
-
-        if (updateResult['status'] == true) {
-          print('✅ [ShopEdit] Avatar updated successfully!');
-          _loadShopData();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Аватарка обновлена!')),
-          );
-        } else {
-          print('❌ [ShopEdit] updateShop failed: ${updateResult['error']}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(updateResult['error'] ?? 'Ошибка обновления аватарки')),
-          );
-        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Аватарка обновлена!')));
       } else {
-        print('❌ [ShopEdit] No image name in result');
+        print('❌ [ShopEdit] upload failed: ${result['error']}');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка загрузки изображения')),
+          SnackBar(
+            content: Text(result['error'] ?? 'Ошибка загрузки аватарки'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       print('❌❌❌ [ShopEdit] ERROR: $e');
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
+        SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
       );
     }
   }
-
 
   void _editTitle() {
     if (_currentShop == null) return;
@@ -265,7 +276,9 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
               final newTitle = controller.text.trim();
               if (newTitle.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Название не может быть пустым')),
+                  const SnackBar(
+                    content: Text('Название не может быть пустым'),
+                  ),
                 );
                 return;
               }
@@ -280,7 +293,8 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
               final loadingDialog = showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (_) => const Center(child: CircularProgressIndicator()),
+                builder: (_) =>
+                    const Center(child: CircularProgressIndicator()),
               );
 
               try {
@@ -293,18 +307,20 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
 
                 // ✅ ДОБАВЛЯЕМ TIMEOUT
-                final result = await _shopPublicBloc.repository.updateShop(
-                  userId: userId,
-                  token: token,
-                  shopId: _currentShop!.id,
-                  title: newTitle,
-                  description: _currentShop!.description,
-                ).timeout(
-                  const Duration(seconds: 30),
-                  onTimeout: () {
-                    throw Exception('Превышено время ожидания');
-                  },
-                );
+                final result = await _shopPublicBloc.repository
+                    .updateShop(
+                      userId: userId,
+                      token: token,
+                      shopId: _currentShop!.id,
+                      title: newTitle,
+                      description: _currentShop!.description,
+                    )
+                    .timeout(
+                      const Duration(seconds: 30),
+                      onTimeout: () {
+                        throw Exception('Превышено время ожидания');
+                      },
+                    );
 
                 print('📦 [ShopEdit] updateShop result: $result');
 
@@ -320,16 +336,18 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 } else {
                   print('❌ [ShopEdit] updateShop failed: ${result['error']}');
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result['error'] ?? 'Ошибка обновления')),
+                    SnackBar(
+                      content: Text(result['error'] ?? 'Ошибка обновления'),
+                    ),
                   );
                 }
               } catch (e) {
                 print('❌❌❌ [ShopEdit] ERROR: $e');
                 // ✅ ЗАКРЫВАЕМ ИНДИКАТОР ЗАГРУЗКИ (ЕСЛИ ОН ЕЩЁ ОТКРЫТ)
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Ошибка: $e')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
               }
             },
             child: Text('Сохранить'),
@@ -361,7 +379,6 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       return;
     }
 
-    // Показываем загрузку
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -374,31 +391,41 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       final token = box.get('auth_token');
       final userId = userData?['id'] as int? ?? 0;
 
+      // ✅ ОТПРАВЛЯЕМ НА МОДЕРАЦИЮ (status = 0)
       final result = await _shopPublicBloc.repository.updateShop(
         userId: userId,
         token: token,
         shopId: _currentShop!.id,
         title: newTitle,
         description: _currentShop!.description,
+        // 👇 ДОБАВЛЯЕМ СТАТУС
+        status: 0, // 0 - на модерации
       );
 
       Navigator.pop(context); // Закрываем индикатор
 
       if (result['status'] == true) {
+        print('✅ [ShopEdit] Shop sent to moderation!');
+
         // ✅ ОБНОВЛЯЕМ _currentShop
         setState(() {
-          _currentShop = _currentShop!.copyWith(title: newTitle);
+          _currentShop = _currentShop!.copyWith(
+            title: newTitle,
+            status: 0, // 👈 СТАТУС "НА МОДЕРАЦИИ"
+          );
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Изменения сохранены! Отправлено на модерацию'),
+            content: Text(
+              'Изменения сохранены! Магазин отправлен на модерацию',
+            ),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Возвращаемся на страницу магазина
-        Navigator.pop(context);
+        // ✅ ВОЗВРАЩАЕМСЯ НА СТРАНИЦУ МАГАЗИНА
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['error'] ?? 'Ошибка сохранения')),
@@ -406,9 +433,9 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       }
     } catch (e) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
@@ -459,15 +486,14 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8956FF)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF8956FF),
+                    ),
                   ),
                   SizedBox(height: 16),
                   Text(
                     'Загрузка магазина...',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                   ),
                 ],
               ),
@@ -477,8 +503,8 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
           if (state is ShopPublicLoaded) {
             _currentShop = state.shop;
             _titleController.text = state.shop.title; // 👈 УСТАНАВЛИВАЕМ ТЕКСТ
-            final shop = state.shop;
-            final ads = state.ads;
+            final shop = _currentShop!; // 👈 ВАЖНО!
+            final ads = state.ads; // Товары берем из state
 
             return CustomScrollView(
               slivers: [
@@ -501,9 +527,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                   ),
                 ),
                 // 3. Статистика
-                SliverToBoxAdapter(
-                  child: ShopStats(shop: shop),
-                ),
+                SliverToBoxAdapter(child: ShopStats(shop: shop)),
                 // 4. Соцсети (кликабельные) — БЕЗ кнопок Управление и Добавить товар
                 SliverToBoxAdapter(
                   child: ShopActions(
@@ -551,10 +575,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                   SizedBox(height: 8),
                   Text(
                     state.message,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 24),
