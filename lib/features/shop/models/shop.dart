@@ -28,30 +28,47 @@ class Shop {
   final int subscribersCount;
 
   // ============================================================
-  // ГЕТТЕРЫ ДЛЯ МЕДИА
-  // ============================================================
+// ГЕТТЕРЫ ДЛЯ МЕДИА
+// ============================================================
 
   String? get avatarUrl {
-    // ✅ ЕСЛИ ЧЕРНОВИК (3) — ВОЗВРАЩАЕМ null (виджет покажет дефолт)
+    // ✅ ЕСЛИ ЕСТЬ ЛОГО — ПОКАЗЫВАЕМ ЕГО (ДАЖЕ В ЧЕРНОВИКЕ)
+    if (logo != null && logo!.isNotEmpty) {
+      return logo;
+    }
+
+    // ✅ ЕСЛИ ЧЕРНОВИК (3) И НЕТ ЛОГО — ВОЗВРАЩАЕМ null (дефолт)
     if (status == 3) {
       return null;
     }
 
-    if (logo != null && logo!.isNotEmpty) {
-      return logo;
+    // ✅ ЕСЛИ НЕ ЧЕРНОВИК И НЕТ ЛОГО — ФОРМИРУЕМ ПУТЬ
+    if (userId > 0 && idHash.isNotEmpty) {
+      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg';
     }
+
     return null;
   }
 
   String? get bannerUrl {
-    // ✅ ЕСЛИ ЧЕРНОВИК (3) — ВОЗВРАЩАЕМ null (виджет покажет дефолт)
+    // ✅ СНАЧАЛА ПРОВЕРЯЕМ СЛАЙДЕРЫ
+    if (sliders != null && sliders!.isNotEmpty) {
+      final firstSlider = sliders!.first;
+      if (firstSlider.link.isNotEmpty) {
+        return firstSlider.link;
+      }
+    }
+
+    // ✅ ЕСЛИ СЛАЙДЕРОВ НЕТ — ФОРМИРУЕМ ПУТЬ К БАННЕРУ
+    if (userId > 0 && idHash.isNotEmpty) {
+      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg';
+    }
+
+    // ✅ ЕСЛИ ЧЕРНОВИК — null (дефолт)
     if (status == 3) {
       return null;
     }
 
-    if (sliders != null && sliders!.isNotEmpty) {
-      return sliders!.first.link;
-    }
     return null;
   }
 

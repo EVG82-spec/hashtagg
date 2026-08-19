@@ -128,6 +128,10 @@ class ShopApiRepository {
     List<Map<String, String>>? logo,
     List<ShopLink>? links,
   }) async {
+    print('📤 [ShopApi] updateShop called');
+    print('   shopId: $shopId');
+    print('   title: $title');
+    print('   description: $description');
     try {
       _log('✏️ Updating shop');
 
@@ -135,8 +139,8 @@ class ShopApiRepository {
         'id_user': userId,
         'token': token,
         'id': shopId,
-        'shop_title': title,
-        'shop_desc': description ?? '',
+        'title': title,  // 👈 ИСПРАВЛЕНО: было 'shop_title', стало 'title'
+        'text': description ?? '',  // 👈 ИСПРАВЛЕНО: было 'shop_desc', стало 'text'
         'shop_theme_category': themeCategoryId ?? 0,
         'shop_id': shopIdHash ?? '',
       });
@@ -426,10 +430,12 @@ class ShopApiRepository {
     required String filePath,
     required int userId,
     required String token,
-    String action = 'shopSlider',
+    String action = 'shopSlider', // shopSlider или shopAvatar
   }) async {
     try {
-      _log('📤 Uploading temp image with action: $action');
+      print('📤 [ShopApi] Uploading temp image with action: $action');
+      print('   userId: $userId');
+      print('   filePath: $filePath');
 
       final file = File(filePath);
       final bytes = await file.readAsBytes();
@@ -451,19 +457,86 @@ class ShopApiRepository {
       );
 
       final responseData = _parseResponse(response.data);
-      
+      print('📦 [ShopApi] uploadTempImage response: $responseData');
+
       if (responseData['data'] == null) {
         throw Exception('Failed to upload image');
       }
-      
-      _log('✅ Image uploaded: ${responseData['data']['name']}');
 
+      print('✅ [ShopApi] Image uploaded: ${responseData['data']['name']}');
       return responseData['data'];
     } catch (e) {
-      _log('❌ Error uploading image: $e');
+      print('❌ [ShopApi] Error uploading temp image: $e');
       rethrow;
     }
   }
+
+  /// Загрузка изображения во временную папку
+  Future<Map<String, dynamic>> uploadShopImage({
+    required String filePath,
+    required int userId,
+    required String token,
+    required String shopHash,
+    required String type,
+  }) async {
+    try {
+      print('📤📤📤 [ShopApi] uploadShopImage START');
+      print('   userId: $userId');
+      print('   shopHash: $shopHash');
+      print('   type: $type');
+      print('   filePath: $filePath');
+
+      final file = File(filePath);
+      final bytes = await file.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      final fileName = type == 'banner' ? 'banner.jpg' : 'avatar.jpg';
+      final savePath = '/media/users/$userId/shop/$shopHash/$fileName';
+
+      print('   savePath: $savePath');
+
+      final response = await _dio.post(
+        '/systems/api/controller.php',
+        queryParameters: {
+          'key': ApiConfig.apiKey,
+          'route': 'assets/save',
+        },
+        data: {
+          'id_user': userId,
+          'token': token,
+          'type': 'image',
+          'action': type == 'banner' ? 'shopSlider' : 'shopAvatar',
+          'assets': base64Image,
+          'path': savePath,
+        },
+      );
+
+      print('📡 [ShopApi] Response status: ${response.statusCode}');
+      print('📡 [ShopApi] Response data: ${response.data}');
+
+      final responseData = _parseResponse(response.data);
+      print('📦 [ShopApi] uploadShopImage response: $responseData');
+
+      if (responseData['data'] == null) {
+        print('❌ [ShopApi] No data in response');
+        throw Exception('Failed to upload image');
+      }
+
+      print('✅ [ShopApi] uploadShopImage SUCCESS');
+      return {
+        'status': true,
+        'name': fileName,
+        'path': savePath,
+        'data': responseData['data'],
+      };
+    } catch (e) {
+      print('❌❌❌ [ShopApi] uploadShopImage ERROR: $e');
+      rethrow;
+    }
+  }
+
+
+
 
   /// Получение магазина для публичного просмотра
   Future<Shop> getPublicShop({required String shopId}) async {

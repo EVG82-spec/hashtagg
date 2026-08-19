@@ -28,13 +28,21 @@ class ShopEditScreen extends StatefulWidget {
 class _ShopEditScreenState extends State<ShopEditScreen> {
   final ImagePicker _picker = ImagePicker();
   late ShopPublicBloc _shopPublicBloc;
+  late TextEditingController _titleController;
   Shop? _currentShop;
 
   @override
   void initState() {
     super.initState();
+    _titleController = TextEditingController();
     _initBloc();
     _loadShopData();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
   }
 
   void _initBloc() {
@@ -53,20 +61,187 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
   // ===== МЕТОДЫ РЕДАКТИРОВАНИЯ =====
 
   void _pickBannerImage() async {
+    print('📸📸📸 [ShopEdit] _pickBannerImage() START');
+
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      print('📸 [ShopEdit] Banner image selected: ${image.path}');
-      // TODO: Загрузить баннер через API
+    print('📸 [ShopEdit] Image picked: ${image?.path}');
+
+    if (image == null) {
+      print('⚠️ [ShopEdit] No image selected');
+      return;
+    }
+
+    if (_currentShop == null) {
+      print('⚠️ [ShopEdit] _currentShop is null');
+      return;
+    }
+
+    print('👤 [ShopEdit] Current shop: ${_currentShop!.id} - ${_currentShop!.title}');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final token = box.get('auth_token');
+      final userId = userData?['id'] as int? ?? 0;
+
+      print('🔑 [ShopEdit] userId: $userId');
+      print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
+      print('📂 [ShopEdit] filePath: ${image.path}');
+
+      // 1. Загружаем фото во временную папку
+      print('📤 [ShopEdit] Uploading banner to temp...');
+      final result = await _shopPublicBloc.repository.uploadShopImage(
+        filePath: image.path,
+        userId: userId,
+        token: token,
+        shopHash: _currentShop!.idHash, // 👈 Хеш магазина
+        type: 'banner',
+      );
+
+      print('📦 [ShopEdit] uploadTempImage result: $result');
+
+      Navigator.pop(context); // Закрываем индикатор
+
+      if (result['name'] != null) {
+        final imageName = result['name'];
+        print('✅ [ShopEdit] Image uploaded: $imageName');
+
+        // 2. Обновляем магазин с новым баннером
+        print('🔄 [ShopEdit] Updating shop with new banner...');
+        final updateResult = await _shopPublicBloc.repository.updateShop(
+          userId: userId,
+          token: token,
+          shopId: _currentShop!.id,
+          title: _currentShop!.title,
+          sliders: [{'name': 'Баннер', 'link': imageName}],
+        );
+
+        print('📦 [ShopEdit] updateShop result: $updateResult');
+
+        if (updateResult['status'] == true) {
+          print('✅ [ShopEdit] Banner updated successfully!');
+          _loadShopData();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Баннер обновлен!')),
+          );
+        } else {
+          print('❌ [ShopEdit] updateShop failed: ${updateResult['error']}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(updateResult['error'] ?? 'Ошибка обновления баннера')),
+          );
+        }
+      } else {
+        print('❌ [ShopEdit] No image name in result');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка загрузки изображения')),
+        );
+      }
+    } catch (e) {
+      print('❌❌❌ [ShopEdit] ERROR: $e');
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
     }
   }
 
   void _pickAvatarImage() async {
+    print('📸📸📸 [ShopEdit] _pickAvatarImage() START');
+
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      print('📸 [ShopEdit] Avatar image selected: ${image.path}');
-      // TODO: Загрузить аватарку через API
+    print('📸 [ShopEdit] Avatar image picked: ${image?.path}');
+
+    if (image == null) {
+      print('⚠️ [ShopEdit] No avatar image selected');
+      return;
+    }
+
+    if (_currentShop == null) {
+      print('⚠️ [ShopEdit] _currentShop is null');
+      return;
+    }
+
+    print('👤 [ShopEdit] Current shop: ${_currentShop!.id} - ${_currentShop!.title}');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final token = box.get('auth_token');
+      final userId = userData?['id'] as int? ?? 0;
+
+      print('🔑 [ShopEdit] userId: $userId');
+      print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
+      print('📂 [ShopEdit] filePath: ${image.path}');
+
+      // 1. Загружаем фото во временную папку
+      print('📤 [ShopEdit] Uploading avatar to temp...');
+      final result = await _shopPublicBloc.repository.uploadShopImage(
+        filePath: image.path,
+        userId: userId,
+        token: token,
+        shopHash: _currentShop!.idHash,
+        type: 'avatar',
+      );
+
+      print('📦 [ShopEdit] uploadTempImage result: $result');
+
+      Navigator.pop(context); // Закрываем индикатор
+
+      if (result['name'] != null) {
+        final imageName = result['name'];
+        print('✅ [ShopEdit] Avatar uploaded: $imageName');
+
+        // 2. Обновляем магазин с новым логотипом
+        print('🔄 [ShopEdit] Updating shop with new avatar...');
+        final updateResult = await _shopPublicBloc.repository.updateShop(
+          userId: userId,
+          token: token,
+          shopId: _currentShop!.id,
+          title: _currentShop!.title,
+          logo: [{'name': imageName}],
+        );
+
+        print('📦 [ShopEdit] updateShop result: $updateResult');
+
+        if (updateResult['status'] == true) {
+          print('✅ [ShopEdit] Avatar updated successfully!');
+          _loadShopData();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Аватарка обновлена!')),
+          );
+        } else {
+          print('❌ [ShopEdit] updateShop failed: ${updateResult['error']}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(updateResult['error'] ?? 'Ошибка обновления аватарки')),
+          );
+        }
+      } else {
+        print('❌ [ShopEdit] No image name in result');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка загрузки изображения')),
+        );
+      }
+    } catch (e) {
+      print('❌❌❌ [ShopEdit] ERROR: $e');
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
     }
   }
+
 
   void _editTitle() {
     if (_currentShop == null) return;
@@ -86,12 +261,75 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
             child: Text('Отмена'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final newTitle = controller.text.trim();
-              if (newTitle.isNotEmpty) {
+              if (newTitle.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Название не может быть пустым')),
+                );
+                return;
+              }
+
+              // Закрываем диалог с названием
+              Navigator.pop(context);
+
+              print('📝📝📝 [ShopEdit] _editTitle() START');
+              print('   newTitle: $newTitle');
+
+              // Показываем индикатор загрузки
+              final loadingDialog = showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(child: CircularProgressIndicator()),
+              );
+
+              try {
+                final box = Hive.box('user');
+                final userData = box.get('user');
+                final token = box.get('auth_token');
+                final userId = userData?['id'] as int? ?? 0;
+
+                print('🔑 [ShopEdit] userId: $userId');
+                print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
+
+                // ✅ ДОБАВЛЯЕМ TIMEOUT
+                final result = await _shopPublicBloc.repository.updateShop(
+                  userId: userId,
+                  token: token,
+                  shopId: _currentShop!.id,
+                  title: newTitle,
+                  description: _currentShop!.description,
+                ).timeout(
+                  const Duration(seconds: 30),
+                  onTimeout: () {
+                    throw Exception('Превышено время ожидания');
+                  },
+                );
+
+                print('📦 [ShopEdit] updateShop result: $result');
+
+                // ✅ ЗАКРЫВАЕМ ИНДИКАТОР ЗАГРУЗКИ
+                Navigator.pop(context); // Закрываем loadingDialog
+
+                if (result['status'] == true) {
+                  print('✅ [ShopEdit] Title updated successfully!');
+                  _loadShopData();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Название обновлено!')),
+                  );
+                } else {
+                  print('❌ [ShopEdit] updateShop failed: ${result['error']}');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(result['error'] ?? 'Ошибка обновления')),
+                  );
+                }
+              } catch (e) {
+                print('❌❌❌ [ShopEdit] ERROR: $e');
+                // ✅ ЗАКРЫВАЕМ ИНДИКАТОР ЗАГРУЗКИ (ЕСЛИ ОН ЕЩЁ ОТКРЫТ)
                 Navigator.pop(context);
-                print('📝 [ShopEdit] Title: $newTitle');
-                // TODO: Сохранить название через API
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Ошибка: $e')),
+                );
               }
             },
             child: Text('Сохранить'),
@@ -111,15 +349,67 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
     // TODO: Открыть редактор страниц
   }
 
-  void _saveShop() {
+  void _saveShop() async {
     print('💾 [ShopEdit] Save changes');
-    // TODO: Сохранить все изменения и отправить на модерацию
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Изменения сохранены! Отправлено на модерацию'),
-        backgroundColor: Colors.green,
-      ),
+
+    final newTitle = _titleController.text.trim();
+
+    if (newTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Название не может быть пустым')),
+      );
+      return;
+    }
+
+    // Показываем загрузку
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final token = box.get('auth_token');
+      final userId = userData?['id'] as int? ?? 0;
+
+      final result = await _shopPublicBloc.repository.updateShop(
+        userId: userId,
+        token: token,
+        shopId: _currentShop!.id,
+        title: newTitle,
+        description: _currentShop!.description,
+      );
+
+      Navigator.pop(context); // Закрываем индикатор
+
+      if (result['status'] == true) {
+        // ✅ ОБНОВЛЯЕМ _currentShop
+        setState(() {
+          _currentShop = _currentShop!.copyWith(title: newTitle);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Изменения сохранены! Отправлено на модерацию'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Возвращаемся на страницу магазина
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['error'] ?? 'Ошибка сохранения')),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    }
   }
 
   @override
@@ -186,6 +476,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
 
           if (state is ShopPublicLoaded) {
             _currentShop = state.shop;
+            _titleController.text = state.shop.title; // 👈 УСТАНАВЛИВАЕМ ТЕКСТ
             final shop = state.shop;
             final ads = state.ads;
 
@@ -206,6 +497,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                     isEditing: true,
                     onAvatarTap: _pickAvatarImage,
                     onTitleTap: _editTitle,
+                    titleController: _titleController,
                   ),
                 ),
                 // 3. Статистика

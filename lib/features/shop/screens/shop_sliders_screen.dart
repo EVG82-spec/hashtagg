@@ -69,6 +69,7 @@ class _ShopSlidersScreenState extends State<ShopSlidersScreen> {
               filePath: pickedFile.path,
               userId: user.id,
               token: user.token ?? '',
+
             ));
       }
     }

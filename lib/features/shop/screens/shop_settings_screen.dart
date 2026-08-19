@@ -106,6 +106,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               filePath: pickedFile.path,
               userId: user.id,
               token: user.token ?? '',
+
             ));
       }
     }

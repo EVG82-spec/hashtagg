@@ -7,6 +7,8 @@ import 'package:hashtagg/features/shop/models/shop.dart';
 class ShopPublicBloc extends Bloc<ShopPublicEvent, ShopPublicState> {
   final ShopApiRepository _repository;
 
+  ShopApiRepository get repository => _repository; // 👈 ДОБАВЬ
+
   ShopPublicBloc(this._repository) : super(ShopPublicInitial()) {
     on<LoadPublicShop>(_onLoadPublicShop);
   }

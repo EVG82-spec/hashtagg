@@ -8,6 +8,7 @@ class ShopProfile extends StatelessWidget {
   final bool isEditing;
   final VoidCallback? onAvatarTap;
   final VoidCallback? onTitleTap;
+  final TextEditingController? titleController; // 👈 НОВЫЙ ПАРАМЕТР
 
   const ShopProfile({
     Key? key,
@@ -15,6 +16,7 @@ class ShopProfile extends StatelessWidget {
     this.isEditing = false,
     this.onAvatarTap,
     this.onTitleTap,
+    this.titleController, // 👈 ДОБАВИЛИ this.titleController
   }) : super(key: key);
 
   @override
@@ -90,42 +92,38 @@ class ShopProfile extends StatelessWidget {
             ),
           ),
           SizedBox(width: 12),
-          // Название - БЕЗ Expanded (используем Flexible)
-          Flexible(
-            child: GestureDetector(
-              onTap: isEditing ? onTitleTap : null,
-              child: Container(
-                padding: isEditing ? EdgeInsets.symmetric(horizontal: 8, vertical: 4) : EdgeInsets.zero,
-                decoration: isEditing
-                    ? BoxDecoration(
-                  border: Border.all(color: Color(0xFF8956FF), width: 1),
-                  borderRadius: BorderRadius.circular(4),
-                )
-                    : null,
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        shop.title.isNotEmpty ? shop.title : 'Название магазина',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF111827),
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isEditing)
-                      Icon(
-                        Icons.edit,
-                        size: 16,
-                        color: Color(0xFF8956FF),
-                      ),
-                  ],
+          // ===== НАЗВАНИЕ (редактируемое) =====
+          isEditing && titleController != null
+              ? Expanded(
+            child: TextField(
+              controller: titleController,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Введите название магазина',
+                hintStyle: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade400,
                 ),
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
               ),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827),
+              ),
+            ),
+          )
+              : Expanded(
+            child: Text(
+              shop.title.isNotEmpty ? shop.title : 'Название магазина',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827),
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

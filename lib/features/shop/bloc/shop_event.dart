@@ -119,10 +119,14 @@ class UploadShopImage extends ShopEvent {
   final String filePath;
   final int userId;
   final String token;
+  final String? shopHash;  // 👈 НЕОБЯЗАТЕЛЬНЫЙ
+  final String? type;      // 👈 НЕОБЯЗАТЕЛЬНЫЙ
 
   UploadShopImage({
     required this.filePath,
     required this.userId,
     required this.token,
+    this.shopHash,
+    this.type,
   });
 }
