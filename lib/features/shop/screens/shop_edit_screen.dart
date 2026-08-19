@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:hive/hive.dart';
 import 'package:dio/dio.dart';
 import 'package:hashtagg/core/network/shop_api_repository.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ShopEditScreen extends StatefulWidget {
   final String shopId;
@@ -121,6 +122,9 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         final fullUrl = '$baseUrl$fullPath';
 
         print('🔄 [ShopEdit] New banner URL: $fullUrl');
+        // ✅ ОЧИЩАЕМ КЭШ ПЕРЕД ОБНОВЛЕНИЕМ
+        await CachedNetworkImage.evictFromCache(fullUrl);
+        print('🗑️ [ShopEdit] Cache evicted for: $fullUrl');
 
         // ✅ ОБНОВЛЯЕМ _currentShop СРАЗУ
         setState(() {
@@ -218,6 +222,9 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         final fullUrl = '$baseUrl$fullPath';
 
         print('🔄 [ShopEdit] New avatar URL: $fullUrl');
+        // ✅ ОЧИЩАЕМ КЭШ ПЕРЕД ОБНОВЛЕНИЕМ
+        await CachedNetworkImage.evictFromCache(fullUrl);
+        print('🗑️ [ShopEdit] Cache evicted for: $fullUrl');
 
         // ✅ ОБНОВЛЯЕМ _currentShop СРАЗУ
         setState(() {
@@ -501,9 +508,20 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
           }
 
           if (state is ShopPublicLoaded) {
-            _currentShop = state.shop;
-            _titleController.text = state.shop.title; // 👈 УСТАНАВЛИВАЕМ ТЕКСТ
+            print('🔍🔍🔍 [ShopEdit] BUILD - state is ShopPublicLoaded');
+            print('   state.shop.logo: ${state.shop.logo}');
+            print('   state.shop.avatarUrl: ${state.shop.avatarUrl}');
+            print('   _currentShop?.logo: ${_currentShop?.logo}');
+            print('   _currentShop?.avatarUrl: ${_currentShop?.avatarUrl}');
+            if (_currentShop == null) {
+              print('🔄 [ShopEdit] Setting _currentShop from state');
+              _currentShop = state.shop;
+              _titleController.text = state.shop.title;
+            }
             final shop = _currentShop!; // 👈 ВАЖНО!
+            print('✅ [ShopEdit] Using _currentShop:');
+            print('   shop.logo: ${shop.logo}');
+            print('   shop.avatarUrl: ${shop.avatarUrl}');
             final ads = state.ads; // Товары берем из state
 
             return CustomScrollView(

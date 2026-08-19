@@ -22,9 +22,19 @@ class ShopProfile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarUrl = shop.avatarUrl;
+    final hasCustomAvatar =
+        shop.logo != null &&
+        shop.logo!.isNotEmpty &&
+        !shop.logo!.contains('icon_photo.png') &&
+        !shop.logo!.contains('others/');
+    final isDraft = shop.status == 3 && !hasCustomAvatar;
 
-    print('🖼️ [ShopProfile] avatarUrl: $avatarUrl');
-    print('🖼️ [ShopProfile] isEditing: $isEditing');
+    print('🖼️ [ShopProfile] build()');
+    print('   shop.status: ${shop.status}');
+    print('   shop.logo: ${shop.logo}');
+    print('   avatarUrl: $avatarUrl');
+    print('   isEditing: $isEditing');
+    print('   isDraft: $isDraft');
 
     return Container(
       padding: EdgeInsets.fromLTRB(15, 14, 15, 10),
@@ -57,15 +67,26 @@ class ShopProfile extends StatelessWidget {
                           offset: Offset(0, 1),
                         ),
                       ],
-                      image: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? DecorationImage(
-                        image: CachedNetworkImageProvider(avatarUrl),
-                        fit: BoxFit.cover,
-                      )
-                          : const DecorationImage(
-                        image: NetworkImage('https://hashtagg.ru/templates/img/av.jpeg'),
-                        fit: BoxFit.cover,
-                      ),
+                      image: isDraft
+                          ? const DecorationImage(
+                              image: NetworkImage(
+                                'https://hashtagg.ru/templates/img/av.jpeg',
+                              ),
+                              fit: BoxFit.cover,
+                            )
+                          : (avatarUrl != null && avatarUrl.isNotEmpty
+                                ? DecorationImage(
+                                    image: CachedNetworkImageProvider(
+                                      avatarUrl,
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                : const DecorationImage(
+                                    image: NetworkImage(
+                                      'https://hashtagg.ru/templates/img/av.jpeg',
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )),
                     ),
                   ),
                   if (isEditing)
@@ -92,40 +113,40 @@ class ShopProfile extends StatelessWidget {
             ),
           ),
           SizedBox(width: 12),
-          // ===== НАЗВАНИЕ (редактируемое) =====
+          // Название
           isEditing && titleController != null
               ? Expanded(
-            child: TextField(
-              controller: titleController,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Введите название магазина',
-                hintStyle: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade400,
-                ),
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
-              ),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827),
-              ),
-            ),
-          )
+                  child: TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Введите название магазина',
+                      hintStyle: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                )
               : Expanded(
-            child: Text(
-              shop.title.isNotEmpty ? shop.title : 'Название магазина',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827),
-                height: 1.3,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+                  child: Text(
+                    shop.title.isNotEmpty ? shop.title : 'Название магазина',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
         ],
       ),
     );

@@ -32,24 +32,13 @@ class Shop {
   // ============================================================
 
   String? get avatarUrl {
-    // ✅ ВСЕГДА ФОРМИРУЕМ ИЗ idHash (игнорируем logo из БД)
-    // Это гарантирует, что аватарка всегда берется из папки магазина
-    // и обновляется сразу после загрузки файла на сервер
     if (userId > 0 && idHash.isNotEmpty) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg?t=$timestamp';
+      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/avatar.jpg';
     }
-
-    // ✅ ЕСЛИ ЧЕРНОВИК (3) — ВОЗВРАЩАЕМ null (дефолт)
-    if (status == 3) {
-      return null;
-    }
-
     return null;
   }
 
   String? get bannerUrl {
-    // 1️⃣ СНАЧАЛА ПРОВЕРЯЕМ СЛАЙДЕРЫ (если есть - показываем их)
     if (sliders != null && sliders!.isNotEmpty) {
       final firstSlider = sliders!.first;
       if (firstSlider.link.isNotEmpty) {
@@ -57,17 +46,9 @@ class Shop {
       }
     }
 
-    // 2️⃣ ЕСЛИ СЛАЙДЕРОВ НЕТ — ФОРМИРУЕМ ПУТЬ К БАННЕРУ
     if (userId > 0 && idHash.isNotEmpty) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg?t=$timestamp';
+      return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg';
     }
-
-    // 3️⃣ ЕСЛИ ЧЕРНОВИК — null (дефолт)
-    if (status == 3) {
-      return null;
-    }
-
     return null;
   }
 
