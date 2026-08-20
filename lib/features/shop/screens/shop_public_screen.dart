@@ -4,25 +4,70 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
+import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
 import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
 import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
 import 'package:hashtagg/features/shop/widgets/shop_navigation.dart';
 import 'package:hashtagg/features/shop/widgets/shop_ads_grid.dart';
-import 'package:hashtagg/features/shop/widgets/shop_page_content.dart';
-import 'package:hashtagg/features/shop/widgets/shop_empty_state.dart';
 import 'package:hashtagg/features/shop/widgets/shop_status_banner.dart';
 
-
-class ShopPublicScreen extends StatelessWidget {
+class ShopPublicScreen extends StatefulWidget {
   final String shopId;
 
   const ShopPublicScreen({Key? key, required this.shopId}) : super(key: key);
 
   @override
+  State<ShopPublicScreen> createState() => _ShopPublicScreenState();
+}
+
+class _ShopPublicScreenState extends State<ShopPublicScreen> {
+  int? _selectedPageId;
+  String? _selectedPageContent;
+
+  void _onPageSelected(int pageId) {
+    print('📄 [ShopPublic] _onPageSelected: $pageId');
+
+    setState(() {
+      _selectedPageId = pageId;
+    });
+
+    if (pageId == 0) {
+      // Главная - показываем товары
+      setState(() {
+        _selectedPageContent = null;
+      });
+      print('🏠 [ShopPublic] Switching to Главная');
+    } else {
+      // Ищем страницу по id
+      final state = context.read<ShopPublicBloc>().state;
+      if (state is ShopPublicLoaded) {
+        final page = state.shop.pages?.firstWhere(
+          (p) => p.id == pageId,
+          orElse: () => null as ShopPage,
+        );
+        if (page != null) {
+          setState(() {
+            _selectedPageContent = page.text;
+          });
+          print(
+            '📄 [ShopPublic] Page found: ${page.name}, content length: ${page.text.length}',
+          );
+        } else {
+          setState(() {
+            _selectedPageContent = null;
+          });
+          print('⚠️ [ShopPublic] Page not found: $pageId');
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    context.read<ShopPublicBloc>().add(LoadPublicShop(shopId: shopId));
+    context.read<ShopPublicBloc>().add(LoadPublicShop(shopId: widget.shopId));
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -64,10 +109,7 @@ class ShopPublicScreen extends StatelessWidget {
                   SizedBox(height: 16),
                   Text(
                     'Загрузка магазина...',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                   ),
                 ],
               ),
@@ -78,31 +120,63 @@ class ShopPublicScreen extends StatelessWidget {
             final shop = state.shop;
             final ads = state.ads;
 
+            print('🔍 [ShopPublic] ShopPublicLoaded');
+            print('   pages count: ${shop.pages?.length ?? 0}');
+            print('   selectedPageId: $_selectedPageId');
+            print('   has content: ${_selectedPageContent != null}');
+
             return CustomScrollView(
               slivers: [
+                // 1. Баннер
+                SliverToBoxAdapter(child: ShopBanner(shop: shop)),
+                // 2. Статус
+                SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
+                // 3. Профиль
+                SliverToBoxAdapter(child: ShopProfile(shop: shop)),
+                // 4. Статистика
+                SliverToBoxAdapter(child: ShopStats(shop: shop)),
+                // 5. Соцсети + подписка
+                SliverToBoxAdapter(child: ShopActions(shop: shop)),
+                // 6. Навигация (Главная + страницы)
                 SliverToBoxAdapter(
-                  child: ShopBanner(shop: shop),
+                  child: ShopNavigation(
+                    shop: shop,
+                    isEditing: false,
+                    onPageSelected: _onPageSelected,
+                    currentPageId: _selectedPageId,
+                  ),
                 ),
-                SliverToBoxAdapter(
-                  child: ShopStatusBanner(shop: shop), // 👈 ДОБАВИТЬ
-                ),
-                SliverToBoxAdapter(
-                  child: ShopProfile(shop: shop),
-                ),
-                SliverToBoxAdapter(
-                  child: ShopStats(shop: shop),
-                ),
-                SliverToBoxAdapter(
-                  child: ShopActions(shop: shop),
-                ),
-                SliverToBoxAdapter(
-                  child: ShopNavigation(shop: shop),
-                ),
-                // Товары (временно без страниц)
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  sliver: ShopAdsGrid(ads: ads),
-                ),
+                // 7. Контент страницы (если выбрана)
+                if (_selectedPageId != null &&
+                    _selectedPageId != 0 &&
+                    _selectedPageContent != null)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Text(
+                          _selectedPageContent!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // 8. Товары (только если на главной)
+                if (_selectedPageId == null || _selectedPageId == 0)
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    sliver: ShopAdsGrid(ads: ads),
+                  ),
               ],
             );
           }
@@ -129,17 +203,14 @@ class ShopPublicScreen extends StatelessWidget {
                   SizedBox(height: 8),
                   Text(
                     state.message,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
                       context.read<ShopPublicBloc>().add(
-                        LoadPublicShop(shopId: shopId),
+                        LoadPublicShop(shopId: widget.shopId),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -160,7 +231,7 @@ class ShopPublicScreen extends StatelessWidget {
             );
           }
 
-          return SizedBox.shrink();
+          return const SizedBox.shrink();
         },
       ),
     );

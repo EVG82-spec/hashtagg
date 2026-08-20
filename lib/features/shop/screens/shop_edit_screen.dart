@@ -16,6 +16,7 @@ import 'package:hive/hive.dart';
 import 'package:dio/dio.dart';
 import 'package:hashtagg/core/network/shop_api_repository.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:hashtagg/features/shop/screens/shop_page_edit_screen.dart';
 
 class ShopEditScreen extends StatefulWidget {
   final String shopId;
@@ -31,6 +32,8 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
   late ShopPublicBloc _shopPublicBloc;
   late TextEditingController _titleController;
   Shop? _currentShop;
+  int? _selectedPageId;
+  String? _selectedPageContent;
 
   @override
   void initState() {
@@ -371,7 +374,39 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
 
   void _addPage() {
     print('📄 [ShopEdit] Add new page');
-    // TODO: Открыть редактор страниц
+
+    final shopId = _currentShop?.id;
+    if (shopId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка: магазин не загружен')),
+      );
+      return;
+    }
+
+    // Открываем экран создания страницы
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ShopPageEditScreen(
+          shopId: shopId,
+          page: null, // null = создание новой
+        ),
+      ),
+    ).then((result) {
+      if (result == true && mounted) {
+        print('✅ [ShopEdit] Page created, reloading shop data');
+        // ✅ ПРИНУДИТЕЛЬНО ПЕРЕЗАГРУЖАЕМ ДАННЫЕ МАГАЗИНА
+        _loadShopData();
+
+        // ✅ ПОКАЗЫВАЕМ СООБЩЕНИЕ
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Страница создана!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
   }
 
   void _saveShop() async {
@@ -554,19 +589,48 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                     onSocialEdit: _editSocialLinks,
                   ),
                 ),
-                // 5. Навигация + кнопка "Добавить страницу"
+                // 5. Навигация (Главная + страницы + кнопка Добавить страницу)
                 SliverToBoxAdapter(
                   child: ShopNavigation(
                     shop: shop,
                     isEditing: true,
                     onAddPage: _addPage,
+                    onPageSelected: _onPageSelected,
+                    currentPageId: _selectedPageId,
                   ),
                 ),
-                // 6. Товары
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  sliver: ShopAdsGrid(ads: ads),
-                ),
+                // 6. Контент страницы (если выбрана)
+                if (_selectedPageId != null &&
+                    _selectedPageId != 0 &&
+                    _selectedPageContent != null)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Text(
+                          _selectedPageContent!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 7. Товары (только если на главной)
+                if (_selectedPageId == null || _selectedPageId == 0)
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    sliver: ShopAdsGrid(ads: ads),
+                  ),
               ],
             );
           }
@@ -617,5 +681,38 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         },
       ),
     );
+  }
+
+  void _onPageSelected(int pageId) {
+    print('📄 [ShopEdit] _onPageSelected: $pageId');
+
+    setState(() {
+      _selectedPageId = pageId;
+    });
+
+    if (pageId == 0) {
+      // Главная - показываем товары
+      setState(() {
+        _selectedPageContent = null;
+      });
+    } else {
+      // Ищем страницу по id
+      final page = _currentShop?.pages?.firstWhere(
+        (p) => p.id == pageId,
+        orElse: () => null as ShopPage, // 👈 ИСПРАВЛЕНО!
+      );
+
+      if (page != null) {
+        setState(() {
+          _selectedPageContent = page.text;
+        });
+        print('📄 [ShopEdit] Page content length: ${page.text.length}');
+      } else {
+        setState(() {
+          _selectedPageContent = null;
+        });
+        print('⚠️ [ShopEdit] Page not found: $pageId');
+      }
+    }
   }
 }
