@@ -6,11 +6,13 @@ import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
 import 'package:hashtagg/features/shop/bloc/shop_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/shop_event.dart';
+import 'package:hashtagg/features/shop/bloc/shop_state.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
+import 'package:hashtagg/features/shop/widgets/shop_social_edit_modal.dart';
+import 'package:hashtagg/features/shop/widgets/shop_social_icons.dart';
 import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
-import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
 import 'package:hashtagg/features/shop/widgets/shop_navigation.dart';
 import 'package:hashtagg/features/shop/widgets/shop_ads_grid.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,6 +39,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
   Shop? _currentShop;
   int? _selectedPageId;
   String? _selectedPageContent;
+  StreamSubscription<ShopState>? _shopBlocSubscription; // 👈 ДОБАВИТЬ!
 
   @override
   void initState() {
@@ -44,11 +47,30 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
     _titleController = TextEditingController();
     _initBloc();
     _loadShopData();
+
+    // ✅ ПОДПИСКА НА ShopBloc
+    _shopBlocSubscription = context.read<ShopBloc>().stream.listen((state) {
+      if (state is ShopLoaded) {
+        print('🔄 [ShopEdit] ShopLoaded received');
+        setState(() {
+          _currentShop = state.shop;
+          _titleController.text = state.shop.title;
+        });
+      } else if (state is ShopEditDataLoaded) {
+        print('🔄 [ShopEdit] ShopEditDataLoaded received');
+        final shop = Shop.fromJson(state.data);
+        setState(() {
+          _currentShop = shop;
+          _titleController.text = shop.title;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _shopBlocSubscription?.cancel(); // 👈 ОТПИСКА
     super.dispose();
   }
 
@@ -325,6 +347,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                       shopId: _currentShop!.id,
                       title: newTitle,
                       description: _currentShop!.description,
+                      links: _currentShop!.links, // 👈 ДОБАВИТЬ!
                     )
                     .timeout(
                       const Duration(seconds: 30),
@@ -374,11 +397,6 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         ],
       ),
     );
-  }
-
-  void _editSocialLinks() {
-    print('🔗 [ShopEdit] Edit social links');
-    // TODO: Открыть модалку редактирования соцсетей
   }
 
   void _addPage() {
@@ -456,6 +474,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         shopId: _currentShop!.id,
         title: newTitle,
         description: _currentShop!.description,
+        links: _currentShop!.links, // 👈 ДОБАВИТЬ!
         // 👇 ДОБАВЛЯЕМ СТАТУС
         status: 0, // 0 - на модерации
       );
@@ -617,12 +636,12 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 ),
                 // 3. Статистика
                 SliverToBoxAdapter(child: ShopStats(shop: shop)),
-                // 4. Соцсети (кликабельные) — БЕЗ кнопок Управление и Добавить товар
+                // 4. Соцсети (кликабельные)
                 SliverToBoxAdapter(
-                  child: ShopActions(
+                  child: ShopSocialIcons(
                     shop: shop,
                     isEditing: true,
-                    onSocialEdit: _editSocialLinks,
+                    onEdit: _editSocialLinks,
                   ),
                 ),
                 // 5. Навигация (Главная + страницы + кнопка Добавить страницу)
@@ -807,5 +826,37 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
     } else {
       print('❌ [ShopEdit] Page not found: $pageId');
     }
+  }
+
+  void _editSocialLinks() {
+    print('🔗 [ShopEdit] Edit social links');
+
+    if (_currentShop == null) return;
+
+    print('   repository: ${_shopPublicBloc.repository}');
+
+    showDialog(
+      context: context,
+      builder: (_) => ShopSocialEditModal(
+        shop: _currentShop!,
+        repository: _shopPublicBloc.repository,
+      ),
+    ).then((result) {
+      if (result == true && mounted) {
+        print('✅ [ShopEdit] Social links updated');
+
+        // ✅ ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ДАННЫЕ
+        _shopPublicBloc.add(
+          LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Соцсети обновлены!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
   }
 }

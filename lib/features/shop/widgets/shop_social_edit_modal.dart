@@ -1,11 +1,20 @@
 // lib/features/shop/widgets/shop_social_edit_modal.dart
 import 'package:flutter/material.dart';
+
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hive/hive.dart';
+
+import 'package:hashtagg/core/network/shop_api_repository.dart'; // 👈 ДОБАВИТЬ
 
 class ShopSocialEditModal extends StatefulWidget {
   final Shop shop;
+  final ShopApiRepository repository; // 👈 ДОБАВИТЬ
 
-  const ShopSocialEditModal({Key? key, required this.shop}) : super(key: key);
+  const ShopSocialEditModal({
+    Key? key,
+    required this.shop,
+    required this.repository, // 👈 ОБЯЗАТЕЛЬНО
+  }) : super(key: key);
 
   @override
   State<ShopSocialEditModal> createState() => _ShopSocialEditModalState();
@@ -21,22 +30,34 @@ class _ShopSocialEditModalState extends State<ShopSocialEditModal> {
     super.initState();
     // Инициализируем из links
     _telegramController = TextEditingController(
-      text: widget.shop.links?.firstWhere(
-            (l) => l.text?.toLowerCase().contains('telegram') == true,
-        orElse: () => ShopLink(text: '', link: ''),
-      ).link ?? '',
+      text:
+          widget.shop.links
+              ?.firstWhere(
+                (l) => l.text?.toLowerCase().contains('telegram') == true,
+                orElse: () => ShopLink(text: '', link: ''),
+              )
+              .link ??
+          '',
     );
     _vkController = TextEditingController(
-      text: widget.shop.links?.firstWhere(
-            (l) => l.text?.toLowerCase().contains('vk') == true,
-        orElse: () => ShopLink(text: '', link: ''),
-      ).link ?? '',
+      text:
+          widget.shop.links
+              ?.firstWhere(
+                (l) => l.text?.toLowerCase().contains('vk') == true,
+                orElse: () => ShopLink(text: '', link: ''),
+              )
+              .link ??
+          '',
     );
     _maxController = TextEditingController(
-      text: widget.shop.links?.firstWhere(
-            (l) => l.text?.toLowerCase().contains('max') == true,
-        orElse: () => ShopLink(text: '', link: ''),
-      ).link ?? '',
+      text:
+          widget.shop.links
+              ?.firstWhere(
+                (l) => l.text?.toLowerCase().contains('max') == true,
+                orElse: () => ShopLink(text: '', link: ''),
+              )
+              .link ??
+          '',
     );
   }
 
@@ -80,7 +101,7 @@ class _ShopSocialEditModalState extends State<ShopSocialEditModal> {
             SizedBox(height: 20),
             // Telegram
             _SocialInputField(
-              icon: 'assets/icons/tg.png',
+              icon: 'https://hashtagg.ru/templates/img/tg.png',
               label: 'Telegram',
               controller: _telegramController,
               placeholder: 'https://t.me/username',
@@ -88,7 +109,7 @@ class _ShopSocialEditModalState extends State<ShopSocialEditModal> {
             SizedBox(height: 14),
             // VK
             _SocialInputField(
-              icon: 'assets/icons/vk.png',
+              icon: 'https://hashtagg.ru/templates/img/vk.png',
               label: 'VK',
               controller: _vkController,
               placeholder: 'https://vk.com/username',
@@ -96,7 +117,7 @@ class _ShopSocialEditModalState extends State<ShopSocialEditModal> {
             SizedBox(height: 14),
             // Max
             _SocialInputField(
-              icon: 'assets/icons/max.png',
+              icon: 'https://hashtagg.ru/templates/img/max.png',
               label: 'Max',
               controller: _maxController,
               placeholder: 'https://max.ru/username',
@@ -118,7 +139,10 @@ class _ShopSocialEditModalState extends State<ShopSocialEditModal> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text('Сохранить', style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    'Сохранить',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
@@ -128,9 +152,76 @@ class _ShopSocialEditModalState extends State<ShopSocialEditModal> {
     );
   }
 
-  void _saveSocial() {
-    // TODO: Сохранить соцсети через API
-    Navigator.pop(context);
+  void _saveSocial() async {
+    print('🔗 [ShopSocialEditModal] Saving social links');
+
+    final links = <ShopLink>[];
+
+    final tgLink = _telegramController.text.trim();
+    print('   Telegram raw: "$tgLink"');
+    if (tgLink.isNotEmpty) {
+      links.add(ShopLink(text: 'Telegram', link: tgLink));
+      print('   ✅ Telegram added');
+    }
+
+    final vkLink = _vkController.text.trim();
+    print('   VK raw: "$vkLink"');
+    if (vkLink.isNotEmpty) {
+      links.add(ShopLink(text: 'VK', link: vkLink));
+      print('   ✅ VK added');
+    }
+
+    final maxLink = _maxController.text.trim();
+    print('   Max raw: "$maxLink"');
+    if (maxLink.isNotEmpty) {
+      links.add(ShopLink(text: 'Max', link: maxLink));
+      print('   ✅ Max added');
+    }
+
+    print('📤 [ShopSocialEditModal] Links to save: $links');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final token = box.get('auth_token');
+      final userId = userData?['id'] as int? ?? 0;
+
+      // ✅ ИСПОЛЬЗУЕМ РЕПОЗИТОРИЙ ИЗ ПАРАМЕТРОВ
+      final result = await widget.repository.updateShop(
+        userId: userId,
+        token: token,
+        shopId: widget.shop.id,
+        title: widget.shop.title,
+        links: links,
+      );
+
+      Navigator.pop(context);
+
+      if (result['status'] == true) {
+        print('✅ [ShopSocialEditModal] Social links saved');
+        Navigator.pop(context, true);
+      } else {
+        print('❌ [ShopSocialEditModal] Failed: ${result['error']}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error'] ?? 'Ошибка сохранения'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌❌❌ [ShopSocialEditModal] ERROR: $e');
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 }
 
@@ -156,7 +247,10 @@ class _SocialInputField extends StatelessWidget {
           children: [
             Image.asset(icon, width: 18, height: 18),
             SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
         SizedBox(height: 4),

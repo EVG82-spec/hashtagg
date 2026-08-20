@@ -5,6 +5,7 @@ import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
+import 'package:hashtagg/features/shop/widgets/shop_social_icons.dart';
 import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
 import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
 import 'package:hashtagg/features/shop/widgets/shop_navigation.dart';
@@ -156,6 +157,10 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                 SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
                 SliverToBoxAdapter(child: ShopProfile(shop: shop)),
                 SliverToBoxAdapter(child: ShopStats(shop: shop)),
+                // ✅ ДОЛЖЕН БЫТЬ ТУТ:
+                SliverToBoxAdapter(
+                  child: ShopSocialIcons(shop: shop, isEditing: false),
+                ),
                 SliverToBoxAdapter(child: ShopActions(shop: shop)),
                 SliverToBoxAdapter(
                   child: ShopNavigation(
