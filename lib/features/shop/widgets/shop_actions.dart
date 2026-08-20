@@ -1,9 +1,11 @@
 // lib/features/shop/widgets/shop_actions.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:go_router/go_router.dart';
 import 'shop_management_modal.dart';
+import 'package:hashtagg/features/shop/bloc/shop_bloc.dart';
 
 class ShopActions extends StatelessWidget {
   final Shop shop;
@@ -29,7 +31,9 @@ class ShopActions extends StatelessWidget {
         if (link.link != null && link.link!.isNotEmpty) {
           String iconType = 'link';
           final text = (link.text ?? '').toLowerCase();
-          if (text.contains('telegram') || text.contains('tg') || text.contains('телеграм')) {
+          if (text.contains('telegram') ||
+              text.contains('tg') ||
+              text.contains('телеграм')) {
             iconType = 'tg';
           } else if (text.contains('vk') || text.contains('вк')) {
             iconType = 'vk';
@@ -163,9 +167,16 @@ class ShopActions extends StatelessWidget {
   }
 
   void _showShopManagement(BuildContext context) {
+    print('🔧 [ShopActions] Opening management modal');
+
+    final shopBloc = context.read<ShopBloc>(); // 👈 ПОЛУЧАЕМ BLoc
+
     showDialog(
       context: context,
-      builder: (_) => ShopManagementModal(shop: shop),
+      builder: (_) => ShopManagementModal(
+        shop: shop,
+        shopBloc: shopBloc, // 👈 ПЕРЕДАЕМ
+      ),
     );
   }
 }
@@ -174,10 +185,7 @@ class _SocialIcon extends StatelessWidget {
   final String icon;
   final String url;
 
-  const _SocialIcon({
-    required this.icon,
-    required this.url,
-  });
+  const _SocialIcon({required this.icon, required this.url});
 
   @override
   Widget build(BuildContext context) {
@@ -197,11 +205,8 @@ class _SocialIcon extends StatelessWidget {
           width: 24,
           height: 24,
           color: Colors.white,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.link,
-            color: Colors.white,
-            size: 24,
-          ),
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.link, color: Colors.white, size: 24),
         ),
       ),
     );
