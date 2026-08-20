@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
+import 'package:hashtagg/features/shop/bloc/shop_bloc.dart';
+import 'package:hashtagg/features/shop/bloc/shop_event.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
@@ -17,6 +19,7 @@ import 'package:dio/dio.dart';
 import 'package:hashtagg/core/network/shop_api_repository.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hashtagg/features/shop/screens/shop_page_edit_screen.dart';
+import 'dart:async';
 
 class ShopEditScreen extends StatefulWidget {
   final String shopId;
@@ -61,6 +64,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
   }
 
   void _loadShopData() {
+    print('🔄 [ShopEdit] _loadShopData() called');
     _shopPublicBloc.add(LoadPublicShop(shopId: widget.shopId));
   }
 
@@ -395,8 +399,11 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
     ).then((result) {
       if (result == true && mounted) {
         print('✅ [ShopEdit] Page created, reloading shop data');
-        // ✅ ПРИНУДИТЕЛЬНО ПЕРЕЗАГРУЖАЕМ ДАННЫЕ МАГАЗИНА
-        _loadShopData();
+
+        // ✅ ПРИНУДИТЕЛЬНО ПЕРЕЗАГРУЖАЕМ
+        _shopPublicBloc.add(
+          LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
+        );
 
         // ✅ ПОКАЗЫВАЕМ СООБЩЕНИЕ
         ScaffoldMessenger.of(context).showSnackBar(
@@ -449,13 +456,31 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       if (result['status'] == true) {
         print('✅ [ShopEdit] Shop sent to moderation!');
 
-        // ✅ ОБНОВЛЯЕМ _currentShop
         setState(() {
-          _currentShop = _currentShop!.copyWith(
-            title: newTitle,
-            status: 0, // 👈 СТАТУС "НА МОДЕРАЦИИ"
-          );
+          _currentShop = _currentShop!.copyWith(title: newTitle, status: 0);
         });
+
+        // ✅ ЖДЕМ ОБНОВЛЕНИЯ ShopPublicBloc
+        print('🔄 [ShopEdit] Waiting for ShopPublicBloc refresh...');
+
+        final completer = Completer<void>();
+        late final StreamSubscription<ShopPublicState> subscription;
+
+        subscription = _shopPublicBloc.stream.listen((state) {
+          if (state is ShopPublicLoaded) {
+            print(
+              '✅ [ShopEdit] ShopPublicBloc refreshed, status: ${state.shop.status}',
+            );
+            subscription.cancel();
+            completer.complete();
+          }
+        });
+
+        _shopPublicBloc.add(
+          LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
+        );
+
+        await completer.future.timeout(const Duration(seconds: 5));
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -466,7 +491,6 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
           ),
         );
 
-        // ✅ ВОЗВРАЩАЕМСЯ НА СТРАНИЦУ МАГАЗИНА
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -735,8 +759,32 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         ),
       ).then((result) {
         if (result == true && mounted) {
-          print('✅ [ShopEdit] Page updated, reloading shop data');
-          _loadShopData();
+          print('✅ [ShopEdit] Page updated, reloading ALL shop data');
+
+          // ✅ ПРИНУДИТЕЛЬНО ПЕРЕЗАГРУЖАЕМ ShopPublicBloc (forceRefresh = true)
+          _shopPublicBloc.add(
+            LoadPublicShop(
+              shopId: widget.shopId,
+              forceRefresh: true, // 👈 ВАЖНО!
+            ),
+          );
+
+          // ✅ ОБНОВЛЯЕМ _currentShop через ShopBloc
+          final box = Hive.box('user');
+          final userData = box.get('user');
+          final token = box.get('auth_token');
+          final userId = userData?['id'] as int? ?? 0;
+
+          context.read<ShopBloc>().add(
+            LoadShop(userId: userId, token: token, shopId: _currentShop!.id),
+          );
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Страница обновлена!'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
       });
     } else {

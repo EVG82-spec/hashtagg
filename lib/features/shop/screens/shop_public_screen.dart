@@ -1,10 +1,8 @@
-// lib/features/shop/screens/shop_public_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
-import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
 import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
@@ -12,6 +10,7 @@ import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
 import 'package:hashtagg/features/shop/widgets/shop_navigation.dart';
 import 'package:hashtagg/features/shop/widgets/shop_ads_grid.dart';
 import 'package:hashtagg/features/shop/widgets/shop_status_banner.dart';
+import 'package:hashtagg/features/shop/models/shop.dart';
 
 class ShopPublicScreen extends StatefulWidget {
   final String shopId;
@@ -25,6 +24,22 @@ class ShopPublicScreen extends StatefulWidget {
 class _ShopPublicScreenState extends State<ShopPublicScreen> {
   int? _selectedPageId;
   String? _selectedPageContent;
+  int? _currentStatus;
+  bool _isLoading = true; // 👈 ДОБАВЛЯЕМ ФЛАГ
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ ЗАГРУЖАЕМ ДАННЫЕ В initState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        print('🔄 [ShopPublic] initState - loading shop data');
+        context.read<ShopPublicBloc>().add(
+          LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
+        );
+      }
+    });
+  }
 
   void _onPageSelected(int pageId) {
     print('📄 [ShopPublic] _onPageSelected: $pageId');
@@ -34,13 +49,11 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
     });
 
     if (pageId == 0) {
-      // Главная - показываем товары
       setState(() {
         _selectedPageContent = null;
       });
       print('🏠 [ShopPublic] Switching to Главная');
     } else {
-      // Ищем страницу по id
       final state = context.read<ShopPublicBloc>().state;
       if (state is ShopPublicLoaded) {
         final page = state.shop.pages?.firstWhere(
@@ -64,9 +77,14 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
     }
   }
 
+  String _stripHtmlTags(String html) {
+    if (html.isEmpty) return '';
+    return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
+
   @override
   Widget build(BuildContext context) {
-    context.read<ShopPublicBloc>().add(LoadPublicShop(shopId: widget.shopId));
+    // ✅ НЕ ЧИТАЕМ state В build()!
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -88,9 +106,7 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.more_vert, color: Colors.black87),
-            onPressed: () {
-              // TODO: Меню магазина
-            },
+            onPressed: () {},
           ),
         ],
       ),
@@ -120,24 +136,23 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
             final shop = state.shop;
             final ads = state.ads;
 
+            // ✅ ОБНОВЛЯЕМ _currentStatus
+            if (_currentStatus != shop.status) {
+              print('🔄 [ShopPublic] Status: ${shop.status}');
+              _currentStatus = shop.status;
+            }
+
             print('🔍 [ShopPublic] ShopPublicLoaded');
             print('   pages count: ${shop.pages?.length ?? 0}');
-            print('   selectedPageId: $_selectedPageId');
-            print('   has content: ${_selectedPageContent != null}');
+            print('   status: ${shop.status}');
 
             return CustomScrollView(
               slivers: [
-                // 1. Баннер
                 SliverToBoxAdapter(child: ShopBanner(shop: shop)),
-                // 2. Статус
                 SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
-                // 3. Профиль
                 SliverToBoxAdapter(child: ShopProfile(shop: shop)),
-                // 4. Статистика
                 SliverToBoxAdapter(child: ShopStats(shop: shop)),
-                // 5. Соцсети + подписка
                 SliverToBoxAdapter(child: ShopActions(shop: shop)),
-                // 6. Навигация (Главная + страницы)
                 SliverToBoxAdapter(
                   child: ShopNavigation(
                     shop: shop,
@@ -146,7 +161,6 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                     currentPageId: _selectedPageId,
                   ),
                 ),
-                // 7. Контент страницы (если выбрана)
                 if (_selectedPageId != null &&
                     _selectedPageId != 0 &&
                     _selectedPageContent != null)
@@ -161,9 +175,7 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                           border: Border.all(color: Colors.grey.shade200),
                         ),
                         child: Text(
-                          _stripHtmlTags(
-                            _selectedPageContent!,
-                          ), // 👈 ОЧИЩАЕМ ОТ HTML
+                          _stripHtmlTags(_selectedPageContent!),
                           style: TextStyle(
                             fontSize: 16,
                             height: 1.6,
@@ -173,7 +185,6 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                       ),
                     ),
                   ),
-                // 8. Товары (только если на главной)
                 if (_selectedPageId == null || _selectedPageId == 0)
                   SliverPadding(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -212,7 +223,10 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                   ElevatedButton(
                     onPressed: () {
                       context.read<ShopPublicBloc>().add(
-                        LoadPublicShop(shopId: widget.shopId),
+                        LoadPublicShop(
+                          shopId: widget.shopId,
+                          forceRefresh: true,
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -237,10 +251,5 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
         },
       ),
     );
-  }
-
-  String _stripHtmlTags(String html) {
-    if (html.isEmpty) return '';
-    return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
   }
 }
