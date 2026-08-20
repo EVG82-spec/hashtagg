@@ -33,10 +33,14 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
     // ✅ ЗАГРУЖАЕМ ДАННЫЕ В initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        print(
+          '🔄 [ShopPublic] initState: calling LoadPublicShop with forceRefresh=true',
+        );
         print('🔄 [ShopPublic] initState - loading shop data');
         context.read<ShopPublicBloc>().add(
           LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
         );
+        print('✅ [ShopPublic] initState: LoadPublicShop event sent');
       }
     });
   }

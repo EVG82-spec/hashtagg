@@ -297,14 +297,12 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 return;
               }
 
-              // Закрываем диалог с названием
               Navigator.pop(context);
 
               print('📝📝📝 [ShopEdit] _editTitle() START');
               print('   newTitle: $newTitle');
 
-              // Показываем индикатор загрузки
-              final loadingDialog = showDialog(
+              showDialog(
                 context: context,
                 barrierDismissible: false,
                 builder: (_) =>
@@ -320,7 +318,6 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 print('🔑 [ShopEdit] userId: $userId');
                 print('🔑 [ShopEdit] token: ${token?.substring(0, 10)}...');
 
-                // ✅ ДОБАВЛЯЕМ TIMEOUT
                 final result = await _shopPublicBloc.repository
                     .updateShop(
                       userId: userId,
@@ -338,12 +335,21 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
 
                 print('📦 [ShopEdit] updateShop result: $result');
 
-                // ✅ ЗАКРЫВАЕМ ИНДИКАТОР ЗАГРУЗКИ
-                Navigator.pop(context); // Закрываем loadingDialog
+                Navigator.pop(context); // Закрываем индикатор
 
                 if (result['status'] == true) {
                   print('✅ [ShopEdit] Title updated successfully!');
-                  _loadShopData();
+
+                  // ✅ ОБНОВЛЯЕМ _currentShop
+                  setState(() {
+                    _currentShop = _currentShop!.copyWith(title: newTitle);
+                  });
+
+                  // ✅ ВМЕСТО _loadShopData() ИСПОЛЬЗУЕМ forceRefresh
+                  _shopPublicBloc.add(
+                    LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
+                  );
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Название обновлено!')),
                   );
@@ -357,7 +363,6 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 }
               } catch (e) {
                 print('❌❌❌ [ShopEdit] ERROR: $e');
-                // ✅ ЗАКРЫВАЕМ ИНДИКАТОР ЗАГРУЗКИ (ЕСЛИ ОН ЕЩЁ ОТКРЫТ)
                 Navigator.pop(context);
                 ScaffoldMessenger.of(
                   context,
@@ -398,6 +403,10 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
       ),
     ).then((result) {
       if (result == true && mounted) {
+        print('✅ [ShopEdit] Page created');
+        print(
+          '🔄 [ShopEdit] _addPage: calling LoadPublicShop with forceRefresh=true',
+        );
         print('✅ [ShopEdit] Page created, reloading shop data');
 
         // ✅ ПРИНУДИТЕЛЬНО ПЕРЕЗАГРУЖАЕМ
@@ -475,10 +484,13 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
             completer.complete();
           }
         });
-
+        print(
+          '🔄 [ShopEdit] _saveShop: calling LoadPublicShop with forceRefresh=true',
+        );
         _shopPublicBloc.add(
           LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
         );
+        print('✅ [ShopEdit] _saveShop: LoadPublicShop event sent');
 
         await completer.future.timeout(const Duration(seconds: 5));
 
@@ -759,6 +771,10 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         ),
       ).then((result) {
         if (result == true && mounted) {
+          print('✅ [ShopEdit] Page updated');
+          print(
+            '🔄 [ShopEdit] _onPageEdit: calling LoadPublicShop with forceRefresh=true',
+          );
           print('✅ [ShopEdit] Page updated, reloading ALL shop data');
 
           // ✅ ПРИНУДИТЕЛЬНО ПЕРЕЗАГРУЖАЕМ ShopPublicBloc (forceRefresh = true)
@@ -768,6 +784,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
               forceRefresh: true, // 👈 ВАЖНО!
             ),
           );
+          print('✅ [ShopEdit] _onPageEdit: LoadPublicShop event sent');
 
           // ✅ ОБНОВЛЯЕМ _currentShop через ShopBloc
           final box = Hive.box('user');
