@@ -7,6 +7,7 @@ class ShopNavigation extends StatelessWidget {
   final bool isEditing;
   final VoidCallback? onAddPage;
   final Function(int)? onPageSelected;
+  final Function(int)? onPageEdit; // 👈 ДОБАВЛЯЕМ
   final int? currentPageId;
 
   const ShopNavigation({
@@ -15,6 +16,7 @@ class ShopNavigation extends StatelessWidget {
     this.isEditing = false,
     this.onAddPage,
     this.onPageSelected,
+    this.onPageEdit,
     this.currentPageId,
   }) : super(key: key);
 
@@ -58,17 +60,40 @@ class ShopNavigation extends StatelessWidget {
                   ...pages.map(
                     (page) => Padding(
                       padding: EdgeInsets.only(right: 6),
-                      child: _NavButton(
-                        title: page.name,
-                        isActive: currentPageId == page.id,
-                        onTap: () {
-                          print(
-                            '📄 [ShopNavigation] Страница: ${page.name} (id: ${page.id})',
-                          );
-                          if (onPageSelected != null) {
-                            onPageSelected!(page.id);
-                          }
-                        },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _NavButton(
+                            title: page.name,
+                            isActive: currentPageId == page.id,
+                            onTap: () {
+                              print(
+                                '📄 [ShopNavigation] Страница: ${page.name} (id: ${page.id})',
+                              );
+                              if (onPageSelected != null) {
+                                onPageSelected!(page.id);
+                              }
+                            },
+                          ),
+                          // ✅ КАРАНДАШИК ДЛЯ РЕДАКТИРОВАНИЯ (только в режиме редактора)
+                          if (isEditing && onPageEdit != null)
+                            GestureDetector(
+                              onTap: () {
+                                print(
+                                  '✏️ [ShopNavigation] Edit page: ${page.id}',
+                                );
+                                onPageEdit!(page.id);
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: Color(0xFF8956FF),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),

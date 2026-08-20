@@ -161,7 +161,9 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                           border: Border.all(color: Colors.grey.shade200),
                         ),
                         child: Text(
-                          _selectedPageContent!,
+                          _stripHtmlTags(
+                            _selectedPageContent!,
+                          ), // 👈 ОЧИЩАЕМ ОТ HTML
                           style: TextStyle(
                             fontSize: 16,
                             height: 1.6,
@@ -235,5 +237,10 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
         },
       ),
     );
+  }
+
+  String _stripHtmlTags(String html) {
+    if (html.isEmpty) return '';
+    return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
   }
 }

@@ -596,6 +596,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                     isEditing: true,
                     onAddPage: _addPage,
                     onPageSelected: _onPageSelected,
+                    onPageEdit: _onPageEdit,
                     currentPageId: _selectedPageId,
                   ),
                 ),
@@ -713,6 +714,33 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         });
         print('⚠️ [ShopEdit] Page not found: $pageId');
       }
+    }
+  }
+
+  void _onPageEdit(int pageId) {
+    print('✏️ [ShopEdit] _onPageEdit: $pageId');
+
+    final page = _currentShop?.pages?.firstWhere(
+      (p) => p.id == pageId,
+      orElse: () => null as ShopPage,
+    );
+
+    if (page != null) {
+      print('📄 [ShopEdit] Editing page: ${page.name}');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ShopPageEditScreen(shopId: _currentShop!.id, page: page),
+        ),
+      ).then((result) {
+        if (result == true && mounted) {
+          print('✅ [ShopEdit] Page updated, reloading shop data');
+          _loadShopData();
+        }
+      });
+    } else {
+      print('❌ [ShopEdit] Page not found: $pageId');
     }
   }
 }
