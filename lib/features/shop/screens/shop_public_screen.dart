@@ -8,6 +8,7 @@ import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_categories_bottom_sheet.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
+import 'package:hashtagg/features/shop/widgets/shop_search_bar.dart';
 import 'package:hashtagg/features/shop/widgets/shop_social_icons.dart';
 import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
 import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
@@ -302,33 +303,7 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
             SizedBox(width: 12),
 
             // Поле поиска
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  // TODO: открыть поиск
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.search, color: Colors.grey.shade500, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Поиск',
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: ShopSearchBar(shopId: shop.id)),
 
             // Кнопка меню
             IconButton(

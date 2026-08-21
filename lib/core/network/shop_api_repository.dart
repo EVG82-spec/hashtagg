@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:hashtagg/core/network/api_config.dart';
+import 'package:hashtagg/core/network/catalog_api_repository.dart' as catalog;
 import 'package:hashtagg/core/network/home_api_repository.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 
@@ -642,6 +643,41 @@ class ShopApiRepository {
     } catch (e) {
       print('❌ [ShopApi] Error loading categories: $e');
       return [];
+    }
+  }
+
+  /// Быстрый поиск по магазину (умный поиск)
+  Future<catalog.ApiResult<Map<String, dynamic>>> quickSearchShop({
+    required int shopId,
+    required String query,
+  }) async {
+    try {
+      print('🔵 [ShopApi] Quick search in shop: $shopId, query: $query');
+
+      final response = await _dio.post(
+        '/systems/api/controller.php',
+        queryParameters: {
+          'key': ApiConfig.apiKey,
+          'route': 'catalog/searchAdsShop',
+          'shop_id': shopId, // 👈 ПЕРЕНОСИМ В QUERY PARAMETERS!
+          'query': query, // 👈 ПЕРЕНОСИМ В QUERY PARAMETERS!
+        },
+        data: {'shop_id': shopId, 'query': query},
+      );
+
+      final data = _parseResponse(response.data);
+      print('📦 [ShopApi] Quick search response: $data');
+
+      if (data['data'] != null) {
+        return catalog.ApiResult(
+          success: true,
+          data: data['data'] as Map<String, dynamic>,
+        );
+      }
+      return catalog.ApiResult(success: true, data: {});
+    } catch (e) {
+      print('❌ [ShopApi] Quick search error: $e');
+      return catalog.ApiResult(success: false, error: e.toString());
     }
   }
 }
