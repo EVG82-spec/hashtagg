@@ -9,13 +9,15 @@ abstract class ShopPublicEvent extends Equatable {
 
 class LoadPublicShop extends ShopPublicEvent {
   final String shopId;
-  final bool forceRefresh; // 👈 ДОБАВИТЬ
+  final bool forceRefresh;
+  final int? categoryId; // 👈 ДОБАВЛЯЕМ
 
   const LoadPublicShop({
     required this.shopId,
-    this.forceRefresh = false, // 👈 ПО УМОЛЧАНИЮ false
+    this.forceRefresh = false,
+    this.categoryId, // 👈 ДОБАВЛЯЕМ
   });
 
   @override
-  List<Object?> get props => [shopId];
+  List<Object?> get props => [shopId, forceRefresh, categoryId];
 }

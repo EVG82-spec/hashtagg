@@ -1,9 +1,12 @@
+//G:\hashtagg_app\lib\features\shop\screens\shop_public_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
+import 'package:hashtagg/features/shop/widgets/shop_categories_bottom_sheet.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
 import 'package:hashtagg/features/shop/widgets/shop_social_icons.dart';
 import 'package:hashtagg/features/shop/widgets/shop_stats.dart';
@@ -93,28 +96,10 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Магазин',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.more_vert, color: Colors.black87),
-            onPressed: () {},
-          ),
-        ],
-      ),
+      // ❌ УБИРАЕМ СТАНДАРТНЫЙ AppBar
+      // appBar: AppBar(...),
+
+      // ✅ ДОБАВЛЯЕМ КАСТОМНЫЙ ХЕДЕР В body
       body: BlocBuilder<ShopPublicBloc, ShopPublicState>(
         builder: (context, state) {
           if (state is ShopPublicLoading) {
@@ -141,64 +126,70 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
             final shop = state.shop;
             final ads = state.ads;
 
-            // ✅ ОБНОВЛЯЕМ _currentStatus
-            if (_currentStatus != shop.status) {
-              print('🔄 [ShopPublic] Status: ${shop.status}');
-              _currentStatus = shop.status;
-            }
-
             print('🔍 [ShopPublic] ShopPublicLoaded');
             print('   pages count: ${shop.pages?.length ?? 0}');
             print('   status: ${shop.status}');
 
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: ShopBanner(shop: shop)),
-                SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
-                SliverToBoxAdapter(child: ShopProfile(shop: shop)),
-                SliverToBoxAdapter(child: ShopStats(shop: shop)),
-                // ✅ ДОЛЖЕН БЫТЬ ТУТ:
-                SliverToBoxAdapter(
-                  child: ShopSocialIcons(shop: shop, isEditing: false),
-                ),
-                SliverToBoxAdapter(child: ShopActions(shop: shop)),
-                SliverToBoxAdapter(
-                  child: ShopNavigation(
-                    shop: shop,
-                    isEditing: false,
-                    onPageSelected: _onPageSelected,
-                    currentPageId: _selectedPageId,
-                  ),
-                ),
-                if (_selectedPageId != null &&
-                    _selectedPageId != 0 &&
-                    _selectedPageContent != null)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Text(
-                          _stripHtmlTags(_selectedPageContent!),
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.6,
-                            color: Colors.black87,
-                          ),
+            // ✅ ВОЗВРАЩАЕМ КОЛОНКУ С ХЕДЕРОМ И КОНТЕНТОМ
+            return Column(
+              children: [
+                // ✅ КАСТОМНЫЙ ХЕДЕР (вместо AppBar)
+                _buildShopHeader(context, shop),
+                // ✅ КОНТЕНТ (CustomScrollView)
+                Expanded(
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: ShopBanner(shop: shop)),
+                      SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
+                      SliverToBoxAdapter(child: ShopProfile(shop: shop)),
+                      SliverToBoxAdapter(child: ShopStats(shop: shop)),
+                      SliverToBoxAdapter(
+                        child: ShopSocialIcons(shop: shop, isEditing: false),
+                      ),
+                      SliverToBoxAdapter(child: ShopActions(shop: shop)),
+                      SliverToBoxAdapter(
+                        child: ShopNavigation(
+                          shop: shop,
+                          isEditing: false,
+                          onPageSelected: _onPageSelected,
+                          currentPageId: _selectedPageId,
                         ),
                       ),
-                    ),
+                      if (_selectedPageId != null &&
+                          _selectedPageId != 0 &&
+                          _selectedPageContent != null)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Text(
+                                _stripHtmlTags(_selectedPageContent!),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  height: 1.6,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_selectedPageId == null || _selectedPageId == 0)
+                        SliverPadding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          sliver: ShopAdsGrid(ads: ads),
+                        ),
+                    ],
                   ),
-                if (_selectedPageId == null || _selectedPageId == 0)
-                  SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    sliver: ShopAdsGrid(ads: ads),
-                  ),
+                ),
               ],
             );
           }
@@ -258,6 +249,129 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
 
           return const SizedBox.shrink();
         },
+      ),
+    );
+  }
+
+  // ✅ МЕТОД ДЛЯ СОЗДАНИЯ ХЕДЕРА
+  Widget _buildShopHeader(BuildContext context, Shop shop) {
+    return SafeArea(
+      child: Container(
+        // ❌ УБИРАЕМ color
+        // color: Colors.white,
+
+        // ✅ ЦВЕТ ПЕРЕНОСИМ В decoration
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white, // 👈 ПЕРЕНОСИМ СЮДА
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Кнопка "Назад"
+            IconButton(
+              icon: Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
+              onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(),
+            ),
+            SizedBox(width: 8),
+
+            // Кнопка "Категории"
+            GestureDetector(
+              onTap: () {
+                print('📂 [ShopHeader] Categories button tapped');
+                _showCategoriesModal(context, shop);
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Color(0xFF8956FF),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.grid_view, color: Colors.white, size: 18),
+                    SizedBox(width: 4),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+
+            // Поле поиска
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  // TODO: открыть поиск
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, color: Colors.grey.shade500, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Поиск',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Кнопка меню
+            IconButton(
+              icon: Icon(Icons.more_vert, color: Colors.black87),
+              onPressed: () {},
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ МЕТОД ДЛЯ ОТКРЫТИЯ КАТЕГОРИЙ
+  void _showCategoriesModal(BuildContext context, Shop shop) {
+    print('📂 [ShopPublic] Opening categories modal');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShopCategoriesBottomSheet(shop: shop),
+    ).then((selectedCategoryId) {
+      if (selectedCategoryId != null && selectedCategoryId is int) {
+        print('📂 [ShopPublic] Category selected: $selectedCategoryId');
+        // ✅ ЗАГРУЖАЕМ ТОВАРЫ ПО КАТЕГОРИИ
+        _loadShopAdsByCategory(selectedCategoryId);
+      } else {
+        print('ℹ️ [ShopPublic] No category selected');
+      }
+    });
+  }
+
+  void _loadShopAdsByCategory(int categoryId) {
+    print('📂 [ShopPublic] Loading ads for category: $categoryId');
+
+    // ✅ ВЫЗЫВАЕМ BLoC ДЛЯ ЗАГРУЗКИ ТОВАРОВ ПО КАТЕГОРИИ
+    context.read<ShopPublicBloc>().add(
+      LoadPublicShop(
+        shopId: widget.shopId,
+        forceRefresh: true,
+        categoryId: categoryId, // 👈 ПЕРЕДАЕМ КАТЕГОРИЮ
       ),
     );
   }

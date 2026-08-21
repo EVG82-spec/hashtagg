@@ -489,19 +489,49 @@ class ShopLink {
 class ShopCategory {
   final int id;
   final String name;
-  final String? icon;
+  final String? image;
+  final int parentId;
+  final bool hasSubcategory;
+  final String breadcrumb;
+  final List<ShopCategory>? nested;
 
-  ShopCategory({required this.id, required this.name, this.icon});
+  ShopCategory({
+    required this.id,
+    required this.name,
+    this.image,
+    this.parentId = 0,
+    this.hasSubcategory = false,
+    this.breadcrumb = '',
+    this.nested,
+  });
 
   factory ShopCategory.fromJson(Map<String, dynamic> json) {
     return ShopCategory(
-      id: json['id'] ?? 0,
-      name: json['name'] as String? ?? '',
-      icon: json['icon'] as String?,
+      id: int.tryParse(json['category_board_id'].toString()) ?? 0,
+      name: json['category_board_name'] as String? ?? '',
+      image: json['category_board_image'] as String?,
+      parentId: int.tryParse(json['category_board_id_parent'].toString()) ?? 0,
+      hasSubcategory:
+          json['subcategory'] == true ||
+          json['subcategory'] == 'true' ||
+          json['subcategory'] == 1,
+      breadcrumb: json['breadcrumb'] as String? ?? '',
+      nested: json['nested'] != null
+          ? (json['nested'] as List)
+                .map((e) => ShopCategory.fromJson(e))
+                .toList()
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'name': name, if (icon != null) 'icon': icon};
+    return {
+      'id': id,
+      'name': name,
+      if (image != null) 'image': image,
+      'parentId': parentId,
+      'hasSubcategory': hasSubcategory,
+      'breadcrumb': breadcrumb,
+    };
   }
 }

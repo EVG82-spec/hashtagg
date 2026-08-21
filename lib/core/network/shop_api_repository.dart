@@ -18,10 +18,7 @@ class ShopApiRepository {
     try {
       final response = await _dio.post(
         '/systems/ajax/controller.php',
-        data: {
-          'key': ApiConfig.apiKey,
-          'action': 'shop/getShopsJson',
-        },
+        data: {'key': ApiConfig.apiKey, 'action': 'shop/getShopsJson'},
       );
 
       final data = response.data is Map
@@ -99,14 +96,8 @@ class ShopApiRepository {
     try {
       final response = await _dio.post(
         '/systems/api/controller.php',
-        queryParameters: {
-          'key': ApiConfig.apiKey,
-          'route': 'profile/shop/add',
-        },
-        data: {
-          'id_user': userId,
-          'token': token,
-        },
+        queryParameters: {'key': ApiConfig.apiKey, 'route': 'profile/shop/add'},
+        data: {'id_user': userId, 'token': token},
       );
       return _parseResponse(response.data);
     } catch (e) {
@@ -127,6 +118,7 @@ class ShopApiRepository {
     List<Map<String, String>>? sliders,
     List<Map<String, String>>? logo,
     List<ShopLink>? links,
+    int? status, // 👈 ДОБАВИТЬ НОВЫЙ ПАРАМЕТР
   }) async {
     print('📤 [ShopApi] updateShop called');
     print('   shopId: $shopId');
@@ -139,10 +131,12 @@ class ShopApiRepository {
         'id_user': userId,
         'token': token,
         'id': shopId,
-        'title': title,  // 👈 ИСПРАВЛЕНО: было 'shop_title', стало 'title'
-        'text': description ?? '',  // 👈 ИСПРАВЛЕНО: было 'shop_desc', стало 'text'
+        'title': title, // 👈 ИСПРАВЛЕНО: было 'shop_title', стало 'title'
+        'text':
+            description ?? '', // 👈 ИСПРАВЛЕНО: было 'shop_desc', стало 'text'
         'shop_theme_category': themeCategoryId ?? 0,
         'shop_id': shopIdHash ?? '',
+        if (status != null) 'status': status,
       });
 
       if (sliders != null) {
@@ -154,11 +148,14 @@ class ShopApiRepository {
       }
 
       if (links != null) {
+        print('📤 [ShopApi] Processing ${links.length} links:');
         for (int i = 0; i < links.length && i < 3; i++) {
           final link = links[i];
+          print('   link_${i + 1}_text: ${link.text}');
+          print('   link_${i + 1}_link: ${link.link}');
           formData.fields.add(MapEntry('link_${i + 1}_text', link.text ?? ''));
           formData.fields.add(MapEntry('link_${i + 1}_link', link.link ?? ''));
-          
+
           if (link.image != null && link.image!.isNotEmpty) {
             if (link.image!.startsWith('http')) {
               final fileName = link.image!.split('/').last;
@@ -178,6 +175,12 @@ class ShopApiRepository {
         },
         data: formData,
       );
+
+      // ✅ ПРИНТ ВСЕХ ПОЛЕЙ ПЕРЕД ОТПРАВКОЙ
+      print('📤 [ShopApi] Final formData fields:');
+      for (var field in formData.fields) {
+        print('   ${field.key}: ${field.value}');
+      }
 
       final responseData = _parseResponse(response.data);
       _log('✅ Shop updated');
@@ -226,13 +229,19 @@ class ShopApiRepository {
   }
 
   /// Получение товаров магазина
-  Future<List<FeedAd>> getShopAds({required String shopId}) async {
+  Future<List<FeedAd>> getShopAds({
+    required String shopId,
+    int? categoryId, // 👈 ДОБАВЛЯЕМ
+  }) async {
     try {
       print('📦 [ShopApi] Loading ads for shop: $shopId');
 
       final response = await _dio.post(
         '/api/shop/getShopAdsJson',
-        data: {'shop_id': shopId},
+        data: {
+          'shop_id': shopId,
+          if (categoryId != null) 'category_id': categoryId, // 👈 ФИЛЬТР
+        },
       );
 
       print('📦 [ShopApi] Response status: ${response.statusCode}');
@@ -261,7 +270,9 @@ class ShopApiRepository {
             dynamic imagesData = ad['ads_images'];
             List<String> imageUrls = [];
 
-            print('🖼️ [ShopApi] Raw images data: $imagesData (type: ${imagesData.runtimeType})');
+            print(
+              '🖼️ [ShopApi] Raw images data: $imagesData (type: ${imagesData.runtimeType})',
+            );
 
             // Функция для формирования URL - сразу jpg
             String buildImageUrl(String fileName) {
@@ -297,17 +308,23 @@ class ShopApiRepository {
         return ad;
       }).toList();
 
-      final ads = processedItems.map((json) {
-        try {
-          final ad = FeedAd.fromJson(json as Map<String, dynamic>);
-          print('✅ [ShopApi] Parsed ad: ${ad.id} - ${ad.title}, images: ${ad.images}');
-          return ad;
-        } catch (e) {
-          print('❌ [ShopApi] Error parsing ad: $e');
-          print('❌ [ShopApi] Ad data: $json');
-          return null;
-        }
-      }).where((ad) => ad != null).cast<FeedAd>().toList();
+      final ads = processedItems
+          .map((json) {
+            try {
+              final ad = FeedAd.fromJson(json as Map<String, dynamic>);
+              print(
+                '✅ [ShopApi] Parsed ad: ${ad.id} - ${ad.title}, images: ${ad.images}',
+              );
+              return ad;
+            } catch (e) {
+              print('❌ [ShopApi] Error parsing ad: $e');
+              print('❌ [ShopApi] Ad data: $json');
+              return null;
+            }
+          })
+          .where((ad) => ad != null)
+          .cast<FeedAd>()
+          .toList();
 
       print('✅ [ShopApi] Loaded ${ads.length} ads for shop: $shopId');
       return ads;
@@ -393,6 +410,33 @@ class ShopApiRepository {
     }
   }
 
+  /// Удаление магазина
+  Future<Map<String, dynamic>> deleteShop({
+    required int userId,
+    required String token,
+    required int shopId,
+  }) async {
+    try {
+      print('🗑️ [ShopApi] Deleting shop: $shopId');
+
+      final response = await _dio.post(
+        '/systems/api/controller.php',
+        queryParameters: {
+          'key': ApiConfig.apiKey,
+          'route': 'profile/shop/delete',
+        },
+        data: {'id_user': userId, 'token': token, 'id': shopId},
+      );
+
+      final responseData = _parseResponse(response.data);
+      print('📦 [ShopApi] Delete shop response: $responseData');
+      return responseData;
+    } catch (e) {
+      print('❌ [ShopApi] Error deleting shop: $e');
+      rethrow;
+    }
+  }
+
   /// Удаление страницы магазина
   Future<Map<String, dynamic>> deleteShopPage({
     required int userId,
@@ -408,11 +452,7 @@ class ShopApiRepository {
           'key': ApiConfig.apiKey,
           'route': 'profile/shop/deletePage',
         },
-        data: {
-          'id_user': userId,
-          'token': token,
-          'id': pageId,
-        },
+        data: {'id_user': userId, 'token': token, 'id': pageId},
       );
 
       final responseData = _parseResponse(response.data);
@@ -443,10 +483,7 @@ class ShopApiRepository {
 
       final response = await _dio.post(
         '/systems/api/controller.php',
-        queryParameters: {
-          'key': ApiConfig.apiKey,
-          'route': 'assets/save',
-        },
+        queryParameters: {'key': ApiConfig.apiKey, 'route': 'assets/save'},
         data: {
           'id_user': userId,
           'token': token,
@@ -497,10 +534,7 @@ class ShopApiRepository {
 
       final response = await _dio.post(
         '/systems/api/controller.php',
-        queryParameters: {
-          'key': ApiConfig.apiKey,
-          'route': 'assets/save',
-        },
+        queryParameters: {'key': ApiConfig.apiKey, 'route': 'assets/save'},
         data: {
           'id_user': userId,
           'token': token,
@@ -534,9 +568,6 @@ class ShopApiRepository {
       rethrow;
     }
   }
-
-
-
 
   /// Получение магазина для публичного просмотра
   Future<Shop> getPublicShop({required String shopId}) async {
@@ -577,6 +608,40 @@ class ShopApiRepository {
   void _log(String message) {
     if (kDebugMode) {
       debugPrint('[ShopApi] $message');
+    }
+  }
+
+  /// Получение категорий магазина
+  Future<List<ShopCategory>> getShopCategories({required int shopId}) async {
+    try {
+      print('📂 [ShopApi] Loading ALL categories');
+
+      final response = await _dio.post(
+        '/systems/api/controller.php',
+        queryParameters: {
+          'key': ApiConfig.apiKey,
+          'route': 'catalog/getAllCategories',
+        },
+      );
+
+      final data = _parseResponse(response.data);
+      print('📦 [ShopApi] Parsed data: $data');
+
+      // ✅ БЕРЕМ ДАННЫЕ ИЗ parent["0"] (корневые категории)
+      if (data['data'] != null && data['data']['parent'] != null) {
+        final parentData = data['data']['parent'];
+        final List<dynamic> rootCategories = parentData['0'] ?? [];
+
+        print('📦 [ShopApi] Root categories count: ${rootCategories.length}');
+
+        return rootCategories
+            .map((json) => ShopCategory.fromJson(json))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('❌ [ShopApi] Error loading categories: $e');
+      return [];
     }
   }
 }
