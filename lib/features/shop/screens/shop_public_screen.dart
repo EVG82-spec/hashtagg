@@ -144,9 +144,6 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                       SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
                       SliverToBoxAdapter(child: ShopProfile(shop: shop)),
                       SliverToBoxAdapter(child: ShopStats(shop: shop)),
-                      SliverToBoxAdapter(
-                        child: ShopSocialIcons(shop: shop, isEditing: false),
-                      ),
                       SliverToBoxAdapter(child: ShopActions(shop: shop)),
                       SliverToBoxAdapter(
                         child: ShopNavigation(

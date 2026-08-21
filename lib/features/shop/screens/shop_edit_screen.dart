@@ -8,6 +8,7 @@ import 'package:hashtagg/features/shop/bloc/shop_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/shop_event.dart';
 import 'package:hashtagg/features/shop/bloc/shop_state.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hashtagg/features/shop/widgets/shop_actions.dart';
 import 'package:hashtagg/features/shop/widgets/shop_banner.dart';
 import 'package:hashtagg/features/shop/widgets/shop_profile.dart';
 import 'package:hashtagg/features/shop/widgets/shop_social_edit_modal.dart';
@@ -642,10 +643,10 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                 SliverToBoxAdapter(child: ShopStats(shop: shop)),
                 // 4. Соцсети (кликабельные)
                 SliverToBoxAdapter(
-                  child: ShopSocialIcons(
+                  child: ShopActions(
                     shop: shop,
                     isEditing: true,
-                    onEdit: _editSocialLinks,
+                    onSocialEdit: _editSocialLinks,
                   ),
                 ),
                 // 5. Навигация (Главная + страницы + кнопка Добавить страницу)
