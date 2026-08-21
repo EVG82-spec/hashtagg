@@ -443,6 +443,10 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
     });
   }
 
+  List<ShopLink>? _getCurrentLinks() {
+    return _currentShop?.links;
+  }
+
   void _saveShop() async {
     print('💾 [ShopEdit] Save changes');
 
@@ -474,7 +478,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         shopId: _currentShop!.id,
         title: newTitle,
         description: _currentShop!.description,
-        links: _currentShop!.links, // 👈 ДОБАВИТЬ!
+        links: _getCurrentLinks(), // 👈 ДОБАВИТЬ!
         // 👇 ДОБАВЛЯЕМ СТАТУС
         status: 0, // 0 - на модерации
       );
@@ -833,7 +837,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
 
     if (_currentShop == null) return;
 
-    print('   repository: ${_shopPublicBloc.repository}');
+    print('   _currentShop.links: ${_currentShop?.links}');
 
     showDialog(
       context: context,
@@ -841,14 +845,32 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         shop: _currentShop!,
         repository: _shopPublicBloc.repository,
       ),
-    ).then((result) {
+    ).then((result) async {
       if (result == true && mounted) {
         print('✅ [ShopEdit] Social links updated');
 
-        // ✅ ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ДАННЫЕ
+        // ✅ ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ _currentShop
         _shopPublicBloc.add(
           LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
         );
+
+        // ✅ ЖДЕМ ОБНОВЛЕНИЯ И ОБНОВЛЯЕМ _currentShop
+        final completer = Completer<void>();
+        late final StreamSubscription<ShopPublicState> subscription;
+
+        subscription = _shopPublicBloc.stream.listen((state) {
+          if (state is ShopPublicLoaded) {
+            print('✅ [ShopEdit] ShopPublicBloc refreshed for social links');
+            setState(() {
+              _currentShop = state.shop;
+            });
+            print('   _currentShop.links: ${_currentShop?.links}');
+            subscription.cancel();
+            completer.complete();
+          }
+        });
+
+        await completer.future.timeout(const Duration(seconds: 5));
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

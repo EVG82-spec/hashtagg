@@ -85,6 +85,28 @@ class Shop {
 
     final hasPrefix = json.containsKey('clients_shops_id');
 
+    print('   hasPrefix: $hasPrefix');
+
+    // 👇 ДОБАВЬ ЭТИ ПРИНТЫ ДЛЯ ССЫЛОК
+    print(
+      '🔗 [Shop.fromJson] link_1_link: ${json['link_1_link'] ?? json['link_1_link']}',
+    );
+    print(
+      '🔗 [Shop.fromJson] link_2_link: ${json['link_2_link'] ?? json['link_2_link']}',
+    );
+    print(
+      '🔗 [Shop.fromJson] link_3_link: ${json['link_3_link'] ?? json['link_3_link']}',
+    );
+    print(
+      '🔗 [Shop.fromJson] clients_shops link_1_link: ${json['link_1_link']}',
+    );
+    print(
+      '🔗 [Shop.fromJson] clients_shops link_2_link: ${json['link_2_link']}',
+    );
+    print(
+      '🔗 [Shop.fromJson] clients_shops link_3_link: ${json['link_3_link']}',
+    );
+
     // ============================================================
     // 1. ПАРСИМ ID
     // ============================================================
@@ -238,20 +260,26 @@ class Shop {
     // 9. ПАРСИМ ССЫЛКИ (СОЦСЕТИ)
     // ============================================================
     List<ShopLink>? links;
-    if (hasPrefix) {
-      final linkList = <ShopLink>[];
-      for (int i = 1; i <= 3; i++) {
-        final text = json['link_${i}_text'] as String?;
-        final link = json['link_${i}_link'] as String?;
-        final image = json['link_${i}_image'] as String?;
-        if ((text != null && text.isNotEmpty) ||
-            (link != null && link.isNotEmpty) ||
-            (image != null && image.isNotEmpty)) {
-          linkList.add(ShopLink(text: text, link: link, image: image));
-        }
+    final linkList = <ShopLink>[];
+    for (int i = 1; i <= 3; i++) {
+      // ✅ ПРОВЕРЯЕМ ОБА ВАРИАНТА КЛЮЧЕЙ
+      final textKey = hasPrefix ? 'link_${i}_text' : 'link_${i}_text';
+      final linkKey = hasPrefix ? 'link_${i}_link' : 'link_${i}_link';
+      final imageKey = hasPrefix ? 'link_${i}_image' : 'link_${i}_image';
+
+      final text = json[textKey] as String?;
+      final link = json[linkKey] as String?;
+      final image = json[imageKey] as String?;
+
+      if ((text != null && text.isNotEmpty) ||
+          (link != null && link.isNotEmpty) ||
+          (image != null && image.isNotEmpty)) {
+        linkList.add(ShopLink(text: text, link: link, image: image));
       }
-      if (linkList.isNotEmpty) links = linkList;
     }
+    if (linkList.isNotEmpty) links = linkList;
+
+    print('🔗 [Shop.fromJson] links parsed: ${links?.length ?? 0}');
 
     // ============================================================
     // 10. ПАРСИМ КОЛИЧЕСТВО ТОВАРОВ

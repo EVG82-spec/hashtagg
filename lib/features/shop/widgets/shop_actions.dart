@@ -84,25 +84,6 @@ class ShopActions extends StatelessWidget {
                   ),
                 ),
               ),
-              if (socialLinks.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                Container(
-                  height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF8956FF),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: socialLinks.map((link) {
-                      return _SocialIcon(
-                        icon: _getSocialIcon(link['icon']!),
-                        url: link['url']!,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
             ],
           ),
 
@@ -176,38 +157,6 @@ class ShopActions extends StatelessWidget {
       builder: (_) => ShopManagementModal(
         shop: shop,
         shopBloc: shopBloc, // 👈 ПЕРЕДАЕМ
-      ),
-    );
-  }
-}
-
-class _SocialIcon extends StatelessWidget {
-  final String icon;
-  final String url;
-
-  const _SocialIcon({required this.icon, required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        if (url.isNotEmpty) {
-          final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Image.asset(
-          icon,
-          width: 24,
-          height: 24,
-          color: Colors.white,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.link, color: Colors.white, size: 24),
-        ),
       ),
     );
   }
