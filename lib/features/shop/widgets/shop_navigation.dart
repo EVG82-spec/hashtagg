@@ -1,6 +1,10 @@
 // lib/features/shop/widgets/shop_navigation.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hashtagg/features/shop/widgets/shop_lock_widget.dart';
 
 class ShopNavigation extends StatelessWidget {
   final Shop shop;
@@ -23,6 +27,43 @@ class ShopNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pages = shop.pages ?? [];
+
+    // lib/features/shop/widgets/shop_navigation.dart
+
+// Получаем тариф из контекста
+final tariff = context.select(
+  (ShopPublicBloc bloc) => (bloc.state as ShopPublicLoaded?)?.tariff
+);
+
+final hasShopPage = tariff?.hasService('shop_page') ?? false;
+final isDraft = shop.status == 4;
+final isModeration = shop.status == 0;
+final isOwner = shop.isOwner;
+
+// ============================================================
+// СТРАНИЦЫ
+// ============================================================
+
+if (pages.isEmpty) {
+  // Если нет страниц и есть услуга - показываем кнопку "Добавить"
+  if (isEditing && isOwner && hasShopPage) {
+    return _buildAddPageButton();
+  }
+  // Если нет услуги и черновик - замочек
+  if (isEditing && isOwner && (isModeration || isDraft) && !hasShopPage) {
+    return ShopLockWidget(
+      message: '🔒 Страницы доступны в тарифах «Максимум» и «Безлимит»',
+    );
+  }
+  return const SizedBox.shrink();
+}
+
+// Если есть страницы, но нет услуги - показываем только для владельца в режиме черновика
+if (!hasShopPage && isEditing && isOwner && (isModeration || isDraft)) {
+  return ShopLockWidget(
+    message: '🔒 Страницы доступны в тарифах «Максимум» и «Безлимит»',
+  );
+}
 
     print('🔍 [ShopNavigation] build()');
     print('   pages count: ${pages.length}');
@@ -130,7 +171,34 @@ class ShopNavigation extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildAddPageButton() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onAddPage,
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Добавить страницу'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8956FF),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    ),
+  );
 }
+
+
+
+}
+
+
 
 class _NavButton extends StatelessWidget {
   final String title;

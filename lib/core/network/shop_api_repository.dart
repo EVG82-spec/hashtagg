@@ -7,6 +7,7 @@ import 'package:hashtagg/core/network/api_config.dart';
 import 'package:hashtagg/core/network/catalog_api_repository.dart' as catalog;
 import 'package:hashtagg/core/network/home_api_repository.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hive/hive.dart';
 
 class ShopApiRepository {
   final Dio _dio;
@@ -599,11 +600,12 @@ class ShopApiRepository {
     }
   }
 
-  Map<String, dynamic> _parseResponse(dynamic data) {
+  // ✅ НОВЫЙ (возвращает dynamic)
+  dynamic _parseResponse(dynamic data) {
     if (data is String) {
       return jsonDecode(data);
     }
-    return data as Map<String, dynamic>;
+    return data;
   }
 
   void _log(String message) {
@@ -678,6 +680,53 @@ class ShopApiRepository {
     } catch (e) {
       print('❌ [ShopApi] Quick search error: $e');
       return catalog.ApiResult(success: false, error: e.toString());
+    }
+  }
+
+  /// Получение активного тарифа пользователя
+  Future<UserTariff?> getUserTariff({required int userId}) async {
+    print('🔴🔴🔴 [ShopApi] getUserTariff START');
+    print('   userId: $userId');
+
+    try {
+      final box = Hive.box('user');
+      final token = box.get('auth_token') ?? '';
+
+      print('📦 [ShopApi] Token from Hive: ${token.substring(0, 10)}...');
+
+      final response = await _dio.post(
+        '/systems/api/controller.php',
+        queryParameters: {
+          'key': ApiConfig.apiKey,
+          'route': 'profile/tariff/getData',
+          'id_user': userId.toString(),
+          'token': token,
+        },
+      );
+
+      print('📦 [ShopApi] Response status: ${response.statusCode}');
+      print('📦 [ShopApi] Response data: ${response.data}');
+
+      final dynamic data = _parseResponse(response.data);
+
+      print('📦📦📦 [ShopApi] TARIFF RAW RESPONSE:');
+      print('   data type: ${data.runtimeType}');
+
+      // ✅ ИЩЕМ АКТИВНЫЙ ТАРИФ В МАССИВЕ
+      if (data is List) {
+        for (var item in data) {
+          if (item is Map<String, dynamic> && item['is_active'] == true) {
+            print('✅ [ShopApi] Active tariff found: ${item['name']}');
+            return UserTariff.fromJson(item);
+          }
+        }
+      }
+
+      print('⚠️ [ShopApi] No active tariff');
+      return null;
+    } catch (e) {
+      print('❌ [ShopApi] Error getting tariff: $e');
+      return null;
     }
   }
 }

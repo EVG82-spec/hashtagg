@@ -1,4 +1,6 @@
 // lib/features/shop/models/shop.dart
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -533,5 +535,96 @@ class ShopCategory {
       'hasSubcategory': hasSubcategory,
       'breadcrumb': breadcrumb,
     };
+  }
+}
+
+// lib/features/shop/models/shop.dart
+
+class UserTariff {
+  final int id;
+  final String name;
+  final int price;
+  final int days;
+  final List<int> services;
+  final DateTime? dateCompletion;
+
+  UserTariff({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.days,
+    required this.services,
+    this.dateCompletion,
+  });
+
+  factory UserTariff.fromJson(Map<String, dynamic> json) {
+    List<int> services = [];
+
+    final serviceNameMap = {
+      'Персональный магазин': 1,
+      'Дополнительные страницы в магазине': 2, // 👈 ИСПРАВЛЕНО НАЗВАНИЕ!
+      'Уникальный адрес магазина': 3,
+      'Поиск в магазине только по вашим товарам': 4,
+      'Скрытие конкурентов в ваших объявлениях': 5,
+      'Расширенная статистика': 6,
+      'Планировщик задач': 7,
+      'Календарь бронирования': 8,
+      'Сторисы на 7 дней': 11,
+      'Ссылки магазина': 12,
+    };
+
+    if (json['services'] != null && json['services'] is List) {
+      for (var service in json['services']) {
+        if (service is Map<String, dynamic>) {
+          final name = service['name'] as String? ?? '';
+          final serviceId = serviceNameMap[name];
+          if (serviceId != null) {
+            services.add(serviceId);
+          }
+        }
+      }
+    }
+
+    return UserTariff(
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id'].toString()) ?? 0,
+      name: json['name'] ?? '',
+      price: json['price'] is int
+          ? json['price']
+          : int.tryParse(json['price'].toString()) ?? 0,
+      days: json['days'] is int
+          ? json['days']
+          : int.tryParse(json['days'].toString()) ?? 0,
+      services: services,
+      dateCompletion: json['date_completion'] != null
+          ? DateTime.tryParse(json['date_completion'])
+          : null,
+    );
+  }
+
+  bool hasService(String alias) {
+    final serviceMap = {
+      'shop': 1,
+      'shop_page': 2,
+      'unique_shop_address': 3,
+      'search_shop': 4,
+      'hiding_competitors_ads': 5,
+      'statistics_ad': 6,
+      'scheduler': 7,
+      'booking_calendar': 8,
+      'stories_3_days': 10,
+      'stories_7_days': 11,
+      'shop_links': 12,
+    };
+
+    final serviceId = serviceMap[alias];
+    if (serviceId == null) return false;
+    return services.contains(serviceId);
+  }
+
+  bool get isActive {
+    if (dateCompletion == null) return true;
+    return dateCompletion!.isAfter(DateTime.now());
   }
 }

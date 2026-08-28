@@ -2,10 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:hashtagg/features/shop/bloc/shop_bloc.dart';
-import 'package:go_router/go_router.dart';
-import 'shop_management_modal.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
+import 'package:hashtagg/features/shop/widgets/shop_lock_widget.dart';
+import 'package:hashtagg/features/shop/widgets/shop_subscription_button.dart';
+import 'package:hashtagg/features/shop/widgets/shop_management_modal.dart';
 
 class ShopActions extends StatelessWidget {
   final Shop shop;
@@ -22,6 +26,22 @@ class ShopActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOwner = shop.isOwner;
+    final isDraft = shop.status == 4;
+    final isModeration = shop.status == 0;
+
+    // Получаем тариф из состояния
+    UserTariff? tariff;
+    final state = context.read<ShopPublicBloc>().state;
+    if (state is ShopPublicLoaded) {
+      tariff = state.tariff;
+      print('🔍🔍🔍 [ShopActions] TARIFF CHECK:');
+      print('   tariff: ${tariff?.name}');
+      print('   services: ${tariff?.services}');
+      print('   hasSocialLinks: ${tariff?.hasService('shop_links')}');
+    }
+
+    final hasSocialLinks = tariff?.hasService('shop_links') ?? false;
+    // Если нет услуги и не черновик → ничего не показываем
 
     // Берем ссылки из shop.links
     final Map<String, String> socialLinks = {};
@@ -54,82 +74,106 @@ class ShopActions extends StatelessWidget {
           // ── Строка 1: Кнопка управления + Соцсети ──
           Row(
             children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (isOwner) {
-                      _showShopManagement(context);
-                    } else {
-                      _handleSubscribe(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8956FF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    minimumSize: const Size(double.infinity, 48),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    isOwner ? 'Управление' : 'Подписаться',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-              // ✅ ИКОНКИ СОЦСЕТЕЙ
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8956FF),
-                  borderRadius: BorderRadius.circular(80),
-                ),
-                child: Row(
-                  children: [
-                    _SocialIcon(
-                      iconUrl: 'https://hashtagg.ru/templates/img/tg.png',
-                      url: socialLinks['telegram'] ?? '',
-                      isEditing: isEditing,
-                      label: 'Telegram',
-                      onEdit: onSocialEdit,
-                    ),
-                    const SizedBox(width: 5),
-                    _SocialIcon(
-                      iconUrl: 'https://hashtagg.ru/templates/img/vk.png',
-                      url: socialLinks['vk'] ?? '',
-                      isEditing: isEditing,
-                      label: 'VK',
-                      onEdit: onSocialEdit,
-                    ),
-                    const SizedBox(width: 5),
-                    _SocialIcon(
-                      iconUrl: 'https://hashtagg.ru/templates/img/max.png',
-                      url: socialLinks['max'] ?? '',
-                      isEditing: isEditing,
-                      label: 'Max',
-                      onEdit: onSocialEdit,
-                    ),
-                    // ✅ КАРАНДАШИК (только в режиме редактора)
-                    if (isEditing && onSocialEdit != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: GestureDetector(
-                          onTap: onSocialEdit,
-                          child: Icon(
-                            Icons.edit,
-                            size: 16,
-                            color: Colors.white,
+              // ✅ КНОПКА С ФИКСИРОВАННОЙ ШИРИНОЙ И ВЫРАВНИВАНИЕМ ВЛЕВО
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: 160, // 👈 ФИКСИРОВАННАЯ ШИРИНА
+                  child: isOwner
+                      ? ElevatedButton(
+                          onPressed: () => _showShopManagement(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8956FF),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            minimumSize: const Size(double.infinity, 48),
+                            elevation: 0,
                           ),
-                        ),
-                      ),
-                  ],
+                          child: const Text(
+                            'Управление',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )
+                      : ShopSubscriptionButton(shop: shop),
                 ),
               ),
+              // ✅ ИКОНКИ СОЦСЕТЕЙ (ВЫРАВНЕНЫ ВПРАВО)
+              if (hasSocialLinks)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8956FF),
+                        borderRadius: BorderRadius.circular(80),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _SocialIcon(
+                            iconUrl: 'https://hashtagg.ru/templates/img/tg.png',
+                            url: socialLinks['telegram'] ?? '',
+                            isEditing: isEditing,
+                            label: 'Telegram',
+                            onEdit: onSocialEdit,
+                          ),
+                          const SizedBox(width: 5),
+                          _SocialIcon(
+                            iconUrl: 'https://hashtagg.ru/templates/img/vk.png',
+                            url: socialLinks['vk'] ?? '',
+                            isEditing: isEditing,
+                            label: 'VK',
+                            onEdit: onSocialEdit,
+                          ),
+                          const SizedBox(width: 5),
+                          _SocialIcon(
+                            iconUrl:
+                                'https://hashtagg.ru/templates/img/max.png',
+                            url: socialLinks['max'] ?? '',
+                            isEditing: isEditing,
+                            label: 'Max',
+                            onEdit: onSocialEdit,
+                          ),
+                          // Карандаш (только в режиме редактора)
+                          if (isEditing && onSocialEdit != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: GestureDetector(
+                                onTap: onSocialEdit,
+                                child: Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ЕСЛИ НЕТ УСЛУГИ И ЭТО ЧЕРНОВИК/МОДЕРАЦИЯ - ЗАМОЧЕК
+              if (!hasSocialLinks &&
+                  isOwner &&
+                  isEditing &&
+                  (isModeration || isDraft))
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: ShopLockWidget(
+                      message:
+                          '🔒 Соцсети доступны в тарифах «Максимум» и «Безлимит»',
+                    ),
+                  ),
+                ),
             ],
           ),
 
@@ -277,13 +321,9 @@ class ShopActions extends StatelessWidget {
     );
   }
 
+  // Вместо заглушки _handleSubscribe
   void _handleSubscribe(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Функция подписки в разработке'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    // Ничего не делаем - кнопка сама обрабатывает через Bloc
   }
 
   void _showShopManagement(BuildContext context) {

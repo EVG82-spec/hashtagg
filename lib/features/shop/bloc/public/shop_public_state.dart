@@ -16,11 +16,12 @@ class ShopPublicLoading extends ShopPublicState {}
 class ShopPublicLoaded extends ShopPublicState {
   final Shop shop;
   final List<FeedAd> ads;
+  final UserTariff? tariff;
 
-  const ShopPublicLoaded(this.shop, {this.ads = const []}); // 👈 ИСПРАВЛЕНО
+  const ShopPublicLoaded(this.shop, {required this.ads, this.tariff});
 
   @override
-  List<Object?> get props => [shop, ads];
+  List<Object?> get props => [shop, ads, tariff];
 }
 
 class ShopPublicError extends ShopPublicState {
