@@ -28,6 +28,9 @@ class Shop {
   final List<ShopLink>? links;
   final int adsCount;
   final int subscribersCount;
+  final String? qrCode;
+  final String? slug;
+  final Uint8List? qrBytes;
 
   // ============================================================
   // ГЕТТЕРЫ ДЛЯ МЕДИА
@@ -74,6 +77,9 @@ class Shop {
     this.links,
     required this.adsCount,
     required this.subscribersCount,
+    this.qrCode,
+    this.slug,
+    this.qrBytes,
   });
 
   // ============================================================
@@ -83,11 +89,28 @@ class Shop {
   factory Shop.fromJson(Map<String, dynamic> json) {
     print('🟢🟢🟢 [Shop.fromJson] CALLED');
     print('   Title: ${json['clients_shops_title'] ?? json['title']}');
+    print('   ALL KEYS: ${json.keys.join(', ')}');
+    print('   id_user: ${json['id_user']}');
+    print('   user_id: ${json['user_id']}');
+    print('   clients_shops_id_user: ${json['clients_shops_id_user']}');
+    print('   id_hash: ${json['id_hash']}');
+    print('   clients_shops_id_hash: ${json['clients_shops_id_hash']}');
+    print('   shop_id_hash: ${json['shop_id_hash']}');
+    print('   id: ${json['id']}');
+    print('   clients_shops_id: ${json['clients_shops_id']}');
+
+    print('🟢🟢🟢 [Shop.fromJson] CALLED');
+    print('   Title: ${json['clients_shops_title'] ?? json['title']}');
     print('   Keys: ${json.keys.join(', ')}');
 
     final hasPrefix = json.containsKey('clients_shops_id');
-
+    print('   hasPrefix: $hasPrefix'); // 👈 ЭТА ПЕРЕМЕННАЯ ДОЛЖНА БЫТЬ
     print('   hasPrefix: $hasPrefix');
+
+    // ✅ ПАРСИМ SLUG
+    final slug = hasPrefix
+        ? (json['clients_shops_slug'] as String?)
+        : (json['slug'] as String?);
 
     // 👇 ДОБАВЬ ЭТИ ПРИНТЫ ДЛЯ ССЫЛОК
     print(
@@ -117,12 +140,25 @@ class Shop {
         : _parseInt(json['id']);
 
     // ============================================================
-    // 2. ПАРСИМ userId - ПРОВЕРЯЕМ ВСЕ ВАРИАНТЫ!
+    // 2. ПАРСИМ userId - ИЗ user.id (для списка магазинов)
     // ============================================================
-    final userId = _parseInt(
-      json['id_user'] ?? json['user_id'] ?? json['clients_shops_id_user'] ?? 0,
-    );
-    print('   🔍 userId from JSON: $userId');
+    int userId = 0;
+
+    // Сначала пробуем из корневых полей
+    if (json['id_user'] != null) {
+      userId = _parseInt(json['id_user']);
+    } else if (json['user_id'] != null) {
+      userId = _parseInt(json['user_id']);
+    } else if (json['clients_shops_id_user'] != null) {
+      userId = _parseInt(json['clients_shops_id_user']);
+    } else if (json['user'] != null && json['user'] is Map) {
+      // ✅ ДЛЯ СПИСКА МАГАЗИНОВ - userId ВНУТРИ user
+      final userMap = json['user'] as Map<String, dynamic>;
+      userId = _parseInt(userMap['id']);
+      print('   🔍 userId from user.id: $userId');
+    }
+
+    print('   🔍 final userId: $userId');
 
     // ============================================================
     // 3. ПОЛУЧАЕМ ID ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ИЗ Hive
@@ -152,19 +188,36 @@ class Shop {
     print('   🔍 isOwner: $isOwner');
 
     // ============================================================
-    // 5. ПАРСИМ idHash (ВСЕГДА БЕРЕМ ПРАВИЛЬНЫЙ ХЕШ МАГАЗИНА)
+    // 5. ПАРСИМ idHash (ХЕШ МАГАЗИНА)
     // ============================================================
-    final idHash =
-        json['clients_shops_id_hash'] as String? ??
-        json['id_hash'] as String? ??
-        json['shop_id_hash'] as String? ??
-        '';
+    String idHash = '';
 
-    print('🔍 [Shop.fromJson] idHash: "$idHash"');
-    print(
-      '🔍 [Shop.fromJson] clients_shops_id_hash: ${json['clients_shops_id_hash']}',
-    );
-    print('🔍 [Shop.fromJson] id_hash: ${json['id_hash']}');
+    // 1. Сначала ищем в корневых полях
+    if (json['clients_shops_id_hash'] != null) {
+      idHash = json['clients_shops_id_hash'].toString();
+    } else if (json['id_hash'] != null) {
+      idHash = json['id_hash'].toString();
+    } else if (json['shop_id_hash'] != null) {
+      idHash = json['shop_id_hash'].toString();
+    } else if (json['user'] != null && json['user'] is Map) {
+      // 2. Для списка магазинов — хеш в объекте user
+      final userMap = json['user'] as Map<String, dynamic>;
+      if (userMap['id_hash'] != null) {
+        idHash = userMap['id_hash'].toString();
+        print('   🔍 idHash from user.id_hash: $idHash');
+      } else if (userMap['hash'] != null) {
+        idHash = userMap['hash'].toString();
+        print('   🔍 idHash from user.hash: $idHash');
+      }
+    }
+
+    // 3. Если ничего не нашли — используем id (запасной вариант)
+    if (idHash.isEmpty) {
+      idHash = json['id']?.toString() ?? '';
+      print('   ⚠️ idHash not found, using id: $idHash');
+    }
+
+    print('🔍 [Shop.fromJson] final idHash: "$idHash"');
 
     final title = hasPrefix
         ? (json['clients_shops_title'] as String? ?? '')
@@ -175,27 +228,12 @@ class Shop {
         : (json['description'] as String?);
 
     // ============================================================
-    // 6. ФОРМИРУЕМ АВАТАРКУ (avatar.jpg) — ТОЛЬКО ЕСЛИ ЕСТЬ ЛОГО
+    // 6. АВАТАРКА — ВСЕГДА ИЗ ПАПКИ МАГАЗИНА (НЕ ИЗ LOGO)
     // ============================================================
-    String? logoUrl;
-    final logoRaw = hasPrefix
-        ? (json['clients_shops_logo'] as String?)
-        : (json['logo'] as String?);
+    // ❌ НЕ ПАРСИМ logoRaw, НЕ ИСПОЛЬЗУЕМ ЕГО
+    String? logoUrl = null; // 👈 ВСЕГДА null
 
-    // ✅ ЕСЛИ ЛОГО ЕСТЬ — ИСПОЛЬЗУЕМ ЕГО
-    if (logoRaw != null && logoRaw.isNotEmpty) {
-      if (logoRaw.startsWith('http')) {
-        logoUrl = logoRaw;
-      } else {
-        logoUrl = 'https://hashtagg.ru/media/others/$logoRaw';
-      }
-      print('   ✅ AvatarUrl (from logo): $logoUrl');
-    } else {
-      // ❌ НЕТ ЛОГО — НЕ ГЕНЕРИРУЕМ ПУТЬ!
-      logoUrl = null;
-      print('   ⚠️ No logo, avatar will be default');
-    }
-    print('   🖼️ LogoUrl: $logoUrl');
+    print('   ℹ️ Avatar will be loaded from folder, logo from API is ignored');
 
     final themeCategoryId = hasPrefix
         ? _parseInt(json['clients_shops_id_theme_category'])
@@ -317,6 +355,9 @@ class Shop {
     // ✅ ДОБАВЬ ЭТУ СТРОКУ!
     final subscribersCount = _parseInt(json['subscribers_count']);
 
+    // ✅ ПАРСИМ QR-КОД
+    final qrCode = json['qr_code'] as String?;
+
     return Shop(
       id: id,
       userId: userId,
@@ -337,6 +378,8 @@ class Shop {
       links: links,
       adsCount: adsCount,
       subscribersCount: subscribersCount, // 👈 ТЕПЕРЬ ОПРЕДЕЛЕНА!
+      qrCode: qrCode,
+      slug: slug,
     );
   }
 
@@ -367,6 +410,7 @@ class Shop {
     List<ShopLink>? links,
     int? adsCount,
     int? subscribersCount,
+    Uint8List? qrBytes,
   }) {
     return Shop(
       id: id ?? this.id,
@@ -388,6 +432,8 @@ class Shop {
       links: links ?? this.links,
       adsCount: adsCount ?? this.adsCount,
       subscribersCount: subscribersCount ?? this.subscribersCount,
+      qrCode: qrCode ?? this.qrCode,
+      qrBytes: qrBytes ?? this.qrBytes,
     );
   }
 }

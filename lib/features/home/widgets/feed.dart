@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 
-
 class FeedHeader extends StatelessWidget {
   const FeedHeader({super.key});
 
@@ -54,15 +53,21 @@ class FeedHeader extends StatelessWidget {
                                 style: GoogleFonts.montserrat(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
-                                  color: state.category == FeedCategory.recommendations
-                                      ? (isDark ? Colors.white : const Color(0xff000000))
+                                  color:
+                                      state.category ==
+                                          FeedCategory.recommendations
+                                      ? (isDark
+                                            ? Colors.white
+                                            : const Color(0xff000000))
                                       : const Color(0xff666666),
                                 ),
                               ),
                               SizedBox(height: 4),
                               Container(
                                 height: 2,
-                                color: state.category == FeedCategory.recommendations
+                                color:
+                                    state.category ==
+                                        FeedCategory.recommendations
                                     ? (isDark ? Colors.white : Colors.black)
                                     : Colors.transparent,
                               ),
@@ -94,7 +99,9 @@ class FeedHeader extends StatelessWidget {
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
                                   color: state.category == FeedCategory.fresh
-                                      ? (isDark ? Colors.white : const Color(0xff000000))
+                                      ? (isDark
+                                            ? Colors.white
+                                            : const Color(0xff000000))
                                       : const Color(0xff808080),
                                 ),
                               ),
@@ -132,8 +139,11 @@ class FeedHeader extends StatelessWidget {
                                 style: GoogleFonts.montserrat(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
-                                  color: state.category == FeedCategory.companies
-                                      ? (isDark ? Colors.white : const Color(0xff000000))
+                                  color:
+                                      state.category == FeedCategory.companies
+                                      ? (isDark
+                                            ? Colors.white
+                                            : const Color(0xff000000))
                                       : const Color(0xff808080),
                                 ),
                               ),
@@ -168,9 +178,7 @@ class MultiSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SliverMainAxisGroup(
-      slivers: children,
-    );
+    return SliverMainAxisGroup(slivers: children);
   }
 }
 
@@ -222,7 +230,9 @@ class _FeedViewState extends State<FeedView> {
     if (widget.cityId != oldWidget.cityId ||
         widget.regionId != oldWidget.regionId ||
         widget.countryId != oldWidget.countryId) {
-      print('🔄 [Feed] Город изменился: ${oldWidget.cityId} → ${widget.cityId}');
+      print(
+        '🔄 [Feed] Город изменился: ${oldWidget.cityId} → ${widget.cityId}',
+      );
       _loadFeed();
     }
   }
@@ -375,10 +385,7 @@ class _FeedViewState extends State<FeedView> {
             SizedBox(height: 10),
             Text(
               'Загрузка',
-              style: GoogleFonts.montserrat(
-                fontSize: 16,
-                color: Colors.black,
-              ),
+              style: GoogleFonts.montserrat(fontSize: 16, color: Colors.black),
             ),
           ],
         ),
@@ -466,7 +473,9 @@ class _ShopsSliverList extends StatelessWidget {
         // 👇 ДОБАВЛЯЕМ ДЕТАЛЬНЫЙ ЛОГ КАЖДОГО МАГАЗИНА
         for (var i = 0; i < shops.length; i++) {
           final shop = shops[i];
-          print('📋 [ShopList] Shop #$i: ID=${shop.id}, Title="${shop.title}", Logo=${shop.logo?.substring(0, 30) ?? 'null'}...');
+          print(
+            '📋 [ShopList] Shop #$i: ID=${shop.id}, Title="${shop.title}", Logo=${shop.logo?.substring(0, 30) ?? 'null'}...',
+          );
         }
 
         if (shops.isEmpty) {
@@ -486,13 +495,10 @@ class _ShopsSliverList extends StatelessWidget {
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                final shop = shops[index];
-                return _ShopListCard(shop: shop);
-              },
-              childCount: shops.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final shop = shops[index];
+              return _ShopListCard(shop: shop);
+            }, childCount: shops.length),
           ),
         );
       },
@@ -534,6 +540,17 @@ class _ShopListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ ДОБАВЬ ПРИНТЫ ЗДЕСЬ (ПЕРЕД Row)
+    print('🔴🔴🔴 [_ShopListCard] avatarUrl: "${shop.avatarUrl}"');
+    print('🔴🔴🔴 [_ShopListCard] userId: ${shop.userId}');
+    print('🔴🔴🔴 [_ShopListCard] idHash: "${shop.idHash}"');
+    print('🔴🔴🔴 [_ShopListCard] logo: "${shop.logo}"');
+    print(
+      '🃏 [_ShopListCard] ${shop.title} - adsCount: ${shop.adsCount} (type: ${shop.adsCount.runtimeType})',
+    );
+    print(
+      '🃏 [_ShopListCard] Full shop: id=${shop.id}, title=${shop.title}, adsCount=${shop.adsCount}',
+    );
     return GestureDetector(
       onTap: () {
         print('🖱️ [ShopList] CLICK on shop:');
@@ -620,11 +637,7 @@ class _ShopListCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 18,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
           ],
         ),
       ),

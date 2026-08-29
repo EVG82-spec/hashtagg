@@ -15,43 +15,38 @@ class ShopApiRepository {
   ShopApiRepository(this._dio);
 
   /// Получение списка всех магазинов через JSON API
+  /// // используется профиль навигатор
   Future<List<Shop>> getShops() async {
     print('📥 [ShopApi] Loading shops...');
     try {
-      final response = await _dio.post(
-        '/systems/ajax/controller.php',
-        data: {'key': ApiConfig.apiKey, 'action': 'shop/getShopsJson'},
+      // ✅ ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ API
+      final response = await _dio.get(
+        '/systems/api/controller.php',
+        queryParameters: {
+          'key': ApiConfig.apiKey,
+          'route': 'shops/getShops', // 👈 ПРАВИЛЬНЫЙ РОУТ
+        },
       );
 
-      final data = response.data is Map
-          ? response.data as Map<String, dynamic>
-          : _parseResponse(response.data);
+      final data = _parseResponse(response.data);
+      print('📦 [ShopApi] Shops response: $data');
 
-      if (data['status'] != true || data['data'] == null) {
-        print('⚠️ [ShopApi] No shops found');
-        return [];
+      if (data['data'] != null) {
+        final shops = (data['data'] as List).map((json) {
+          return Shop.fromJson(json);
+        }).toList();
+
+        print('✅ [ShopApi] Loaded ${shops.length} shops');
+        for (var shop in shops) {
+          print('   📊 ${shop.title} - adsCount: ${shop.adsCount}');
+        }
+
+        return shops;
       }
 
-      final List<dynamic> items = data['data'] is List ? data['data'] : [];
-      print('📦 [ShopApi] Got ${items.length} shops from API');
-
-      if (items.isNotEmpty) {
-        final first = items.first;
-        print('🔍 [ShopApi] First shop raw data:');
-        print('   Keys: ${first.keys.join(', ')}');
-        print('   ID: ${first['clients_shops_id']}');
-        print('   Title: ${first['clients_shops_title']}');
-        print('   Logo: ${first['clients_shops_logo']}');
-        print('   Has sliders: ${first.containsKey('sliders')}');
-        print('   Has pages: ${first.containsKey('pages')}');
-        print('   Has links: ${first.containsKey('link_1_link')}');
-      }
-
-      final shops = items.map((json) => Shop.fromJson(json)).toList();
-      print('✅ [ShopApi] Loaded ${shops.length} shops');
-      return shops;
+      return [];
     } catch (e) {
-      print('❌ [ShopApi] Error: $e');
+      print('❌ [ShopApi] Error loading shops: $e');
       return [];
     }
   }
