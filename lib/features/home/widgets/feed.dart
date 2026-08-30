@@ -540,107 +540,173 @@ class _ShopListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ДОБАВЬ ПРИНТЫ ЗДЕСЬ (ПЕРЕД Row)
-    print('🔴🔴🔴 [_ShopListCard] avatarUrl: "${shop.avatarUrl}"');
-    print('🔴🔴🔴 [_ShopListCard] userId: ${shop.userId}');
-    print('🔴🔴🔴 [_ShopListCard] idHash: "${shop.idHash}"');
-    print('🔴🔴🔴 [_ShopListCard] logo: "${shop.logo}"');
-    print(
-      '🃏 [_ShopListCard] ${shop.title} - adsCount: ${shop.adsCount} (type: ${shop.adsCount.runtimeType})',
-    );
-    print(
-      '🃏 [_ShopListCard] Full shop: id=${shop.id}, title=${shop.title}, adsCount=${shop.adsCount}',
-    );
+    final bannerUrl = shop.banner ?? shop.bannerUrl;
+
+    print('🔴🔴🔴 [_ShopListCard] ${shop.title}:');
+    print('   avatarUrl: ${shop.avatarUrl}');
+    print('   banner: ${shop.banner}');
+    print('   description: ${shop.description}');
+
     return GestureDetector(
       onTap: () {
-        print('🖱️ [ShopList] CLICK on shop:');
-        print('   📌 ID: ${shop.id}');
-        print('   📌 Title: ${shop.title}');
-        print('   📌 Logo: ${shop.avatarUrl}');
-        print('   📌 UserId: ${shop.userId}');
-        print('   📌 AdsCount: ${shop.adsCount}');
-        print('   📌 Subscribers: ${shop.subscribersCount}');
-        print('   📌 Status: ${shop.status}');
-        print('🖱️ [ShopList] Navigating to: /shop/${shop.id}');
-
         GoRouter.of(context).push('/shop/${shop.id}');
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 16),
+        height: 200,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          image: bannerUrl != null && bannerUrl.isNotEmpty
+              ? DecorationImage(
+                  image: NetworkImage(bannerUrl),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.5),
+                    BlendMode.darken,
+                  ),
+                )
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Аватарка
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: CachedNetworkImage(
                 imageUrl: shop.avatarUrl ?? '',
-                width: 60,
-                height: 60,
+                width: 80,
+                height: 80,
                 fit: BoxFit.cover,
                 placeholder: (_, __) => Container(
-                  width: 60,
-                  height: 60,
+                  width: 80,
+                  height: 80,
                   color: Colors.grey[300],
                   child: const Icon(Icons.store, color: Colors.grey),
                 ),
                 errorWidget: (_, __, ___) => Container(
-                  width: 60,
-                  height: 60,
+                  width: 80,
+                  height: 80,
                   color: Colors.grey[300],
                   child: const Icon(Icons.store, color: Colors.grey),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
+            // Информация
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Название
                   Text(
-                    shop.title ?? '@unknown',
+                    shop.title,
                     style: GoogleFonts.montserrat(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // ✅ Описание (3 строки, 80 символов)
                   if (shop.description != null && shop.description!.isNotEmpty)
-                    Text(
-                      shop.description!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 13,
-                        color: Colors.grey,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        shop.description!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.85),
+                          height: 1.3,
+                        ),
                       ),
                     ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "${shop.adsCount ?? 0} объявлений",
-                    style: GoogleFonts.montserrat(
-                      fontSize: 13,
-                      color: Colors.grey,
-                    ),
+                  const SizedBox(height: 8),
+
+                  // ✅ Статистика в одну строку (объявления + подписчики)
+                  Row(
+                    children: [
+                      // Количество объявлений
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          "${shop.adsCount} ${_pluralize(shop.adsCount)}",
+                          style: GoogleFonts.montserrat(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Количество подписчиков
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(width: 4),
+                            Text(
+                              "${shop.subscribersCount} ${_pluralizeSubscribers(shop.subscribersCount)}",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.8),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
+            // Стрелка
           ],
         ),
       ),
     );
+  }
+
+  String _pluralize(int count) {
+    if (count % 10 == 1 && count % 100 != 11) return 'объявление';
+    if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100))
+      return 'объявления';
+    return 'объявлений';
+  }
+
+  String _pluralizeSubscribers(int count) {
+    if (count % 10 == 1 && count % 100 != 11) return 'подписчик';
+    if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100))
+      return 'подписчика';
+    return 'подписчиков';
   }
 }

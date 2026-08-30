@@ -9,6 +9,7 @@ class ShopProfile extends StatelessWidget {
   final VoidCallback? onAvatarTap;
   final VoidCallback? onTitleTap;
   final TextEditingController? titleController; // 👈 НОВЫЙ ПАРАМЕТР
+  final VoidCallback? onDescriptionTap; // 👈 ДОБАВЛЯЕМ
 
   const ShopProfile({
     Key? key,
@@ -16,6 +17,7 @@ class ShopProfile extends StatelessWidget {
     this.isEditing = false,
     this.onAvatarTap,
     this.onTitleTap,
+    this.onDescriptionTap,
     this.titleController, // 👈 ДОБАВИЛИ this.titleController
   }) : super(key: key);
 

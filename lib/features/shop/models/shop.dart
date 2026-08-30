@@ -31,6 +31,7 @@ class Shop {
   final String? qrCode;
   final String? slug;
   final Uint8List? qrBytes;
+  final String? banner;
 
   // ============================================================
   // ГЕТТЕРЫ ДЛЯ МЕДИА
@@ -44,6 +45,7 @@ class Shop {
   }
 
   String? get bannerUrl {
+    // 1️⃣ Сначала проверяем слайдеры
     if (sliders != null && sliders!.isNotEmpty) {
       final firstSlider = sliders!.first;
       if (firstSlider.link.isNotEmpty) {
@@ -51,9 +53,16 @@ class Shop {
       }
     }
 
+    // 2️⃣ Используем готовый banner из API (с правильным расширением)
+    if (banner != null && banner!.isNotEmpty) {
+      return banner;
+    }
+
+    // 3️⃣ Если banner нет — формируем из userId и idHash (запасной вариант)
     if (userId > 0 && idHash.isNotEmpty) {
       return 'https://hashtagg.ru/media/users/$userId/shop/$idHash/banner.jpg';
     }
+
     return null;
   }
 
@@ -80,6 +89,7 @@ class Shop {
     this.qrCode,
     this.slug,
     this.qrBytes,
+    this.banner,
   });
 
   // ============================================================
@@ -223,15 +233,27 @@ class Shop {
         ? (json['clients_shops_title'] as String? ?? '')
         : (json['title'] as String? ?? '');
 
-    final description = hasPrefix
-        ? (json['clients_shops_desc'] as String?)
-        : (json['description'] as String?);
+    // ============================================================
+    // 6. ФОРМИРУЕМ АВАТАРКУ
+    // ============================================================
+    String? logoUrl = null;
+    print('   ℹ️ Avatar will be loaded from folder, logo from API is ignored');
 
     // ============================================================
-    // 6. АВАТАРКА — ВСЕГДА ИЗ ПАПКИ МАГАЗИНА (НЕ ИЗ LOGO)
+    // ✅ 6.1 ПАРСИМ ОПИСАНИЕ (ДОБАВИТЬ СЮДА!)
     // ============================================================
-    // ❌ НЕ ПАРСИМ logoRaw, НЕ ИСПОЛЬЗУЕМ ЕГО
-    String? logoUrl = null; // 👈 ВСЕГДА null
+    final description =
+        json['description'] as String? ??
+        json['desc'] as String? ??
+        json['clients_shops_desc'] as String?;
+
+    // ============================================================
+    // ✅ 6.2 ПАРСИМ ПОДПИСЧИКОВ (ДОБАВИТЬ СЮДА!)
+    // ============================================================
+    final subscribersCount =
+        json['subscribers_count'] as int? ??
+        json['subscribersCount'] as int? ??
+        _parseInt(json['clients_shops_subscribers_count'] ?? 0);
 
     print('   ℹ️ Avatar will be loaded from folder, logo from API is ignored');
 
@@ -352,11 +374,9 @@ class Shop {
 
     print('📊 [Shop.fromJson] FINAL adsCount: $adsCount');
 
-    // ✅ ДОБАВЬ ЭТУ СТРОКУ!
-    final subscribersCount = _parseInt(json['subscribers_count']);
-
     // ✅ ПАРСИМ QR-КОД
     final qrCode = json['qr_code'] as String?;
+    final banner = json['banner'] as String?;
 
     return Shop(
       id: id,
@@ -365,6 +385,7 @@ class Shop {
       title: title,
       description: description,
       logo: logoUrl,
+      banner: banner,
       themeCategoryId: themeCategoryId,
       themeCategoryName: themeCategoryName,
       status: status,

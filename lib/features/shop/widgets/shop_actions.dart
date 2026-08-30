@@ -1,6 +1,8 @@
 // lib/features/shop/widgets/shop_actions.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hashtagg/features/shop/bloc/public/shop_public_event.dart';
+import 'package:hashtagg/features/shop/widgets/shop_description_edit_modal.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
@@ -29,16 +31,14 @@ class ShopActions extends StatelessWidget {
     final isDraft = shop.status == 4;
     final isModeration = shop.status == 0;
 
-    // Получаем тариф из состояния
-    UserTariff? tariff;
-    final state = context.read<ShopPublicBloc>().state;
-    if (state is ShopPublicLoaded) {
-      tariff = state.tariff;
-      print('🔍🔍🔍 [ShopActions] TARIFF CHECK:');
-      print('   tariff: ${tariff?.name}');
-      print('   services: ${tariff?.services}');
-      print('   hasSocialLinks: ${tariff?.hasService('shop_links')}');
-    }
+    // ✅ БЕЗОПАСНОЕ ПОЛУЧЕНИЕ ТАРИФА
+    final tariff = context.select<ShopPublicBloc, UserTariff?>((bloc) {
+      final state = bloc.state;
+      if (state is ShopPublicLoaded) {
+        return state.tariff;
+      }
+      return null;
+    });
 
     final hasSocialLinks = tariff?.hasService('shop_links') ?? false;
     // Если нет услуги и не черновик → ничего не показываем
@@ -211,9 +211,38 @@ class ShopActions extends StatelessWidget {
             ),
           ],
 
-          // ── Табы (навигация) ──
-          const SizedBox(height: 10),
-          _buildNavigationTabs(context),
+          // ── Строка 3: Редактировать описание (только для владельца) ──
+          if (isOwner && isEditing) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _editDescription(context),
+                icon: Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: const Color(0xFF8956FF),
+                ),
+                label: Text(
+                  shop.description?.isNotEmpty == true
+                      ? 'Редактировать описание'
+                      : 'Добавить описание',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF8956FF),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: const Color(0xFF8956FF)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -333,6 +362,35 @@ class ShopActions extends StatelessWidget {
       context: context,
       builder: (_) => ShopManagementModal(shop: shop, shopBloc: shopBloc),
     );
+  }
+
+  void _editDescription(BuildContext context) {
+    print('📝 [ShopActions] Edit description');
+
+    // Получаем текущий shop через контекст
+    final shop = this.shop;
+
+    showDialog(
+      context: context,
+      builder: (_) => ShopDescriptionEditModal(
+        shop: shop,
+        repository: context.read<ShopPublicBloc>().repository,
+      ),
+    ).then((result) {
+      if (result == true) {
+        print('✅ [ShopActions] Description updated');
+        // Перезагружаем данные
+        context.read<ShopPublicBloc>().add(
+          LoadPublicShop(shopId: shop.id.toString(), forceRefresh: true),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Описание обновлено!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
   }
 }
 
