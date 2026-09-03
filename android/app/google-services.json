@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "589595998191",
+    "project_id": "hashtagg-def2d",
+    "storage_bucket": "hashtagg-def2d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:589595998191:android:04468a676c4ef1ed96681a",
+        "android_client_info": {
+          "package_name": "ru.hashtagg.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDregnH6LfERjBzVxZrSH-uc-Z_jIemEQQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

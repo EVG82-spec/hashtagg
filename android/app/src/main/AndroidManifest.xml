@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
 
     <!-- Разрешение для запуска после перезагрузки устройства -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -29,6 +30,24 @@
             android:name="yandex_mapkit_api_key"
             android:value="4aab5e00-30ab-4a8a-b428-63d00203f440" />
 
+        <!-- ============================================================ -->
+        <!-- Firebase Messaging Service -->
+        <!-- ============================================================ -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- ============================================================ -->
+        <!-- 🔥 ДОБАВИТЬ: Foreground Service для локальных уведомлений -->
+        <!-- ============================================================ -->
+        <service
+            android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

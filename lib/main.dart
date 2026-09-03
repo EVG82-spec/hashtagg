@@ -41,7 +41,7 @@ import 'core/routes.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'dart:io';
 import 'package:hashtagg/features/home/bloc/categories_bloc.dart';
 import 'package:hashtagg/features/home/bloc/stories_bloc.dart';
 import 'package:hashtagg/features/home/bloc/banner_bloc.dart';
@@ -49,26 +49,69 @@ import 'package:hashtagg/features/home/bloc/feed_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/core/network/shops_api_repository.dart';
 import 'package:hashtagg/core/network/shop_api_repository.dart';
-
-
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Константы для WorkManager (должны быть доступны в изоляте)
 const String _kWorkManagerVersion = 'v2.1'; // Версия для отладки
 const String _kOneOffTaskName = 'notification_check_oneoff';
 const String _kPeriodicTaskName = 'notification_check_periodic';
 const String _kShownNotificationsKey = 'shown_notifications';
-const String _kLastScheduleKey = 'last_schedule_time'; // Для защиты от дубликатов
-const Duration _kQuickCheckInterval = Duration(seconds: 5); // Быстрые проверки каждую минуту
+const String _kLastScheduleKey =
+    'last_schedule_time'; // Для защиты от дубликатов
+const Duration _kQuickCheckInterval = Duration(
+  seconds: 5,
+); // Быстрые проверки каждую минуту
 // Важно: WorkManager использует этот URL для фоновых запросов
 // Используем ApiConfig.baseUrl и ApiConfig.apiKey для корректной работы на проде
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // ✅ ЛОГ В ФАЙЛ (на устройстве)
+  final file = File('/sdcard/fcm_log.txt');
+  await file.writeAsString(
+    '${DateTime.now()}: Уведомление получено: ${message.notification?.title}\n',
+    mode: FileMode.append,
+  );
+
+  // Этот код выполняется, даже когда приложение закрыто
+  print('📨 [FCM] Фоновое уведомление: ${message.notification?.title}');
+
+  // Показать локальное уведомление
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+  );
+  await plugin.show(
+    DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    message.notification?.title ?? 'Новое уведомление',
+    message.notification?.body ?? '',
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'chat_messages',
+        'Сообщения',
+        channelDescription: 'Уведомления о новых сообщениях',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    ),
+    payload: jsonEncode(message.data),
+  );
+}
 
 /// Callback для WorkManager - ДОЛЖЕН быть top-level функцией
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     final timestamp = DateTime.now().toIso8601String();
-    print('🔄 [WorkManager $_kWorkManagerVersion] Task started: $task at $timestamp');
-    print('🔧 [WorkManager] Quick check interval constant: ${_kQuickCheckInterval.inMinutes} min');
+    print(
+      '🔄 [WorkManager $_kWorkManagerVersion] Task started: $task at $timestamp',
+    );
+    print(
+      '🔧 [WorkManager] Quick check interval constant: ${_kQuickCheckInterval.inMinutes} min',
+    );
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -114,45 +157,58 @@ Future<void> _scheduleNext() async {
   final prefs = await SharedPreferences.getInstance();
   final lastSchedule = prefs.getInt(_kLastScheduleKey) ?? 0;
   final now = DateTime.now().millisecondsSinceEpoch;
-  
+
   // Если последнее планирование было менее 1 минуты назад - пропускаем
   if (now - lastSchedule < 5000) {
-    print('⚠️ [WorkManager] Skipping schedule - too soon (${(now - lastSchedule) ~/ 1000}s ago)');
+    print(
+      '⚠️ [WorkManager] Skipping schedule - too soon (${(now - lastSchedule) ~/ 1000}s ago)',
+    );
     return;
   }
-  
+
   await prefs.setInt(_kLastScheduleKey, now);
-  
+
   final uniqueName = 'check_${DateTime.now().millisecondsSinceEpoch}';
-  
+
   // ВАЖНО: Используем константу для интервала (1 минута)
   const interval = _kQuickCheckInterval;
-  print('🔧 [WorkManager] Scheduling with interval: ${interval.inMinutes} min (${interval.inSeconds} sec)');
-  
+  print(
+    '🔧 [WorkManager] Scheduling with interval: ${interval.inMinutes} min (${interval.inSeconds} sec)',
+  );
+
   await Workmanager().registerOneOffTask(
     uniqueName,
     _kOneOffTaskName,
     initialDelay: interval,
     constraints: Constraints(networkType: NetworkType.connected),
   );
-  print('📅 [WorkManager] Next check scheduled for ${interval.inMinutes} min from now');
+  print(
+    '📅 [WorkManager] Next check scheduled for ${interval.inMinutes} min from now',
+  );
 }
 
-Future<void> _checkNotifications(String userId, String authToken, SharedPreferences prefs) async {
+Future<void> _checkNotifications(
+  String userId,
+  String authToken,
+  SharedPreferences prefs,
+) async {
   try {
     print('🔍 [WorkManager] Checking for user $userId');
 
     final shown = prefs.getStringList(_kShownNotificationsKey) ?? [];
-    final url = '${ApiConfig.baseUrl}/systems/api/controller.php?key=${ApiConfig.apiKey}&route=profile/notifications/getUnread';
-    
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Bearer $authToken',
-      },
-      body: {'id_user': userId, 'token': authToken},
-    ).timeout(const Duration(seconds: 30));
+    final url =
+        '${ApiConfig.baseUrl}/systems/api/controller.php?key=${ApiConfig.apiKey}&route=profile/notifications/getUnread';
+
+    final response = await http
+        .post(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Bearer $authToken',
+          },
+          body: {'id_user': userId, 'token': authToken},
+        )
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode != 200) {
       print('❌ [WorkManager] API error: ${response.statusCode}');
@@ -168,7 +224,7 @@ Future<void> _checkNotifications(String userId, String authToken, SharedPreferen
 
     final newShown = <String>[];
     var shownCount = 0;
-    
+
     for (final notif in notifications) {
       final id = notif['id'] as String;
       if (shown.contains(id)) continue;
@@ -176,7 +232,7 @@ Future<void> _checkNotifications(String userId, String authToken, SharedPreferen
       await _showNotification(notif);
       newShown.add(id);
       shownCount++;
-      
+
       // Небольшая задержка между уведомлениями чтобы не перегружать систему
       if (shownCount < notifications.length) {
         await Future.delayed(const Duration(milliseconds: 500));
@@ -194,9 +250,11 @@ Future<void> _checkNotifications(String userId, String authToken, SharedPreferen
 
 Future<void> _showNotification(Map<String, dynamic> notif) async {
   final plugin = FlutterLocalNotificationsPlugin();
-  await plugin.initialize(const InitializationSettings(
-    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-  ));
+  await plugin.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+  );
 
   await plugin.show(
     notif['timestamp'] ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -244,6 +302,9 @@ void main() async {
     constraints: Constraints(networkType: NetworkType.connected),
   );
 
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   final deepLinkService = DeepLinkService();
   await deepLinkService.init();
 
@@ -284,7 +345,9 @@ class _MainAppState extends State<MainApp> {
     _bannerBloc = BannerBloc();
     final dio = DioClient.createDio();
     final repository = ShopsApiRepository(dio: dio);
-    _feedBloc = FeedBloc(ShopApiRepository(DioClient.createDio())); // 👈 ПЕРЕДАЁМ РЕПОЗИТОРИЙ
+    _feedBloc = FeedBloc(
+      ShopApiRepository(DioClient.createDio()),
+    ); // 👈 ПЕРЕДАЁМ РЕПОЗИТОРИЙ
 
     // Настройка OAuth deep links на уже созданный authBloc
     widget.deepLinkService.onOAuthSuccess = (token, userId) {
@@ -316,7 +379,6 @@ class _MainAppState extends State<MainApp> {
           BlocProvider.value(value: _storiesBloc),
           BlocProvider.value(value: _bannerBloc),
           BlocProvider.value(value: _feedBloc),
-
         ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -346,12 +408,8 @@ class _MainAppState extends State<MainApp> {
           BlocProvider<FavoritesBloc>(
             create: (_) => FavoritesBloc(authBloc: _authBloc),
           ),
-          BlocProvider<SubscriptionsBloc>(
-            create: (_) => SubscriptionsBloc(),
-          ),
-          BlocProvider<ProfileBloc>(
-            create: (_) => ProfileBloc(),
-          ),
+          BlocProvider<SubscriptionsBloc>(create: (_) => SubscriptionsBloc()),
+          BlocProvider<ProfileBloc>(create: (_) => ProfileBloc()),
           BlocProvider<unread.UnreadMessagesBloc>(
             create: (_) => unread.UnreadMessagesBloc(),
           ),
@@ -361,7 +419,10 @@ class _MainAppState extends State<MainApp> {
           BlocProvider<ChatBloc>(
             create: (context) {
               final unreadBloc = context.read<unread.UnreadMessagesBloc>();
-              final bloc = ChatBloc(authBloc: _authBloc, unreadBloc: unreadBloc);
+              final bloc = ChatBloc(
+                authBloc: _authBloc,
+                unreadBloc: unreadBloc,
+              );
               Future.microtask(() {
                 NotificationService().onMessageReceived = (data) {
                   bloc.add(MessageReceivedFromSocket(data));
@@ -370,20 +431,15 @@ class _MainAppState extends State<MainApp> {
               return bloc;
             },
           ),
-          BlocProvider<ReviewsBloc>(
-            create: (_) => ReviewsBloc(),
-          ),
-          BlocProvider<BlogBloc>(
-            create: (_) => BlogBloc(),
-          ),
-          BlocProvider<WalletBloc>(
-            create: (_) => WalletBloc(),
-          ),
+          BlocProvider<ReviewsBloc>(create: (_) => ReviewsBloc()),
+          BlocProvider<BlogBloc>(create: (_) => BlogBloc()),
+          BlocProvider<WalletBloc>(create: (_) => WalletBloc()),
           BlocProvider<ShopBloc>(
             create: (_) => ShopBloc(ShopApiRepository(DioClient.createDio())),
           ),
           BlocProvider<ShopPublicBloc>(
-            create: (_) => ShopPublicBloc(ShopApiRepository(DioClient.createDio())),
+            create: (_) =>
+                ShopPublicBloc(ShopApiRepository(DioClient.createDio())),
           ),
           BlocProvider<NotificationBloc>(
             create: (_) => NotificationBloc(authBloc: _authBloc),

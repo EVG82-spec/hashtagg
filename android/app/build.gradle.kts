@@ -1,3 +1,4 @@
+apply(plugin = "com.google.gms.google-services")
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
@@ -20,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.hashtagg"
+        applicationId = "ru.hashtagg.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
