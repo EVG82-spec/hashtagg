@@ -64,3 +64,5 @@ class ShopError extends ShopState {
 
   ShopError(this.message);
 }
+
+class ShopDeleted extends ShopState {}

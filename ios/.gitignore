@@ -32,3 +32,62 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# ============================================================
+# 🚨 СЕКРЕТЫ И КЛЮЧИ (НИКОГДА НЕ КОММИТИТЬ!)
+# ============================================================
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+*.pem
+*.key
+*.cer
+*.der
+*.crt
+service-account*.json
+firebase-service-account*.json
+*.certSigningRequest
+*.provisionprofile
+*.pem
+*.srl
+*.csr
+*.certSigningRequest
+
+# ============================================================
+# 🛠️ АРТЕФАКТЫ СБОРКИ
+# ============================================================
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.xcarchive
+dist/
+out/
+
+# ============================================================
+# 📁 СИСТЕМНЫЕ ПАПКИ (для iOS/Android)
+# ============================================================
+**/ios/Pods/
+**/ios/Podfile.lock
+**/ios/.symlinks/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/android/.gradle/
+**/android/app/.gradle/
+**/android/local.properties
+**/android/app/local.properties
+**/android/key.properties
+**/android/keystore.properties
+
+# ============================================================
+# 📁 ВРЕМЕННЫЕ ФАЙЛЫ
+# ============================================================
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

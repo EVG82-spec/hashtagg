@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\search\bloc\search_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/core/network/catalog_api_repository.dart';
 import 'package:hashtagg/core/network/dio_client.dart';
@@ -51,16 +52,13 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
   CatalogSearchParams? _lastParams;
 
   SearchBloc()
-      : _repository = CatalogApiRepository(DioClient.createDio()),
-        super(SearchInitial()) {
+    : _repository = CatalogApiRepository(DioClient.createDio()),
+      super(SearchInitial()) {
     on<SearchAds>(_onSearchAds);
     on<LoadMoreAds>(_onLoadMoreAds);
   }
 
-  Future<void> _onSearchAds(
-    SearchAds event,
-    Emitter<SearchState> emit,
-  ) async {
+  Future<void> _onSearchAds(SearchAds event, Emitter<SearchState> emit) async {
     emit(SearchLoading());
     _lastParams = event.params;
 
@@ -72,12 +70,14 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           .map((json) => FeedAd.fromJson(json))
           .toList();
 
-      emit(SearchLoaded(
-        ads: ads,
-        count: data['count'] ?? '0',
-        totalPages: data['pages'] ?? 0,
-        currentPage: event.params.page,
-      ));
+      emit(
+        SearchLoaded(
+          ads: ads,
+          count: data['count'] ?? '0',
+          totalPages: data['pages'] ?? 0,
+          currentPage: event.params.page,
+        ),
+      );
     } else {
       emit(SearchError(result.error ?? 'Failed to load ads'));
     }
@@ -121,12 +121,14 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           .map((json) => FeedAd.fromJson(json))
           .toList();
 
-      emit(SearchLoaded(
-        ads: [...currentState.ads, ...newAds],
-        count: data['count'] ?? '0',
-        totalPages: data['pages'] ?? 0,
-        currentPage: nextPage,
-      ));
+      emit(
+        SearchLoaded(
+          ads: [...currentState.ads, ...newAds],
+          count: data['count'] ?? '0',
+          totalPages: data['pages'] ?? 0,
+          currentPage: nextPage,
+        ),
+      );
     } else {
       // Возвращаем предыдущее состояние при ошибке
       emit(currentState);

@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\search\screens\city_picker_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hashtagg/core/network/geo_api_repository.dart';
@@ -67,7 +68,7 @@ class CityPickerScreen extends StatefulWidget {
 class _CityPickerScreenState extends State<CityPickerScreen> {
   final GeoApiRepository _geoApi = GeoApiRepository();
   final TextEditingController _searchController = TextEditingController();
-  
+
   List<CityModel> _cities = [];
   List<CityModel> _allCities = []; // Все города без фильтра
   bool _isLoading = true;
@@ -86,19 +87,20 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
 
   Future<void> _loadCities({String query = ''}) async {
     setState(() => _isLoading = true);
-    
+
     try {
       // Если query пустой, загружаем все города, иначе ищем по запросу
       final result = await _geoApi.searchCities(
         query: query,
         onlyCity: true,
-        allCities: query.isEmpty, // Все города только если нет поискового запроса
+        allCities:
+            query.isEmpty, // Все города только если нет поискового запроса
       );
-      
+
       if (result['status'] == true) {
         final data = result['data'] as List;
         final cities = data.map((json) => CityModel.fromJson(json)).toList();
-        
+
         setState(() {
           _allCities = cities;
           _applyCountryFilter();
@@ -112,9 +114,9 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
       print('🔴 [CityPicker] Error loading cities: $e');
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки городов: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка загрузки городов: $e')));
       }
     }
   }
@@ -123,7 +125,9 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
     if (_selectedCountry == null) {
       _cities = _allCities;
     } else {
-      _cities = _allCities.where((city) => city.country == _selectedCountry).toList();
+      _cities = _allCities
+          .where((city) => city.country == _selectedCountry)
+          .toList();
     }
   }
 
@@ -168,8 +172,10 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff151e27) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    final inputBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA);
-    
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
+
     return DefaultTabController(
       length: showTabs ? countries.length + 1 : 1,
       child: Scaffold(
@@ -204,8 +210,13 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.close,
-                            color: isDark ? Colors.white54 : const Color(0xff999999), size: 18),
+                        icon: Icon(
+                          Icons.close,
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xff999999),
+                          size: 18,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           _onSearchChanged('');
@@ -264,17 +275,14 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
     final subtitleColor = isDark ? Colors.white70 : const Color(0xff808080);
-    
+
     if (_cities.isEmpty) {
       return Center(
         child: Text(
-          _searchQuery.isEmpty 
-              ? 'Города не найдены' 
+          _searchQuery.isEmpty
+              ? 'Города не найдены'
               : 'Ничего не найдено по запросу "$_searchQuery"',
-          style: GoogleFonts.montserrat(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
+          style: GoogleFonts.montserrat(fontSize: 16, color: Colors.grey),
         ),
       );
     }
@@ -296,15 +304,25 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
               : null,
           onTap: () {
             if (widget.returnId) {
-              Navigator.pop(context, {'id': 0, 'name': 'Все города', 'declination': ''});
+              Navigator.pop(context, {
+                'id': 0,
+                'name': 'Все города',
+                'declination': '',
+              });
             } else {
               Navigator.pop(context, null);
             }
           },
         ),
-        Divider(height: 1, indent: 16, endIndent: 16, color: isDark ? Colors.white24 : null),
+        Divider(
+          height: 1,
+          indent: 16,
+          endIndent: 16,
+          color: isDark ? Colors.white24 : null,
+        ),
         ..._cities.map((city) {
-          final isSelected = widget.selectedCityId == city.id ||
+          final isSelected =
+              widget.selectedCityId == city.id ||
               widget.selectedCity == city.name;
           return Column(
             children: [

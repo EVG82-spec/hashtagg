@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\core\network\api_config.dart
 class ApiConfig {
   static const String baseUrl = 'https://hashtagg.ru';
   static const String mediaUrl = 'https://hashtagg.ru';
@@ -8,7 +9,8 @@ class ApiConfig {
   static const String reverbKey = 'isqj88lps6rcq2etmdb2';
   static const String reverbScheme = 'http';
   static const String apiKey = '3090379067';
-  static const String yandexGeocoderKey = '88617fda-cf4b-45ad-9ce2-3e2f71baf2d0';
+  static const String yandexGeocoderKey =
+      '88617fda-cf4b-45ad-9ce2-3e2f71baf2d0';
 
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);

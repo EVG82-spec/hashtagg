@@ -16,6 +16,9 @@ import 'package:hashtagg/features/shop/widgets/shop_navigation.dart';
 import 'package:hashtagg/features/shop/widgets/shop_ads_grid.dart';
 import 'package:hashtagg/features/shop/widgets/shop_status_banner.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hashtagg/shared/presentation/widgets/app_footer.dart';
+import 'package:hashtagg/shared/presentation/widgets/navigation_bar.dart';
+import 'package:hashtagg/features/shop/widgets/shop_qr_widget.dart';
 
 class ShopPublicScreen extends StatefulWidget {
   final String shopId;
@@ -131,64 +134,94 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
             print('   pages count: ${shop.pages?.length ?? 0}');
             print('   status: ${shop.status}');
 
-            // ✅ ВОЗВРАЩАЕМ КОЛОНКУ С ХЕДЕРОМ И КОНТЕНТОМ
-            return Column(
-              children: [
-                // ✅ КАСТОМНЫЙ ХЕДЕР (вместо AppBar)
-                _buildShopHeader(context, shop),
-                // ✅ КОНТЕНТ (CustomScrollView)
-                Expanded(
-                  child: CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(child: ShopBanner(shop: shop)),
-                      SliverToBoxAdapter(child: ShopStatusBanner(shop: shop)),
-                      SliverToBoxAdapter(child: ShopProfile(shop: shop)),
-                      SliverToBoxAdapter(child: ShopStats(shop: shop)),
-                      SliverToBoxAdapter(child: ShopActions(shop: shop)),
-                      SliverToBoxAdapter(
-                        child: ShopNavigation(
-                          shop: shop,
-                          isEditing: false,
-                          onPageSelected: _onPageSelected,
-                          currentPageId: _selectedPageId,
-                        ),
-                      ),
-                      if (_selectedPageId != null &&
-                          _selectedPageId != 0 &&
-                          _selectedPageContent != null)
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Text(
-                                _stripHtmlTags(_selectedPageContent!),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  height: 1.6,
-                                  color: Colors.black87,
-                                ),
+            return Scaffold(
+              backgroundColor: Colors.white,
+              body: Stack(
+                children: [
+                  // Основной контент с хедером
+                  Column(
+                    children: [
+                      // ✅ КАСТОМНЫЙ ХЕДЕР (вместо AppBar)
+                      _buildShopHeader(context, shop),
+                      // ✅ КОНТЕНТ (CustomScrollView)
+                      Expanded(
+                        child: CustomScrollView(
+                          slivers: [
+                            SliverToBoxAdapter(child: ShopBanner(shop: shop)),
+                            SliverToBoxAdapter(
+                              child: ShopStatusBanner(shop: shop),
+                            ),
+                            SliverToBoxAdapter(child: ShopProfile(shop: shop)),
+                            SliverToBoxAdapter(child: ShopStats(shop: shop)),
+                            SliverToBoxAdapter(child: ShopActions(shop: shop)),
+                            SliverToBoxAdapter(
+                              child: ShopNavigation(
+                                shop: shop,
+                                isEditing: false,
+                                onPageSelected: _onPageSelected,
+                                currentPageId: _selectedPageId,
                               ),
                             ),
-                          ),
+                            if (_selectedPageId != null &&
+                                _selectedPageId != 0 &&
+                                _selectedPageContent != null)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Container(
+                                    padding: EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _stripHtmlTags(_selectedPageContent!),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        height: 1.6,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (_selectedPageId == null || _selectedPageId == 0)
+                              SliverPadding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                sliver: ShopAdsGrid(ads: ads),
+                              ),
+                            const SliverToBoxAdapter(
+                              child: Padding(
+                                padding: EdgeInsets.only(top: 16, bottom: 16),
+                                child: AppFooter(),
+                              ),
+                            ),
+                            SliverToBoxAdapter(child: ShopQrWidget(shop: shop)),
+                          ],
                         ),
-                      if (_selectedPageId == null || _selectedPageId == 0)
-                        SliverPadding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                          sliver: ShopAdsGrid(ads: ads),
-                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  // ✅ НИЖНЯЯ НАВИГАЦИЯ
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: const MainNavigationBar(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 

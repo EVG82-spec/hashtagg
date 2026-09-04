@@ -1,13 +1,24 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/shared/domain/entities/user.dart';
 import 'package:hive/hive.dart';
+import 'package:hashtagg/core/network/subscription_api_repository.dart';
+import 'package:hashtagg/core/network/dio_client.dart';
 
+// ============================================================
+// EVENTS
+// ============================================================
 abstract class SubscriptionsEvent {}
 
 class AddSubscription extends SubscriptionsEvent {
-  final int id;
+  final int userId; // 👈 ID владельца магазина
+  final int shopId; // 👈 ID магазина
   final User user;
-  AddSubscription(this.id, this.user);
+
+  AddSubscription({
+    required this.userId,
+    required this.shopId,
+    required this.user,
+  });
 }
 
 class RemoveSubscription extends SubscriptionsEvent {
@@ -17,27 +28,55 @@ class RemoveSubscription extends SubscriptionsEvent {
 
 class LoadSubscriptions extends SubscriptionsEvent {}
 
+class SyncSubscriptions extends SubscriptionsEvent {} // ✅ НОВОЕ СОБЫТИЕ
+
+// ============================================================
+// STATE
+// ============================================================
 class SubscriptionsState {
   final Set<int> ids;
   final Map<int, User> users;
+  final bool isLoading;
 
-  SubscriptionsState(this.ids, this.users);
+  SubscriptionsState(this.ids, this.users, {this.isLoading = false});
 
   List<User> get subscribedUsers =>
       ids.map((id) => users[id]).whereType<User>().toList();
+
+  SubscriptionsState copyWith({
+    Set<int>? ids,
+    Map<int, User>? users,
+    bool? isLoading,
+  }) {
+    return SubscriptionsState(
+      ids ?? this.ids,
+      users ?? this.users,
+      isLoading: isLoading ?? this.isLoading,
+    );
+  }
 }
 
+// ============================================================
+// BLOC
+// ============================================================
 class SubscriptionsBloc extends Bloc<SubscriptionsEvent, SubscriptionsState> {
   late Box _subscriptionsBox;
+  final SubscriptionApiRepository _apiRepository;
 
-  SubscriptionsBloc() : super(SubscriptionsState({}, {})) {
+  SubscriptionsBloc()
+    : _apiRepository = SubscriptionApiRepository(),
+      super(SubscriptionsState({}, {})) {
     on<LoadSubscriptions>(_onLoadSubscriptions);
     on<AddSubscription>(_onAddSubscription);
     on<RemoveSubscription>(_onRemoveSubscription);
+    on<SyncSubscriptions>(_onSyncSubscriptions);
 
     add(LoadSubscriptions());
   }
 
+  // ============================================================
+  // HELPERS: Сериализация
+  // ============================================================
   Map<String, dynamic> _userToMap(User user) {
     return {
       'id': user.id,
@@ -81,60 +120,177 @@ class SubscriptionsBloc extends Bloc<SubscriptionsEvent, SubscriptionsState> {
     );
   }
 
+  // ============================================================
+  // HANDLERS
+  // ============================================================
+
+  /// 1. Загрузка подписок (Hive + сервер)
   Future<void> _onLoadSubscriptions(
     LoadSubscriptions event,
     Emitter<SubscriptionsState> emit,
   ) async {
-    _subscriptionsBox = await Hive.openBox('subscriptions');
+    emit(state.copyWith(isLoading: true));
 
-    final List<int>? storedIds = (_subscriptionsBox.get('items') as List?)
-        ?.cast<int>();
+    try {
+      _subscriptionsBox = await Hive.openBox('subscriptions');
 
-    final dynamic rawUsers = _subscriptionsBox.get('users');
-    final Map<int, User> usersMap = {};
+      // 📥 ЧИТАЕМ ИЗ HIVE
+      final List<int>? storedIds = (_subscriptionsBox.get('items') as List?)
+          ?.cast<int>();
 
-    if (rawUsers != null) {
-      final map = Map<dynamic, dynamic>.from(rawUsers as Map);
-      for (final entry in map.entries) {
-        final id = entry.key as int;
-        usersMap[id] = _mapToUser(entry.value);
+      final dynamic rawUsers = _subscriptionsBox.get('users');
+      final Map<int, User> usersMap = {};
+
+      if (rawUsers != null) {
+        final map = Map<dynamic, dynamic>.from(rawUsers as Map);
+        for (final entry in map.entries) {
+          final id = entry.key as int;
+          usersMap[id] = _mapToUser(entry.value);
+        }
       }
-    }
 
-    emit(SubscriptionsState(storedIds?.toSet() ?? {}, usersMap));
+      // 🌐 ЗАГРУЖАЕМ С СЕРВЕРА
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final userId = userData?['id'] as int? ?? 0;
+
+      List<int> serverIds = [];
+      if (userId > 0) {
+        serverIds = await _apiRepository.getUserSubscriptions(userId);
+        print('✅ [SubscriptionsBloc] Server subscriptions: $serverIds');
+      }
+
+      // ➕ ОБЪЕДИНЯЕМ (серверные + локальные)
+      final allIds = <int>{};
+      if (storedIds != null) {
+        allIds.addAll(storedIds);
+      }
+      allIds.addAll(serverIds);
+
+      // 🔄 ДОБАВЛЯЕМ НЕДОСТАЮЩИХ ПОЛЬЗОВАТЕЛЕЙ ИЗ HIVE
+      if (storedIds != null) {
+        for (final id in storedIds) {
+          if (!usersMap.containsKey(id) && rawUsers != null) {
+            final map = Map<dynamic, dynamic>.from(rawUsers as Map);
+            if (map.containsKey(id)) {
+              usersMap[id] = _mapToUser(map[id]);
+            }
+          }
+        }
+      }
+
+      emit(SubscriptionsState(allIds, usersMap, isLoading: false));
+    } catch (e) {
+      print('❌ [SubscriptionsBloc] Load error: $e');
+      emit(state.copyWith(isLoading: false));
+    }
   }
 
+  /// 2. Добавление подписки
   Future<void> _onAddSubscription(
     AddSubscription event,
     Emitter<SubscriptionsState> emit,
   ) async {
-    final newIds = Set<int>.from(state.ids)..add(event.id);
-    final newUsers = Map<int, User>.from(state.users)..[event.id] = event.user;
+    print('📥 [SubscriptionsBloc] _onAddSubscription START');
+    print('   userId: ${event.userId}'); // ✅ event.userId
+    print('   shopId: ${event.shopId}'); // ✅ event.shopId
+    print('   user: ${event.user.name}');
 
-    final serialized = {
-      for (final entry in newUsers.entries) entry.key: _userToMap(entry.value),
-    };
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final currentUserId = userData?['id'] as int? ?? 0;
+      final token = box.get('auth_token');
 
-    await _subscriptionsBox.put('items', newIds.toList());
-    await _subscriptionsBox.put('users', serialized);
+      print('📤 [SubscriptionsBloc] currentUserId: $currentUserId');
 
-    emit(SubscriptionsState(newIds, newUsers));
+      if (currentUserId > 0 && token != null) {
+        print('📤 [SubscriptionsBloc] Calling API: subscribeShop');
+        final success = await _apiRepository.subscribeShop(
+          userId: event.userId, // ✅ ВЛАДЕЛЕЦ МАГАЗИНА
+          shopId: event.shopId, // ✅ ID МАГАЗИНА
+        );
+        print('📤 [SubscriptionsBloc] API response: $success');
+
+        if (!success) {
+          print('❌ [SubscriptionsBloc] Failed to subscribe on server');
+          return;
+        }
+      } else {
+        print('❌ [SubscriptionsBloc] No userId or token');
+        return;
+      }
+
+      // 💾 СОХРАНЯЕМ В HIVE
+      print('💾 [SubscriptionsBloc] Saving to Hive...');
+      final newIds = Set<int>.from(state.ids)
+        ..add(event.userId); // ✅ event.userId
+      final newUsers = Map<int, User>.from(state.users)
+        ..[event.userId] = event.user; // ✅ event.userId
+
+      final serialized = {
+        for (final entry in newUsers.entries)
+          entry.key: _userToMap(entry.value),
+      };
+
+      await _subscriptionsBox.put('items', newIds.toList());
+      await _subscriptionsBox.put('users', serialized);
+
+      emit(SubscriptionsState(newIds, newUsers));
+    } catch (e) {
+      print('❌ [SubscriptionsBloc] Add error: $e');
+    }
   }
 
+  /// 3. Удаление подписки
   Future<void> _onRemoveSubscription(
     RemoveSubscription event,
     Emitter<SubscriptionsState> emit,
   ) async {
-    final newIds = Set<int>.from(state.ids)..remove(event.id);
-    final newUsers = Map<int, User>.from(state.users)..remove(event.id);
+    try {
+      // 📤 ОТПРАВЛЯЕМ НА СЕРВЕР
+      final box = Hive.box('user');
+      final userData = box.get('user');
+      final userId = userData?['id'] as int? ?? 0;
+      final token = box.get('auth_token');
 
-    final serialized = {
-      for (final entry in newUsers.entries) entry.key: _userToMap(entry.value),
-    };
+      if (userId > 0 && token != null) {
+        final success = await _apiRepository.unsubscribeShop(
+          userId: userId,
+          shopId: event.id,
+        );
 
-    await _subscriptionsBox.put('items', newIds.toList());
-    await _subscriptionsBox.put('users', serialized);
+        if (!success) {
+          print('❌ [SubscriptionsBloc] Failed to unsubscribe on server');
+          // ❌ НЕ УДАЛЯЕМ ИЗ HIVE, ЕСЛИ СЕРВЕР ОТВЕТИЛ ОШИБКОЙ
+          return;
+        }
+      }
 
-    emit(SubscriptionsState(newIds, newUsers));
+      // 💾 УДАЛЯЕМ ИЗ HIVE
+      final newIds = Set<int>.from(state.ids)..remove(event.id);
+      final newUsers = Map<int, User>.from(state.users)..remove(event.id);
+
+      final serialized = {
+        for (final entry in newUsers.entries)
+          entry.key: _userToMap(entry.value),
+      };
+
+      await _subscriptionsBox.put('items', newIds.toList());
+      await _subscriptionsBox.put('users', serialized);
+
+      emit(SubscriptionsState(newIds, newUsers));
+    } catch (e) {
+      print('❌ [SubscriptionsBloc] Remove error: $e');
+    }
+  }
+
+  /// 4. Синхронизация с сервером
+  Future<void> _onSyncSubscriptions(
+    SyncSubscriptions event,
+    Emitter<SubscriptionsState> emit,
+  ) async {
+    print('🔄 [SubscriptionsBloc] Syncing with server...');
+    add(LoadSubscriptions());
   }
 }

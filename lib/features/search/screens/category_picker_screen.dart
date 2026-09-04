@@ -1,3 +1,5 @@
+//G:\hashtagg_app\lib\features\search\screens\category_picker_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hashtagg/core/network/categories_api_repository.dart';
@@ -30,7 +32,7 @@ class CategoryModel {
       breadcrumb: json['breadcrumb'] ?? '',
     );
   }
-  
+
   static int _parseInt(dynamic value) {
     if (value is int) return value;
     if (value is String) return int.tryParse(value) ?? 0;
@@ -58,7 +60,7 @@ class CategoryPickerScreen extends StatefulWidget {
 
 class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
   final CategoriesApiRepository _categoriesApi = CategoriesApiRepository();
-  
+
   List<CategoryModel> _categories = [];
   CategoryModel? _selectedTop;
   bool _isLoading = true;
@@ -94,7 +96,9 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
       if (result['status'] == true) {
         final data = result['data'] as List? ?? [];
         setState(() {
-          _searchResults = List<Map<String, dynamic>>.from(data); // ← приведение
+          _searchResults = List<Map<String, dynamic>>.from(
+            data,
+          ); // ← приведение
           _isSearching = false;
         });
       } else {
@@ -114,22 +118,28 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
 
   Future<void> _loadCategories({int parentId = 0}) async {
     setState(() => _isLoading = true);
-    
+
     try {
       final result = await _categoriesApi.getCategories(parentId: parentId);
-      
+
       if (result['status'] == true) {
         final data = result['data'] as List;
         setState(() {
-          _categories = data.map((json) => CategoryModel.fromJson(json)).toList();
+          _categories = data
+              .map((json) => CategoryModel.fromJson(json))
+              .toList();
           _currentParentId = parentId;
           _currentTitle = result['title'] ?? 'Категории';
           _isLoading = false;
         });
-        print('✅ [CategoryPicker] Loaded ${_categories.length} categories for parent: $parentId');
-        
+        print(
+          '✅ [CategoryPicker] Loaded ${_categories.length} categories for parent: $parentId',
+        );
+
         // При первой загрузке проверяем, нужно ли открыть подкатегорию
-        if (!_initialLoadDone && widget.selectedCategoryId != null && parentId == 0) {
+        if (!_initialLoadDone &&
+            widget.selectedCategoryId != null &&
+            parentId == 0) {
           _initialLoadDone = true;
           await _navigateToSelectedCategory();
         }
@@ -160,7 +170,7 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
         breadcrumb: '',
       ),
     );
-    
+
     if (selectedCat.id == 0) {
       // Категория не найдена на верхнем уровне, ищем в подкатегориях
       for (final cat in _categories) {
@@ -169,19 +179,26 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
           final result = await _categoriesApi.getCategories(parentId: cat.id);
           if (result['status'] == true) {
             final subData = result['data'] as List;
-            final subCategories = subData.map((json) => CategoryModel.fromJson(json)).toList();
-            
+            final subCategories = subData
+                .map((json) => CategoryModel.fromJson(json))
+                .toList();
+
             // Проверяем, есть ли выбранная категория в подкатегориях
-            final foundInSub = subCategories.any((subCat) => subCat.id == widget.selectedCategoryId);
+            final foundInSub = subCategories.any(
+              (subCat) => subCat.id == widget.selectedCategoryId,
+            );
             if (foundInSub) {
               // Открываем эту подкатегорию
-              print('🔵 [CategoryPicker] Found selected category in subcategory of: ${cat.name}');
+              print(
+                '🔵 [CategoryPicker] Found selected category in subcategory of: ${cat.name}',
+              );
               setState(() {
                 _selectedTop = cat;
                 _categories = subCategories;
                 _currentParentId = cat.id;
                 _currentTitle = result['title'] ?? cat.name;
-                _selectedCategoryParentId = cat.id; // Сохраняем родителя выбранной категории
+                _selectedCategoryParentId =
+                    cat.id; // Сохраняем родителя выбранной категории
               });
               return;
             }
@@ -225,7 +242,9 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff151e27) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    final inputBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF0F4F8);
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF0F4F8);
 
     return PopScope(
       canPop: _selectedTop == null,
@@ -259,10 +278,7 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
-                style: GoogleFonts.montserrat(
-                  fontSize: 15,
-                  color: textColor,
-                ),
+                style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
                 decoration: InputDecoration(
                   hintText: 'Умный поиск...',
                   hintStyle: GoogleFonts.montserrat(
@@ -285,18 +301,20 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                    icon: Icon(
-                      Icons.close,
-                      color: isDark ? Colors.white54 : const Color(0xff999999),
-                    ),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                        _searchResults = [];
-                      });
-                    },
-                  )
+                          icon: Icon(
+                            Icons.close,
+                            color: isDark
+                                ? Colors.white54
+                                : const Color(0xff999999),
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                              _searchResults = [];
+                            });
+                          },
+                        )
                       : null,
                 ),
               ),
@@ -305,8 +323,8 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
         ),
         body: _isLoading
             ? const Center(
-          child: CircularProgressIndicator(color: Color(0xff917dfa)),
-        )
+                child: CircularProgressIndicator(color: Color(0xff917dfa)),
+              )
             : _searchQuery.isNotEmpty
             ? _buildSearchResults()
             : _buildCategoryGrid(),
@@ -316,18 +334,19 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
 
   Widget _buildCategoryGrid() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA);
-    final selectedCardBgColor = isDark ? const Color(0xff917dfa).withOpacity(0.3) : const Color(0xFFEDE9FF);
+    final cardBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
+    final selectedCardBgColor = isDark
+        ? const Color(0xff917dfa).withOpacity(0.3)
+        : const Color(0xFFEDE9FF);
     final textColor = isDark ? Colors.white : Colors.black;
-    
+
     if (_categories.isEmpty) {
       return Center(
         child: Text(
           'Категории не найдены',
-          style: GoogleFonts.montserrat(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
+          style: GoogleFonts.montserrat(fontSize: 16, color: Colors.grey),
         ),
       );
     }
@@ -372,7 +391,10 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
                   ),
                   Align(
                     alignment: Alignment.bottomRight,
-                    child: Icon(Icons.arrow_forward, color: isDark ? Colors.white70 : Colors.black54),
+                    child: Icon(
+                      Icons.arrow_forward,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                 ],
               ),
@@ -382,20 +404,20 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
 
         final catIndex = _currentParentId == 0 ? index - 1 : index;
         final cat = _categories[catIndex];
-        
+
         // Подсвечиваем только если:
         // 1. ID совпадает И
         // 2. Мы находимся на том же уровне, где была выбрана категория
-        final isSelected = widget.selectedCategoryId == cat.id &&
-            (_selectedCategoryParentId == null || _selectedCategoryParentId == _currentParentId);
+        final isSelected =
+            widget.selectedCategoryId == cat.id &&
+            (_selectedCategoryParentId == null ||
+                _selectedCategoryParentId == _currentParentId);
 
         return GestureDetector(
           onTap: () => _selectCategory(cat),
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected
-                  ? selectedCardBgColor
-                  : cardBgColor,
+              color: isSelected ? selectedCardBgColor : cardBgColor,
               borderRadius: BorderRadius.circular(12),
               border: isSelected
                   ? Border.all(color: const Color(0xff917dfa), width: 1.5)
@@ -428,13 +450,19 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
                             borderRadius: BorderRadius.circular(8),
                             child: Builder(
                               builder: (context) {
-                                final imageUrl = ApiConfig.replaceMediaUrl(cat.imageUrl);
-                                print('🔵 [CategoryPicker] Loading image: $imageUrl');
+                                final imageUrl = ApiConfig.replaceMediaUrl(
+                                  cat.imageUrl,
+                                );
+                                print(
+                                  '🔵 [CategoryPicker] Loading image: $imageUrl',
+                                );
                                 return Image.network(
                                   imageUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, error, ___) {
-                                    print('🔴 [CategoryPicker] Image load error: $error');
+                                    print(
+                                      '🔴 [CategoryPicker] Image load error: $error',
+                                    );
                                     return const Icon(
                                       Icons.category,
                                       color: Color(0xff917dfa),
@@ -462,10 +490,8 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  List<Map<String, dynamic>> _searchResults = [];  // ← ИСПРАВЛЕНО
+  List<Map<String, dynamic>> _searchResults = []; // ← ИСПРАВЛЕНО
   bool _isSearching = false;
-
-
 
   Widget _buildSearchResults() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -481,10 +507,7 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
       return Center(
         child: Text(
           'Ничего не найдено',
-          style: GoogleFonts.montserrat(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
+          style: GoogleFonts.montserrat(fontSize: 16, color: Colors.grey),
         ),
       );
     }
@@ -512,20 +535,17 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
           ),
           subtitle: chain.isNotEmpty
               ? Text(
-            chain,
-            style: GoogleFonts.montserrat(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          )
+                  chain,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                )
               : null,
           onTap: () {
             _selectSearchResult(id, name);
           },
-          trailing: Icon(
-            Icons.chevron_right,
-            color: Colors.grey,
-          ),
+          trailing: Icon(Icons.chevron_right, color: Colors.grey),
         );
       },
     );
@@ -539,10 +559,4 @@ class _CategoryPickerScreenState extends State<CategoryPickerScreen> {
       Navigator.pop(context, name);
     }
   }
-
-
-
-
-
-
 }

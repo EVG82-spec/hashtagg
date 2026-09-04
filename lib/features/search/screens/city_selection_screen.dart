@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\search\screens\city_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,27 +23,27 @@ class CitySelectionScreen extends StatefulWidget {
 
 class _CitySelectionScreenState extends State<CitySelectionScreen> {
   final GeoApiRepository _geoApi = GeoApiRepository();
-  
+
   // Уровень 1: Регионы
   List<Map<String, dynamic>> _regions = [];
   bool _isLoadingRegions = true;
-  
+
   // Уровень 2: Города
   List<Map<String, dynamic>> _cities = [];
   bool _isLoadingCities = false;
   int? _selectedRegionId;
   String? _selectedRegionName;
-  
+
   // Выбранный город
   int? _selectedCityId;
   String? _selectedCityName;
   String? _selectedDeclination;
   double? _selectedLat;
   double? _selectedLon;
-  
+
   // Поиск
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Текущий уровень: 'regions' или 'cities'
   String _currentLevel = 'regions';
 
@@ -56,10 +57,10 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
 
   Future<void> _loadRegions() async {
     setState(() => _isLoadingRegions = true);
-    
+
     try {
       final result = await _geoApi.getRegions();
-      
+
       if (result['status'] == true) {
         final data = result['data'] as List;
         setState(() {
@@ -80,10 +81,10 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
       _isLoadingCities = true;
       _currentLevel = 'cities';
     });
-    
+
     try {
       final result = await _geoApi.getCitiesByRegion(regionId: regionId);
-      
+
       if (result['status'] == true) {
         final data = result['data'] as List;
         setState(() {
@@ -106,14 +107,14 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
       _selectedRegionId = null;
       _selectedRegionName = 'Все города';
     });
-    
+
     try {
       final result = await _geoApi.searchCities(
         query: '',
         onlyCity: true,
         allCities: true,
       );
-      
+
       if (result['status'] == true) {
         final data = result['data'] as List;
         setState(() {
@@ -160,7 +161,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff151e27) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -190,7 +191,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
       ),
-      body: _currentLevel == 'regions' 
+      body: _currentLevel == 'regions'
           ? _buildRegionsList()
           : _buildCitiesList(),
     );
@@ -199,21 +200,23 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
   Widget _buildRegionsList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
-    final inputBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA);
-    
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
+
     if (_isLoadingRegions) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xff917dfa)),
       );
     }
-    
+
     // Фильтруем регионы по поиску
     final filteredRegions = _regions.where((region) {
       final regionName = (region['region_name'] ?? '').toString().toLowerCase();
       final query = _searchController.text.toLowerCase();
       return query.isEmpty || regionName.contains(query);
     }).toList();
-    
+
     return Column(
       children: [
         // Поле поиска
@@ -224,10 +227,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
             onChanged: (value) {
               setState(() {}); // Обновляем список при вводе
             },
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              color: textColor,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 14, color: textColor),
             decoration: InputDecoration(
               filled: true,
               fillColor: inputBgColor,
@@ -245,7 +245,9 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                   ? IconButton(
                       icon: Icon(
                         Icons.close,
-                        color: isDark ? Colors.white54 : const Color(0xff999999),
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xff999999),
                         size: 18,
                       ),
                       onPressed: () {
@@ -265,7 +267,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
             ),
           ),
         ),
-        
+
         // Список регионов
         Expanded(
           child: ListView.builder(
@@ -275,7 +277,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
               final regionId = region['region_id'];
               final regionName = region['region_name'] ?? '';
               final isAllCities = regionId == 'all';
-              
+
               return ListTile(
                 title: Text(
                   regionName,
@@ -291,10 +293,12 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                 ),
                 onTap: () {
                   setState(() {
-                    _selectedRegionId = isAllCities ? null : _parseInt(regionId);
+                    _selectedRegionId = isAllCities
+                        ? null
+                        : _parseInt(regionId);
                     _selectedRegionName = regionName;
                   });
-                  
+
                   if (isAllCities) {
                     _loadAllCities();
                   } else {
@@ -312,21 +316,25 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
   Widget _buildCitiesList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
-    final inputBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA);
-    
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
+
     if (_isLoadingCities) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xff917dfa)),
       );
     }
-    
+
     // Фильтруем города по поиску
     final filteredCities = _cities.where((city) {
-      final cityName = (city['city_name'] ?? city['geo_name'] ?? '').toString().toLowerCase();
+      final cityName = (city['city_name'] ?? city['geo_name'] ?? '')
+          .toString()
+          .toLowerCase();
       final query = _searchController.text.toLowerCase();
       return query.isEmpty || cityName.contains(query);
     }).toList();
-    
+
     return Column(
       children: [
         // Поле поиска
@@ -337,10 +345,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
             onChanged: (value) {
               setState(() {}); // Обновляем список при вводе
             },
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              color: textColor,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 14, color: textColor),
             decoration: InputDecoration(
               filled: true,
               fillColor: inputBgColor,
@@ -358,7 +363,9 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                   ? IconButton(
                       icon: Icon(
                         Icons.close,
-                        color: isDark ? Colors.white54 : const Color(0xff999999),
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xff999999),
                         size: 18,
                       ),
                       onPressed: () {
@@ -378,7 +385,7 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
             ),
           ),
         ),
-        
+
         // Список городов
         Expanded(
           child: filteredCities.isEmpty
@@ -396,13 +403,14 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                   itemBuilder: (context, index) {
                     final city = filteredCities[index];
                     final cityId = _parseInt(city['city_id']);
-                    final cityName = city['city_name'] ?? city['geo_name'] ?? '';
+                    final cityName =
+                        city['city_name'] ?? city['geo_name'] ?? '';
                     final declination = city['declination'] ?? '';
                     final region = city['region_name'] ?? '';
                     final country = city['country_name'] ?? '';
                     final lat = _parseDouble(city['lat']);
                     final lon = _parseDouble(city['lon']);
-                    
+
                     return ListTile(
                       title: Text(
                         cityName,
@@ -417,7 +425,9 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                               '$region, $country',
                               style: GoogleFonts.montserrat(
                                 fontSize: 13,
-                                color: isDark ? Colors.white70 : const Color(0xff808080),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xff808080),
                               ),
                             )
                           : null,

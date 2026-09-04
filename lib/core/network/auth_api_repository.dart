@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\core\network\auth_api_repository.dart
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
@@ -9,13 +10,9 @@ class ApiResult<T> {
   final T? data;
   final String? error;
 
-  ApiResult.success(this.data)
-      : success = true,
-        error = null;
+  ApiResult.success(this.data) : success = true, error = null;
 
-  ApiResult.failure(this.error)
-      : success = false,
-        data = null;
+  ApiResult.failure(this.error) : success = false, data = null;
 }
 
 /// Репозиторий для работы с API авторизации
@@ -25,16 +22,18 @@ class AuthApiRepository {
 
   AuthApiRepository(Dio dio) : _dio = dio {
     // Создаем отдельный Dio для GET запросов без заголовков
-    _dioGet = Dio(BaseOptions(
-      baseUrl: ApiConfig.baseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      responseType: ResponseType.json,
-    ));
+    _dioGet = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        connectTimeout: ApiConfig.connectTimeout,
+        receiveTimeout: ApiConfig.receiveTimeout,
+        responseType: ResponseType.json,
+      ),
+    );
   }
 
   /// Авторизация по логину и паролю
-  /// 
+  ///
   /// Возвращает токен при успехе или ошибку при неудаче
   Future<ApiResult<Map<String, dynamic>>> login({
     required String login,
@@ -71,12 +70,11 @@ class AuthApiRepository {
           return ApiResult.failure('Токен не получен от сервера');
         }
 
-        _log('✅ Успешная авторизация. Token: ${_maskToken(token)}, UserID: $userId');
-        
-        return ApiResult.success({
-          'token': token,
-          'user_id': userId,
-        });
+        _log(
+          '✅ Успешная авторизация. Token: ${_maskToken(token)}, UserID: $userId',
+        );
+
+        return ApiResult.success({'token': token, 'user_id': userId});
       } else {
         final errors = responseData['errors'];
         String errorMessage;
@@ -152,9 +150,7 @@ class AuthApiRepository {
   }
 
   /// Восстановление пароля
-  Future<ApiResult<void>> recovery({
-    required String login,
-  }) async {
+  Future<ApiResult<void>> recovery({required String login}) async {
     try {
       _log('🔄 Восстановление пароля для: $login');
 
@@ -237,12 +233,11 @@ class AuthApiRepository {
         final token = responseData['token'];
         final userId = responseData['id'];
 
-        _log('✅ Успешная регистрация. Token: ${_maskToken(token)}, UserID: $userId');
-        
-        return ApiResult.success({
-          'token': token,
-          'user_id': userId,
-        });
+        _log(
+          '✅ Успешная регистрация. Token: ${_maskToken(token)}, UserID: $userId',
+        );
+
+        return ApiResult.success({'token': token, 'user_id': userId});
       } else {
         final errors = responseData['errors'];
         String errorMessage;
@@ -338,7 +333,9 @@ class AuthApiRepository {
         _log('✅ Данные профиля получены: ${responseData['display_name']}');
         return ApiResult.success(responseData);
       } else {
-        final error = responseData['error']?.toString() ?? 'Не удалось получить данные профиля';
+        final error =
+            responseData['error']?.toString() ??
+            'Не удалось получить данные профиля';
         _log('❌ Ошибка получения профиля: $error');
         return ApiResult.failure(error);
       }
@@ -362,10 +359,7 @@ class AuthApiRepository {
 
       final response = await _dio.post(
         '/systems/api/profile/auth/logout.php',
-        queryParameters: {
-          'token': token,
-          'user_id': userId,
-        },
+        queryParameters: {'token': token, 'user_id': userId},
       );
 
       // Парсим JSON если пришел как строка
@@ -396,7 +390,7 @@ class AuthApiRepository {
   }
 
   /// Отправка кода верификации для регистрации
-  /// 
+  ///
   /// Отправляет код подтверждения на email или телефон
   Future<ApiResult<Map<String, dynamic>>> sendVerificationCode({
     required String login,
@@ -455,7 +449,7 @@ class AuthApiRepository {
   }
 
   /// Регистрация с кодом подтверждения
-  /// 
+  ///
   /// Создает аккаунт после ввода кода верификации
   Future<ApiResult<Map<String, dynamic>>> registerWithCode({
     required String login,
@@ -490,13 +484,14 @@ class AuthApiRepository {
         final token = responseData['token'];
         final userId = responseData['id'];
 
-        _log('✅ Успешная регистрация. Token: ${_maskToken(token)}, UserID: $userId');
-        _log('🔍 Debug: token type=${token.runtimeType}, userId type=${userId.runtimeType}');
-        
-        return ApiResult.success({
-          'token': token,
-          'user_id': userId,
-        });
+        _log(
+          '✅ Успешная регистрация. Token: ${_maskToken(token)}, UserID: $userId',
+        );
+        _log(
+          '🔍 Debug: token type=${token.runtimeType}, userId type=${userId.runtimeType}',
+        );
+
+        return ApiResult.success({'token': token, 'user_id': userId});
       } else {
         final errors = responseData['errors'];
         String errorMessage;
@@ -521,7 +516,7 @@ class AuthApiRepository {
   }
 
   /// Очистка предыдущих кодов верификации
-  /// 
+  ///
   /// Удаляет старые коды перед отправкой нового
   Future<ApiResult<void>> clearVerificationCodes({
     required String login,
@@ -578,7 +573,7 @@ class AuthApiRepository {
   }
 
   /// OAuth авторизация через социальные сети
-  /// 
+  ///
   /// Принимает authorization code от провайдера и возвращает токен приложения
   Future<ApiResult<Map<String, dynamic>>> oauthLogin({
     required String provider,
@@ -617,12 +612,11 @@ class AuthApiRepository {
           return ApiResult.failure('Токен не получен от сервера');
         }
 
-        _log('✅ Успешная OAuth авторизация. Token: ${_maskToken(token)}, UserID: $userId');
-        
-        return ApiResult.success({
-          'token': token,
-          'user_id': userId,
-        });
+        _log(
+          '✅ Успешная OAuth авторизация. Token: ${_maskToken(token)}, UserID: $userId',
+        );
+
+        return ApiResult.success({'token': token, 'user_id': userId});
       } else {
         final errors = responseData['errors'];
         String errorMessage;

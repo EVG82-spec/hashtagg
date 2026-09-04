@@ -17,6 +17,7 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
     on<UpdateShopPage>(_onUpdateShopPage);
     on<DeleteShopPage>(_onDeleteShopPage);
     on<UploadShopImage>(_onUploadShopImage);
+    on<DeleteShop>(_onDeleteShop);
   }
 
   Future<void> _onLoadShop(LoadShop event, Emitter<ShopState> emit) async {
@@ -307,4 +308,26 @@ class ShopBloc extends Bloc<ShopEvent, ShopState> {
       emit(ShopError(e.toString()));
     }
   }
+
+  Future<void> _onDeleteShop(DeleteShop event,
+      Emitter<ShopState> emit,) async {
+    try {
+      emit(ShopLoading());
+
+      final response = await _repository.deleteShop(
+        userId: event.userId,
+        token: event.token,
+        shopId: event.shopId,
+      );
+
+      if (response['status'] == true) {
+        emit(ShopDeleted());
+      } else {
+        emit(ShopError(response['error'] ?? 'Ошибка удаления магазина'));
+      }
+    } catch (e) {
+      emit(ShopError(e.toString()));
+    }
+  }
 }
+

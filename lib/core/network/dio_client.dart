@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\core\network\dio_client.dart
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -20,33 +21,37 @@ class DioClient {
     final baseUrl = isOAuth ? ApiConfig.oauthUrl : ApiConfig.baseUrl;
 
     if (kDebugMode) {
-      debugPrint('[DioClient] 🌐 Creating Dio with baseUrl: $baseUrl (OAuth mode: $isOAuth)');
+      debugPrint(
+        '[DioClient] 🌐 Creating Dio with baseUrl: $baseUrl (OAuth mode: $isOAuth)',
+      );
     }
 
-    final dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      responseType: ResponseType.json,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: ApiConfig.connectTimeout,
+        receiveTimeout: ApiConfig.receiveTimeout,
+        responseType: ResponseType.json,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      ),
+    );
 
     dio.interceptors.add(AuthInterceptor());
     dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
 
     // ===== ЛОГГЕР =====
-    dio.interceptors.add(LogInterceptor(
-      request: true,
-      requestBody: true,
-      responseBody: true,
-      error: true,
-      logPrint: (object) {
-        // Печатаем в консоль
-        print('🌐 $object');
-      },
-    ));
+    dio.interceptors.add(
+      LogInterceptor(
+        request: true,
+        requestBody: true,
+        responseBody: true,
+        error: true,
+        logPrint: (object) {
+          // Печатаем в консоль
+          print('🌐 $object');
+        },
+      ),
+    );
 
     return dio;
   }

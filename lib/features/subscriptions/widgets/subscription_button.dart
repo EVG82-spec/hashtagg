@@ -21,7 +21,14 @@ class SubscriptionButton extends StatelessWidget {
             if (isSubscribed) {
               bloc.add(RemoveSubscription(user.id));
             } else {
-              bloc.add(AddSubscription(user.id, user));
+              // ✅ ИСПОЛЬЗУЙ ИМЕНОВАННЫЙ КОНСТРУКТОР
+              bloc.add(
+                AddSubscription(
+                  userId: user.id,
+                  shopId: 0, // 👈 Для обычных пользователей shopId = 0
+                  user: user,
+                ),
+              );
             }
           },
           child: Container(

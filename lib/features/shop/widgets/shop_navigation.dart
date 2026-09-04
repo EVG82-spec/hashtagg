@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hashtagg/features/shop/screens/shop_page_edit_screen.dart';
 import 'package:hashtagg/features/shop/widgets/shop_lock_widget.dart';
 
 class ShopNavigation extends StatelessWidget {
@@ -11,7 +12,7 @@ class ShopNavigation extends StatelessWidget {
   final bool isEditing;
   final VoidCallback? onAddPage;
   final Function(int)? onPageSelected;
-  final Function(int)? onPageEdit; // 👈 ДОБАВЛЯЕМ
+  final Function(int)? onPageEdit;
   final int? currentPageId;
 
   const ShopNavigation({
@@ -27,51 +28,51 @@ class ShopNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pages = shop.pages ?? [];
+    final isOwner = shop.isOwner;
 
-    // lib/features/shop/widgets/shop_navigation.dart
+    // ✅ БЕЗОПАСНОЕ ПОЛУЧЕНИЕ ТАРИФА (ОДИН РАЗ!)
+    final tariff = context.select<ShopPublicBloc, UserTariff?>((bloc) {
+      final state = bloc.state;
+      if (state is ShopPublicLoaded) {
+        return state.tariff;
+      }
+      return null;
+    });
 
-// Получаем тариф из контекста
-final tariff = context.select(
-  (ShopPublicBloc bloc) => (bloc.state as ShopPublicLoaded?)?.tariff
-);
-
-final hasShopPage = tariff?.hasService('shop_page') ?? false;
-final isDraft = shop.status == 4;
-final isModeration = shop.status == 0;
-final isOwner = shop.isOwner;
-
-// ============================================================
-// СТРАНИЦЫ
-// ============================================================
-
-if (pages.isEmpty) {
-  // Если нет страниц и есть услуга - показываем кнопку "Добавить"
-  if (isEditing && isOwner && hasShopPage) {
-    return _buildAddPageButton();
-  }
-  // Если нет услуги и черновик - замочек
-  if (isEditing && isOwner && (isModeration || isDraft) && !hasShopPage) {
-    return ShopLockWidget(
-      message: '🔒 Страницы доступны в тарифах «Максимум» и «Безлимит»',
-    );
-  }
-  return const SizedBox.shrink();
-}
-
-// Если есть страницы, но нет услуги - показываем только для владельца в режиме черновика
-if (!hasShopPage && isEditing && isOwner && (isModeration || isDraft)) {
-  return ShopLockWidget(
-    message: '🔒 Страницы доступны в тарифах «Максимум» и «Безлимит»',
-  );
-}
+    final hasShopPage = tariff?.hasService('shop_page') ?? false;
+    final isDraft = shop.status == 4;
+    final isModeration = shop.status == 0;
 
     print('🔍 [ShopNavigation] build()');
     print('   pages count: ${pages.length}');
     print('   isEditing: $isEditing');
     print('   currentPageId: $currentPageId');
+    print('   hasShopPage: $hasShopPage');
 
+    // ============================================================
+    // НЕТ СТРАНИЦ
+    // ============================================================
+    if (pages.isEmpty) {
+      // Если есть услуга - показываем кнопку "Добавить страницу"
+      if (isEditing && isOwner && hasShopPage && onAddPage != null) {
+        return _buildAddPageButton();
+      }
+
+      // Если нет услуги и черновик/модерация - замочек
+      if (isEditing && isOwner && (isDraft || isModeration) && !hasShopPage) {
+        return ShopLockWidget(
+          message: '🔒 Страницы доступны в тарифах «Максимум» и «Безлимит»',
+        );
+      }
+
+      return const SizedBox.shrink();
+    }
+
+    // ============================================================
+    // ЕСТЬ СТРАНИЦЫ
+    // ============================================================
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
@@ -91,16 +92,16 @@ if (!hasShopPage && isEditing && isOwner && (isModeration || isDraft)) {
                   onTap: () {
                     print('🏠 [ShopNavigation] Главная');
                     if (onPageSelected != null) {
-                      onPageSelected!(0); // 0 = главная
+                      onPageSelected!(0);
                     }
                   },
                 ),
-                SizedBox(width: 6),
-                // Страницы
+                const SizedBox(width: 6),
+                // Страницы с кнопками редактирования/удаления
                 if (pages.isNotEmpty)
                   ...pages.map(
                     (page) => Padding(
-                      padding: EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.only(right: 6),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -116,21 +117,55 @@ if (!hasShopPage && isEditing && isOwner && (isModeration || isDraft)) {
                               }
                             },
                           ),
-                          // ✅ КАРАНДАШИК ДЛЯ РЕДАКТИРОВАНИЯ (только в режиме редактора)
-                          if (isEditing && onPageEdit != null)
-                            GestureDetector(
-                              onTap: () {
-                                print(
-                                  '✏️ [ShopNavigation] Edit page: ${page.id}',
-                                );
-                                onPageEdit!(page.id);
-                              },
-                              child: Padding(
-                                padding: EdgeInsets.only(left: 4),
-                                child: Icon(
-                                  Icons.edit,
-                                  size: 16,
-                                  color: Color(0xFF8956FF),
+                          // ✅ Кнопка редактирования страницы (только в режиме редактора)
+                          if (isEditing && isOwner && hasShopPage)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 2),
+                              child: GestureDetector(
+                                onTap: () {
+                                  print(
+                                    '✏️ [ShopNavigation] Edit page: ${page.id}',
+                                  );
+                                  _openPageEdit(context, page);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF8956FF,
+                                    ).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.edit,
+                                    size: 14,
+                                    color: const Color(0xFF8956FF),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // ✅ Кнопка удаления страницы (только в режиме редактора)
+                          if (isEditing && isOwner && hasShopPage)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 2),
+                              child: GestureDetector(
+                                onTap: () {
+                                  print(
+                                    '🗑️ [ShopNavigation] Delete page: ${page.id}',
+                                  );
+                                  _showDeletePageDialog(context, page);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 14,
+                                    color: Colors.red,
+                                  ),
                                 ),
                               ),
                             ),
@@ -141,30 +176,16 @@ if (!hasShopPage && isEditing && isOwner && (isModeration || isDraft)) {
               ],
             ),
           ),
-
-          // Кнопка "Добавить страницу" (только в режиме редактирования)
-          if (isEditing && onAddPage != null)
+          // Кнопка "Добавить страницу" (если есть услуга)
+          if (isEditing && isOwner && hasShopPage && onAddPage != null)
+            _buildAddPageButton(),
+          // Замочек (если нет услуги и черновик/модерация)
+          if (isEditing && isOwner && (isDraft || isModeration) && !hasShopPage)
             Padding(
-              padding: EdgeInsets.only(top: 12, left: 4, right: 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: onAddPage,
-                  icon: Icon(Icons.add, color: Colors.white, size: 20),
-                  label: Text(
-                    'Добавить страницу',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF8956FF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    minimumSize: Size(double.infinity, 48),
-                  ),
-                ),
+              padding: const EdgeInsets.only(top: 8),
+              child: ShopLockWidget(
+                message:
+                    '🔒 Страницы доступны в тарифах «Максимум» и «Безлимит»',
               ),
             ),
         ],
@@ -172,33 +193,87 @@ if (!hasShopPage && isEditing && isOwner && (isModeration || isDraft)) {
     );
   }
 
+  // ✅ КНОПКА "ДОБАВИТЬ СТРАНИЦУ"
   Widget _buildAddPageButton() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onAddPage,
-        icon: const Icon(Icons.add, size: 18),
-        label: const Text('Добавить страницу'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF8956FF),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, left: 4, right: 4),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: onAddPage,
+          icon: const Icon(Icons.add, size: 18, color: Colors.white),
+          label: const Text(
+            'Добавить страницу',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF8956FF),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            minimumSize: const Size(double.infinity, 48),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  // ✅ ОТКРЫТИЕ РЕДАКТОРА СТРАНИЦЫ
+  void _openPageEdit(BuildContext context, ShopPage page) {
+    final shopId = shop.id;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ShopPageEditScreen(shopId: shopId, page: page),
+      ),
+    ).then((result) {
+      if (result == true) {
+        print('✅ [ShopNavigation] Page updated, reloading...');
+        // TODO: Обновить данные магазина
+      }
+    });
+  }
+
+  // ✅ ДИАЛОГ УДАЛЕНИЯ СТРАНИЦЫ
+  void _showDeletePageDialog(BuildContext context, ShopPage page) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Удалить страницу?'),
+        content: Text('Страница "${page.name}" будет удалена безвозвратно'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _deletePage(context, page);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ УДАЛЕНИЕ СТРАНИЦЫ
+  void _deletePage(BuildContext context, ShopPage page) {
+    print('🗑️ [ShopNavigation] Deleting page: ${page.id}');
+
+    // TODO: Вызвать DeleteShopPage через BLoC
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Страница удалена'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
 }
-
-
-
-}
-
-
 
 class _NavButton extends StatelessWidget {
   final String title;

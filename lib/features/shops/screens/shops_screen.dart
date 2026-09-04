@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hashtagg/core/network/shops_api_repository.dart';
 import 'package:hashtagg/core/network/api_config.dart';
 import 'package:hashtagg/features/shop/screens/shop_webview_screen.dart';
+import 'package:hive/hive.dart';
 
 class ShopsScreen extends StatefulWidget {
   const ShopsScreen({super.key});
@@ -15,12 +16,29 @@ class ShopsScreen extends StatefulWidget {
 class _ShopsScreenState extends State<ShopsScreen> {
   final ShopsApiRepository _shopsApi = ShopsApiRepository();
   final ScrollController _scrollController = ScrollController();
-  
+
   List<Map<String, dynamic>> _shops = [];
   bool _isLoading = false;
   bool _hasMore = true;
   int _currentPage = 1;
   int _totalPages = 1;
+  int _extractCountAds(dynamic countAds) {
+    if (countAds is int) return countAds;
+    if (countAds is String) {
+      final match = RegExp(r'\d+').firstMatch(countAds);
+      if (match != null) {
+        return int.tryParse(match.group(0)!) ?? 0;
+      }
+    }
+    return 0;
+  }
+
+  String _pluralize(int count) {
+    if (count % 10 == 1 && count % 100 != 11) return 'объявление';
+    if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100))
+      return 'объявления';
+    return 'объявлений';
+  }
 
   @override
   void initState() {
@@ -36,7 +54,8 @@ class _ShopsScreenState extends State<ShopsScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
       if (!_isLoading && _hasMore) {
         _loadMore();
       }
@@ -44,21 +63,42 @@ class _ShopsScreenState extends State<ShopsScreen> {
   }
 
   Future<void> _loadShops() async {
+    print('🔴🔴🔴 [ShopsScreen] _loadShops() CALLED!');
     if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
     try {
+      print('🔴🔴🔴 [ShopsScreen] Calling _shopsApi.getShops()...');
       final result = await _shopsApi.getShops(page: 1);
+      print('🔴🔴🔴 [ShopsScreen] Result: $result');
 
       if (result['status'] == true && mounted) {
         final data = result['data'];
+        final allShops = List<Map<String, dynamic>>.from(data['data'] ?? []);
+
+        // ✅ ФИЛЬТР: НЕ ПОКАЗЫВАТЬ ПУСТЫЕ МАГАЗИНЫ ДЛЯ ГОСТЕЙ
+        final box = await Hive.openBox('user');
+        final userData = box.get('user');
+        final userId = userData is Map ? userData['id'] : null;
+
+        final filteredShops = userId != null
+            ? allShops // Владелец видит все свои магазины
+            : allShops.where((shop) {
+                final count = _extractCountAds(shop['count_ads']);
+                return count > 0;
+              }).toList();
+
         setState(() {
-          _shops = List<Map<String, dynamic>>.from(data['data'] ?? []);
+          _shops = filteredShops;
           _totalPages = data['pages'] ?? 1;
           _currentPage = 1;
           _hasMore = _currentPage < _totalPages;
         });
+
+        print(
+          '✅ [ShopsScreen] Filtered: ${_shops.length} shops (of ${allShops.length})',
+        );
       }
     } catch (e) {
       print('🔴 [ShopsScreen] Error loading shops: $e');
@@ -81,7 +121,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
       if (result['status'] == true && mounted) {
         final data = result['data'];
         final newShops = List<Map<String, dynamic>>.from(data['data'] ?? []);
-        
+
         setState(() {
           _shops.addAll(newShops);
           _currentPage = nextPage;
@@ -102,11 +142,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: _shops.isEmpty && _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: Color(0xff917dfa),
-              ),
-            )
+          ? Center(child: CircularProgressIndicator(color: Color(0xff917dfa)))
           : RefreshIndicator(
               onRefresh: _loadShops,
               color: Color(0xff917dfa),
@@ -147,42 +183,44 @@ class _ShopCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = shop['title'] ?? 'Магазин';
     final desc = shop['desc'] ?? '';
-    final logo = ApiConfig.replaceMediaUrl(
-      shop['logo'] as String? ?? ''
-    );
+    final logo = ApiConfig.replaceMediaUrl(shop['logo'] as String? ?? '');
     final countAds = shop['count_ads'] ?? '0 объявлений';
-    
+
     // Получаем превью изображений из ads_images
     final adsImages = shop['ads_images'] as List? ?? [];
-    final previewImages = adsImages.take(3).map((img) {
-      if (img is String) {
-        return ApiConfig.replaceMediaUrl(img);
-      }
-      return '';
-    }).where((url) => url.isNotEmpty).toList();
-    
+    final previewImages = adsImages
+        .take(3)
+        .map((img) {
+          if (img is String) {
+            return ApiConfig.replaceMediaUrl(img);
+          }
+          return '';
+        })
+        .where((url) => url.isNotEmpty)
+        .toList();
+
     final countAdsInt = shop['count_ads_int'] ?? 0;
     final remainingCount = countAdsInt > 3 ? countAdsInt - 3 : 0;
 
     return GestureDetector(
-        onTap: () {
-          final shopId = shop['id']?.toString();
-          if (shopId != null) {
-            // Открываем WebView с мобильной версией магазина
-            final shopHash = shop['id_hash'] ?? shop['hash'] ?? shopId;
-            final url = 'https://hashtagg.ru/shop/$shopHash';
+      onTap: () {
+        final shopId = shop['id']?.toString();
+        if (shopId != null) {
+          // Открываем WebView с мобильной версией магазина
+          final shopHash = shop['id_hash'] ?? shop['hash'] ?? shopId;
+          final url = 'https://hashtagg.ru/shop/$shopHash';
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ShopWebViewScreen(
-                  url: url,
-                  title: shop['title'] ?? 'Магазин',
-                ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ShopWebViewScreen(
+                url: url,
+                title: shop['title'] ?? 'Магазин',
               ),
-            );
-          }
-        },
+            ),
+          );
+        }
+      },
       child: Container(
         margin: EdgeInsets.only(bottom: 16),
         padding: EdgeInsets.all(16),
@@ -242,9 +280,9 @@ class _ShopCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: 12),
-            
+
             // Превью изображений
             if (previewImages.isNotEmpty)
               SizedBox(
@@ -258,9 +296,9 @@ class _ShopCard extends StatelessWidget {
                         child: _buildImage(previewImages[0]),
                       ),
                     ),
-                    
+
                     SizedBox(width: 4),
-                    
+
                     // Правая колонка с двумя изображениями
                     Expanded(
                       child: Column(
@@ -273,11 +311,11 @@ class _ShopCard extends StatelessWidget {
                                 child: _buildImage(previewImages[1]),
                               ),
                             ),
-                          
+
                           // Если нет второго изображения, показываем пустое место
                           if (previewImages.length == 1)
                             Expanded(child: SizedBox()),
-                          
+
                           if (previewImages.length > 2) ...[
                             SizedBox(height: 4),
                             // Третье изображение с оверлеем
@@ -293,7 +331,9 @@ class _ShopCard extends StatelessWidget {
                                       child: Container(
                                         decoration: BoxDecoration(
                                           color: Colors.black54,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Center(
                                           child: Text(
@@ -321,7 +361,7 @@ class _ShopCard extends StatelessWidget {
                   ],
                 ),
               ),
-            
+
             if (previewImages.isEmpty)
               Container(
                 height: 120,
@@ -333,9 +373,9 @@ class _ShopCard extends StatelessWidget {
                   child: Icon(Icons.image, size: 48, color: Colors.grey[500]),
                 ),
               ),
-            
+
             SizedBox(height: 12),
-            
+
             // Количество объявлений
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -365,7 +405,7 @@ class _ShopCard extends StatelessWidget {
         child: Icon(Icons.image, color: Colors.grey[500]),
       );
     }
-    
+
     return Image.network(
       imageUrl,
       fit: BoxFit.cover,

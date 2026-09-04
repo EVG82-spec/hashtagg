@@ -7,15 +7,18 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    print('🔑 [AuthInterceptor] Intercepting request: ${options.uri}');
     String? token;
     bool isOAuth = false;
     try {
       var box = Hive.box('user');
       token = box.get('auth_token') as String?;
       isOAuth = box.get('is_oauth', defaultValue: false) as bool;
-      
+
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] 🔑 Reading token from Hive: ${token != null ? _maskToken(token) : 'NULL'}');
+        debugPrint(
+          '[AuthInterceptor] 🔑 Reading token from Hive: ${token != null ? _maskToken(token) : 'NULL'}',
+        );
         debugPrint('[AuthInterceptor] 🔐 OAuth mode: $isOAuth');
       }
     } catch (e) {
@@ -24,24 +27,35 @@ class AuthInterceptor extends Interceptor {
       }
     }
 
+    print(
+      '🔑 [AuthInterceptor] Token: ${token != null ? '${token.substring(0, 10)}...' : 'null'}',
+    );
+
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
+      print('🔑 [AuthInterceptor] Added Authorization header');
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] ✅ Set Authorization header: Bearer ${_maskToken(token)}');
+        debugPrint(
+          '[AuthInterceptor] ✅ Set Authorization header: Bearer ${_maskToken(token)}',
+        );
       }
     } else {
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] ⚠️ No token found, skipping Authorization header');
+        debugPrint(
+          '[AuthInterceptor] ⚠️ No token found, skipping Authorization header',
+        );
       }
     }
-    
+
     handler.next(options);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (kDebugMode) {
-      debugPrint('[AuthInterceptor] Ошибка запроса: ${err.requestOptions.path} - ${err.message}');
+      debugPrint(
+        '[AuthInterceptor] Ошибка запроса: ${err.requestOptions.path} - ${err.message}',
+      );
     }
 
     if (err.response?.statusCode == 401) {
@@ -50,7 +64,7 @@ class AuthInterceptor extends Interceptor {
       }
       await _clearAuthData();
     }
-    
+
     handler.next(err);
   }
 

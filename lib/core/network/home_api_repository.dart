@@ -144,19 +144,18 @@ class FeedAd {
       user: user,
       markers: {},
       vip: json['ads_vip'] == 1 || json['ads_vip'] == true,
-      latitude: json['ads_latitude'] != null && json['ads_latitude'].toString().isNotEmpty
+      latitude:
+          json['ads_latitude'] != null &&
+              json['ads_latitude'].toString().isNotEmpty
           ? double.tryParse(json['ads_latitude'].toString())
           : null,
-      longitude: json['ads_longitude'] != null && json['ads_longitude'].toString().isNotEmpty
+      longitude:
+          json['ads_longitude'] != null &&
+              json['ads_longitude'].toString().isNotEmpty
           ? double.tryParse(json['ads_longitude'].toString())
           : null,
     );
   }
-
-
-
-
-
 
   static Map<String, MarkerInfo?> _parseMarkers(dynamic markersJson) {
     if (markersJson is! Map) return {};
@@ -170,7 +169,7 @@ class FeedAd {
     });
     return map;
   }
-  
+
   static double? _parseDouble(dynamic value) {
     if (value == null) return null;
     if (value is double) return value;
@@ -190,10 +189,7 @@ class MarkerInfo {
   MarkerInfo({required this.name, required this.iconUrl});
 
   factory MarkerInfo.fromJson(Map<String, dynamic> json) {
-    return MarkerInfo(
-      name: json['name'] ?? '',
-      iconUrl: json['icon'] ?? '',
-    );
+    return MarkerInfo(name: json['name'] ?? '', iconUrl: json['icon'] ?? '');
   }
 }
 
@@ -216,9 +212,8 @@ class FeedUser {
   factory FeedUser.fromJson(Map<String, dynamic> json) {
     return FeedUser(
       id: HomeApiRepository._parseIntFromJson(json['id']),
-      name: (json['name'] as String?) ??
-          (json['display_name'] as String?) ??
-          '',
+      name:
+          (json['name'] as String?) ?? (json['display_name'] as String?) ?? '',
       avatar: json['avatar'] as String?,
       isCompany: json['isCompany'] as bool?,
       companyName: json['companyName'] as String?,
@@ -278,7 +273,9 @@ class AdsFeedData {
       count: (json['count'] as String?) ?? '0',
       pages: HomeApiRepository._parseIntFromJson(json['pages']),
       advertisement: json['advertisement'] != null
-          ? List<FeedAd>.from(json['advertisement'].map((x) => FeedAd.fromJson(x)))
+          ? List<FeedAd>.from(
+              json['advertisement'].map((x) => FeedAd.fromJson(x)),
+            )
           : null,
       hasNext: json['has_next'] == true || json['has_next'] == 1,
       pageSize: HomeApiRepository._parseIntFromJson(json['page_size'] ?? 8),
@@ -299,10 +296,7 @@ class HomeApiRepository {
 
       final response = await _dio.post(
         '/systems/api/controller.php',
-        queryParameters: {
-          'key': ApiConfig.apiKey,
-          'route': 'home/getData',
-        },
+        queryParameters: {'key': ApiConfig.apiKey, 'route': 'home/getData'},
       );
 
       final responseData = response.data is String
@@ -378,7 +372,9 @@ class HomeApiRepository {
 
       if (responseData['data'] != null) {
         final feedData = AdsFeedData.fromJson(responseData);
-        _log('✅ Лента получена: ${feedData.ads.length} объявлений, hasNext: ${feedData.hasNext}');
+        _log(
+          '✅ Лента получена: ${feedData.ads.length} объявлений, hasNext: ${feedData.hasNext}',
+        );
         return ApiResult.success(feedData);
       } else {
         _log('❌ Ошибка: лента не получена');
@@ -490,7 +486,7 @@ class HomeApiRepository {
           final banners = (data['data'] as List)
               .map((item) => Map<String, dynamic>.from(item))
               .toList();
-          
+
           _log('✅ Loaded ${banners.length} info banners');
           return banners;
         }
@@ -511,11 +507,7 @@ class ApiResult<T> {
   final T? data;
   final String? error;
 
-  ApiResult.success(this.data)
-      : success = true,
-        error = null;
+  ApiResult.success(this.data) : success = true, error = null;
 
-  ApiResult.failure(this.error)
-      : success = false,
-        data = null;
+  ApiResult.failure(this.error) : success = false, data = null;
 }

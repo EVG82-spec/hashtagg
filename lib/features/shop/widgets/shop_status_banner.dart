@@ -9,30 +9,87 @@ class ShopStatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ❌ НЕ ПОКАЗЫВАЕМ СТАТУС ВЛАДЕЛЬЦУ
-    if (shop.isOwner) {
-      return const SizedBox.shrink();
-    }
-
-    // ❌ НЕ ПОКАЗЫВАЕМ СТАТУС "ЧЕРНОВИК" (3) — ЭТО ДЕФОЛТНЫЙ МАГАЗИН
+    // ❌ НЕ ПОКАЗЫВАЕМ СТАТУС "ЧЕРНОВИК" (3)
     if (shop.status == 3) {
       return const SizedBox.shrink();
     }
 
-    // ❌ НЕ ПОКАЗЫВАЕМ СТАТУС "НА МОДЕРАЦИИ" (0)
+    // ⏳ СТАТУС 0 - НА МОДЕРАЦИИ (ПОКАЗЫВАЕМ ВСЕМ)
     if (shop.status == 0) {
-      return const SizedBox.shrink();
+      return _buildModerationBanner();
     }
 
-    // Статус 2 - отклонен (показываем)
+    // ❌ СТАТУС 2 - ОТКЛОНЁН
     if (shop.status == 2) {
       return _buildRejectedBanner();
     }
 
-    // Статус 1 - активен (ничего не показываем)
+    // СТАТУС 1 - АКТИВЕН (ничего не показываем)
     return const SizedBox.shrink();
   }
 
+  // ============================================================
+  // БАННЕР "НА МОДЕРАЦИИ"
+  // ============================================================
+  Widget _buildModerationBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF3C7),
+        border: Border.all(color: const Color(0xFFF59E0B)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Text('⏳', style: TextStyle(fontSize: 28)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Магазин на модерации',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF92400E),
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'После проверки магазин станет доступен для всех пользователей.',
+                  style: TextStyle(
+                    color: Color(0xFF78350F),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'На проверке',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // БАННЕР "ОТКЛОНЁН"
+  // ============================================================
   Widget _buildRejectedBanner() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

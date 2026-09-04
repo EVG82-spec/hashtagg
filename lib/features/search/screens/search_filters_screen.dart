@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\search\screens\search_filters_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -50,7 +51,9 @@ class SearchFilters {
       cityLat: cityLat == _sentinel ? this.cityLat : cityLat as double?,
       cityLon: cityLon == _sentinel ? this.cityLon : cityLon as double?,
       category: category == _sentinel ? this.category : category as String?,
-      categoryId: categoryId == _sentinel ? this.categoryId : categoryId as int?,
+      categoryId: categoryId == _sentinel
+          ? this.categoryId
+          : categoryId as int?,
       options: options ?? this.options,
       priceFrom: priceFrom == _sentinel ? this.priceFrom : priceFrom as int?,
       priceTo: priceTo == _sentinel ? this.priceTo : priceTo as int?,
@@ -72,7 +75,7 @@ class SearchFiltersScreen extends StatefulWidget {
 
 class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
   final FiltersApiRepository _filtersApi = FiltersApiRepository();
-  
+
   late int? _cityId;
   late String? _city;
   late double? _cityLat;
@@ -83,7 +86,7 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
   late Map<String, List<String>> _selectedFilters;
   late TextEditingController _priceFromController;
   late TextEditingController _priceToController;
-  
+
   bool _isLoading = true;
   Map<String, dynamic>? _filterData;
 
@@ -109,22 +112,24 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
 
   Future<void> _loadFilterOptions() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      print('🔵 [SearchFilters] Loading filter options for category: ${_categoryId ?? 0}');
+      print(
+        '🔵 [SearchFilters] Loading filter options for category: ${_categoryId ?? 0}',
+      );
       print('🔵 [SearchFilters] Current filters: $_selectedFilters');
-      
+
       final result = await _filtersApi.getFilterOptions(
         categoryId: _categoryId ?? 0,
         filters: _selectedFilters.isNotEmpty ? _selectedFilters : null,
       );
-      
+
       if (result['status'] == true) {
         setState(() {
           _filterData = result['data'];
           _isLoading = false;
         });
-        
+
         final filtersCount = (_filterData?['filters'] as List?)?.length ?? 0;
         print('✅ [SearchFilters] Filter options loaded: $filtersCount filters');
       } else {
@@ -208,7 +213,7 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: isDark ? const Color(0xff233040) : Colors.white,
@@ -217,7 +222,10 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+            icon: Icon(
+              Icons.arrow_back,
+              color: isDark ? Colors.white : Colors.black,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
@@ -230,7 +238,9 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
           ),
           systemOverlayStyle: SystemUiOverlayStyle(
             statusBarColor: isDark ? const Color(0xff233040) : Colors.white,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
         ),
         body: const Center(
@@ -250,7 +260,10 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -304,10 +317,15 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                           ),
                           Switch(
                             value: _options[entry.key] ?? false,
-                            onChanged: (v) => setState(() => _options[entry.key] = v),
+                            onChanged: (v) =>
+                                setState(() => _options[entry.key] = v),
                             activeColor: const Color(0xff917dfa),
-                            inactiveThumbColor: isDark ? Colors.white70 : Colors.grey,
-                            inactiveTrackColor: isDark ? const Color(0xff233040) : Colors.grey[300],
+                            inactiveThumbColor: isDark
+                                ? Colors.white70
+                                : Colors.grey,
+                            inactiveTrackColor: isDark
+                                ? const Color(0xff233040)
+                                : Colors.grey[300],
                           ),
                         ],
                       ),
@@ -319,7 +337,8 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                   if (filters != null && filters.isNotEmpty) ...[
                     for (var filter in filters) ...[
                       Text(
-                        filter['name'] + (filter['required'] == true ? ' *' : ''),
+                        filter['name'] +
+                            (filter['required'] == true ? ' *' : ''),
                         style: GoogleFonts.montserrat(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -327,20 +346,28 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      
+
                       if (filter['view'] == 'select') ...[
                         // Dropdown
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xff151e27) : const Color(0xFFF5F7FA),
+                            color: isDark
+                                ? const Color(0xff151e27)
+                                : const Color(0xFFF5F7FA),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: _selectedFilters[filter['id'].toString()]?.firstOrNull,
-                              dropdownColor: isDark ? const Color(0xff233040) : Colors.white,
+                              value: _selectedFilters[filter['id'].toString()]
+                                  ?.firstOrNull,
+                              dropdownColor: isDark
+                                  ? const Color(0xff233040)
+                                  : Colors.white,
                               hint: Row(
                                 children: [
                                   Expanded(
@@ -361,38 +388,45 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                                 ],
                               ),
                               isExpanded: true,
-                              items: (filter['items'] as List).map<DropdownMenuItem<String>>((item) {
-                                return DropdownMenuItem<String>(
-                                  value: item['id'].toString(),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          item['name'],
-                                          style: GoogleFonts.montserrat(
-                                            fontSize: 15,
-                                            color: isDark ? Colors.white : Colors.black,
+                              items: (filter['items'] as List)
+                                  .map<DropdownMenuItem<String>>((item) {
+                                    return DropdownMenuItem<String>(
+                                      value: item['id'].toString(),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              item['name'],
+                                              style: GoogleFonts.montserrat(
+                                                fontSize: 15,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          if (item['podfilter'] == true)
+                                            const Icon(
+                                              Icons.arrow_forward_ios,
+                                              size: 12,
+                                              color: Color(0xff917dfa),
+                                            ),
+                                        ],
                                       ),
-                                      if (item['podfilter'] == true)
-                                        const Icon(
-                                          Icons.arrow_forward_ios,
-                                          size: 12,
-                                          color: Color(0xff917dfa),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                                    );
+                                  })
+                                  .toList(),
                               onChanged: (value) {
                                 if (value != null) {
                                   setState(() {
-                                    _selectedFilters[filter['id'].toString()] = [value];
+                                    _selectedFilters[filter['id'].toString()] =
+                                        [value];
                                   });
                                   // Перезагружаем фильтры если есть подфильтры
                                   if (filter['podfilter'] == true) {
-                                    print('🔵 [SearchFilters] Reloading filters for subfilters');
+                                    print(
+                                      '🔵 [SearchFilters] Reloading filters for subfilters',
+                                    );
                                     // Показываем индикатор загрузки
                                     showDialog(
                                       context: context,
@@ -412,7 +446,8 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                             ),
                           ),
                         ),
-                        if (filter['podfilter'] == true && _selectedFilters[filter['id'].toString()] == null)
+                        if (filter['podfilter'] == true &&
+                            _selectedFilters[filter['id'].toString()] == null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
@@ -440,11 +475,15 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: (filter['items'] as List).map<Widget>((item) {
+                          children: (filter['items'] as List).map<Widget>((
+                            item,
+                          ) {
                             final filterId = filter['id'].toString();
                             final itemId = item['id'].toString();
-                            final isSelected = _selectedFilters[filterId]?.contains(itemId) ?? false;
-                            
+                            final isSelected =
+                                _selectedFilters[filterId]?.contains(itemId) ??
+                                false;
+
                             return GestureDetector(
                               onTap: () {
                                 setState(() {
@@ -474,7 +513,9 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                                   style: GoogleFonts.montserrat(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
-                                    color: isSelected ? Colors.white : Colors.black87,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black87,
                                   ),
                                 ),
                               ),
@@ -485,11 +526,16 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                         // Text input
                         TextField(
                           controller: TextEditingController(
-                            text: _selectedFilters[filter['id'].toString()]?.firstOrNull ?? '',
+                            text:
+                                _selectedFilters[filter['id'].toString()]
+                                    ?.firstOrNull ??
+                                '',
                           ),
                           onChanged: (value) {
                             setState(() {
-                              _selectedFilters[filter['id'].toString()] = [value];
+                              _selectedFilters[filter['id'].toString()] = [
+                                value,
+                              ];
                             });
                           },
                           style: GoogleFonts.montserrat(fontSize: 15),
@@ -511,7 +557,7 @@ class _SearchFiltersScreenState extends State<SearchFiltersScreen> {
                           ),
                         ),
                       ],
-                      
+
                       const SizedBox(height: 20),
                     ],
                   ],
@@ -593,7 +639,7 @@ class _SelectorTile extends StatelessWidget {
   final bool isSecondary; // Для второстепенного цвета
 
   const _SelectorTile({
-    required this.label, 
+    required this.label,
     required this.onTap,
     this.isSecondary = false,
   });
@@ -601,10 +647,10 @@ class _SelectorTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark 
+    final bgColor = isDark
         ? (isSecondary ? const Color(0xff233040) : const Color(0xff151e27))
         : const Color(0xFFF5F7FA);
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -645,7 +691,7 @@ class _PriceField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,

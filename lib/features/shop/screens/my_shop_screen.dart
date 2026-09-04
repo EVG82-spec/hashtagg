@@ -42,11 +42,13 @@ class _MyShopScreenState extends State<MyShopScreen> {
 
       // Загружаем данные магазина по ID пользователя
       // API будет искать магазин где clients_shops_id_user = userId
-      context.read<ShopBloc>().add(LoadShop(
-            userId: user.id,
-            token: user.token ?? '',
-            shopId: user.id, // Передаем userId, но API должен искать по id_user
-          ));
+      context.read<ShopBloc>().add(
+        LoadShop(
+          userId: user.id,
+          token: user.token ?? '',
+          shopId: user.id, // Передаем userId, но API должен искать по id_user
+        ),
+      );
     }
   }
 
@@ -63,7 +65,10 @@ class _MyShopScreenState extends State<MyShopScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -76,15 +81,20 @@ class _MyShopScreenState extends State<MyShopScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.bar_chart, color: isDark ? Colors.white : Colors.black),
+            icon: Icon(
+              Icons.bar_chart,
+              color: isDark ? Colors.white : Colors.black,
+            ),
             onPressed: () {
               final authState = context.read<AuthBloc>().state;
               if (authState.user != null) {
-                context.read<ShopBloc>().add(LoadShop(
-                      userId: authState.user!.id,
-                      token: authState.user!.token ?? '',
-                      shopId: authState.user!.id,
-                    ));
+                context.read<ShopBloc>().add(
+                  LoadShop(
+                    userId: authState.user!.id,
+                    token: authState.user!.token ?? '',
+                    shopId: authState.user!.id,
+                  ),
+                );
               }
             },
             tooltip: 'Обновить',
@@ -104,9 +114,9 @@ class _MyShopScreenState extends State<MyShopScreen> {
     return BlocConsumer<ShopBloc, ShopState>(
       listener: (context, state) {
         if (state is ShopError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         } else if (state is ShopCreated) {
           // Перезагружаем магазин после создания
           _loadShop();
@@ -114,7 +124,9 @@ class _MyShopScreenState extends State<MyShopScreen> {
       },
       builder: (context, state) {
         if (state is ShopLoading) {
-          return Center(child: CircularProgressIndicator(color: Color(0xff917dfa)));
+          return Center(
+            child: CircularProgressIndicator(color: Color(0xff917dfa)),
+          );
         }
 
         if (state is ShopNotFound) {
@@ -125,7 +137,9 @@ class _MyShopScreenState extends State<MyShopScreen> {
           return _buildShopView(context, state.shop, user, isDark);
         }
 
-        return Center(child: CircularProgressIndicator(color: Color(0xff917dfa)));
+        return Center(
+          child: CircularProgressIndicator(color: Color(0xff917dfa)),
+        );
       },
     );
   }
@@ -137,11 +151,7 @@ class _MyShopScreenState extends State<MyShopScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.lock_outline,
-              size: 100,
-              color: Colors.grey,
-            ),
+            Icon(Icons.lock_outline, size: 100, color: Colors.grey),
             SizedBox(height: 20),
             Text(
               'Доступ ограничен',
@@ -155,10 +165,7 @@ class _MyShopScreenState extends State<MyShopScreen> {
             Text(
               ShopAccessChecker.getAccessDeniedMessage(),
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
             ),
             SizedBox(height: 30),
             ElevatedButton(
@@ -195,11 +202,7 @@ class _MyShopScreenState extends State<MyShopScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.store_outlined,
-              size: 100,
-              color: Color(0xff917dfa),
-            ),
+            Icon(Icons.store_outlined, size: 100, color: Color(0xff917dfa)),
             SizedBox(height: 20),
             Text(
               'У вас еще нет магазина',
@@ -213,18 +216,14 @@ class _MyShopScreenState extends State<MyShopScreen> {
             Text(
               'Создайте свой магазин и начните продавать',
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
             ),
             SizedBox(height: 30),
             ElevatedButton(
               onPressed: () {
-                context.read<ShopBloc>().add(CreateShop(
-                      userId: user.id,
-                      token: user.token ?? '',
-                    ));
+                context.read<ShopBloc>().add(
+                  CreateShop(userId: user.id, token: user.token ?? ''),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xff917dfa),
@@ -294,15 +293,16 @@ class _MyShopScreenState extends State<MyShopScreen> {
                     icon: Icons.link,
                     label: 'Ссылки',
                     onPressed: () async {
-                      final result = await Navigator.of(context, rootNavigator: true).push(
-                        createSwipeableRoute(
-                          builder: (_) => ShopSettingsScreen(
-                            shopId: shop.id,
-                            initialLinks: shop.links ?? [],
-                          ),
-                        ),
-                      );
-                      
+                      final result =
+                          await Navigator.of(context, rootNavigator: true).push(
+                            createSwipeableRoute(
+                              builder: (_) => ShopSettingsScreen(
+                                shopId: shop.id,
+                                initialLinks: shop.links ?? [],
+                              ),
+                            ),
+                          );
+
                       if (result == true && context.mounted) {
                         _loadShop();
                       }
@@ -321,24 +321,25 @@ class _MyShopScreenState extends State<MyShopScreen> {
                   _SectionHeader(title: 'Слайдеры', isDark: isDark),
                   TextButton(
                     onPressed: () async {
-                      final result = await Navigator.of(context, rootNavigator: true).push(
-                        createSwipeableRoute(
-                          builder: (_) => ShopSlidersScreen(
-                            shopId: shop.id,
-                            shopTitle: shop.title,
-                            shopDescription: shop.description,
-                            themeCategoryId: shop.themeCategoryId,
-                            initialSliders: shop.sliders!,
-                          ),
-                        ),
-                      );
-                      
+                      final result =
+                          await Navigator.of(context, rootNavigator: true).push(
+                            createSwipeableRoute(
+                              builder: (_) => ShopSlidersScreen(
+                                shopId: shop.id,
+                                shopTitle: shop.title,
+                                shopDescription: shop.description,
+                                themeCategoryId: shop.themeCategoryId,
+                                initialSliders: shop.sliders!,
+                              ),
+                            ),
+                          );
+
                       if (result == true && context.mounted) {
                         _loadShop();
                       }
                     },
                     child: Text(
-                      'Управление',
+                      'Управление1',
                       style: GoogleFonts.montserrat(
                         fontSize: 14,
                         color: Color(0xff917dfa),
@@ -365,15 +366,16 @@ class _MyShopScreenState extends State<MyShopScreen> {
                   _SectionHeader(title: 'Страницы', isDark: isDark),
                   TextButton(
                     onPressed: () async {
-                      final result = await Navigator.of(context, rootNavigator: true).push(
-                        createSwipeableRoute(
-                          builder: (_) => ShopPagesScreen(
-                            shopId: shop.id,
-                            initialPages: shop.pages!,
-                          ),
-                        ),
-                      );
-                      
+                      final result =
+                          await Navigator.of(context, rootNavigator: true).push(
+                            createSwipeableRoute(
+                              builder: (_) => ShopPagesScreen(
+                                shopId: shop.id,
+                                initialPages: shop.pages!,
+                              ),
+                            ),
+                          );
+
                       if (result == true && context.mounted) {
                         _loadShop();
                       }
@@ -428,33 +430,31 @@ class _MyShopScreenState extends State<MyShopScreen> {
           SizedBox(height: 12),
           Text(
             'Нет слайдеров',
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () async {
-              final result = await Navigator.of(context, rootNavigator: true).push(
-                createSwipeableRoute(
-                  builder: (_) => ShopSlidersScreen(
-                    shopId: shop.id,
-                    shopTitle: shop.title,
-                    shopDescription: shop.description,
-                    themeCategoryId: shop.themeCategoryId,
-                    initialSliders: [],
-                  ),
-                ),
-              );
-              
+              final result = await Navigator.of(context, rootNavigator: true)
+                  .push(
+                    createSwipeableRoute(
+                      builder: (_) => ShopSlidersScreen(
+                        shopId: shop.id,
+                        shopTitle: shop.title,
+                        shopDescription: shop.description,
+                        themeCategoryId: shop.themeCategoryId,
+                        initialSliders: [],
+                      ),
+                    ),
+                  );
+
               if (result == true && context.mounted) {
                 _loadShop();
               }
             },
             icon: Icon(Icons.add, color: Colors.white, size: 18),
             label: Text(
-              'Добавить слайдеры',
+              'Добавить слайдеры1',
               style: GoogleFonts.montserrat(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -494,30 +494,26 @@ class _MyShopScreenState extends State<MyShopScreen> {
           SizedBox(height: 12),
           Text(
             'Нет страниц',
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () async {
-              final result = await Navigator.of(context, rootNavigator: true).push(
-                createSwipeableRoute(
-                  builder: (_) => ShopPagesScreen(
-                    shopId: shop.id,
-                    initialPages: [],
-                  ),
-                ),
-              );
-              
+              final result = await Navigator.of(context, rootNavigator: true)
+                  .push(
+                    createSwipeableRoute(
+                      builder: (_) =>
+                          ShopPagesScreen(shopId: shop.id, initialPages: []),
+                    ),
+                  );
+
               if (result == true && context.mounted) {
                 _loadShop();
               }
             },
             icon: Icon(Icons.add, color: Colors.white, size: 18),
             label: Text(
-              'Добавить страницы',
+              'Добавить страницы1',
               style: GoogleFonts.montserrat(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -606,7 +602,8 @@ class _ShopHeaderCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (shop.description != null && shop.description!.isNotEmpty) ...[
+                if (shop.description != null &&
+                    shop.description!.isNotEmpty) ...[
                   SizedBox(height: 4),
                   Text(
                     shop.description!,
@@ -723,10 +720,7 @@ class _StatCard extends StatelessWidget {
           SizedBox(height: 4),
           Text(
             label,
-            style: GoogleFonts.montserrat(
-              fontSize: 11,
-              color: Colors.grey,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 11, color: Colors.grey),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -757,11 +751,13 @@ class _EditShopButton extends StatelessWidget {
 
           // Если вернулись с флагом обновления - перезагружаем магазин
           if (result == true && context.mounted) {
-            context.read<ShopBloc>().add(LoadShop(
-                  userId: user.id,
-                  token: user.token ?? '',
-                  shopId: shop.id,
-                ));
+            context.read<ShopBloc>().add(
+              LoadShop(
+                userId: user.id,
+                token: user.token ?? '',
+                shopId: shop.id,
+              ),
+            );
           }
         },
         icon: Icon(Icons.edit, color: Colors.white),
@@ -799,7 +795,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, color: Color(0xff917dfa), size: 20),

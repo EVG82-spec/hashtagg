@@ -60,18 +60,6 @@ class ShopManagementModal extends StatelessWidget {
             ),
             SizedBox(height: 12),
 
-            // 2. Добавить страницу
-            _ModalButton(
-              title: 'Добавить страницу',
-              color: Color(0xFF8956FF),
-              icon: Icons.add,
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/shop/pages/add?shop_id=${shop.id}');
-              },
-            ),
-            SizedBox(height: 12),
-
             // 3. Деактивировать (только если статус 1 - активен)
             if (shop.status == 1) ...[
               _ModalButton(

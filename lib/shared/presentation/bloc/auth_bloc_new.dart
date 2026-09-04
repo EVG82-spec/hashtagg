@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hashtagg/core/repositories/auth_repository.dart';
 import 'package:hashtagg/data/models/user_model.dart';
 import 'package:hashtagg/data/repositories/auth_repository.dart';
 
@@ -49,7 +50,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LogoutRequested>(_onLogout);
   }
 
-  Future<void> _onAuthCheck(AuthCheckRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onAuthCheck(
+    AuthCheckRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     final user = await _authRepository.getCurrentUser();
     if (user != null) {

@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\search\screens\search_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -62,13 +63,13 @@ class _SearchScreenState extends State<SearchScreen> {
   String _sortOption = 'Без сортировки';
   bool _isGridView = false;
   SearchFilters _filters = const SearchFilters();
-  
+
   // Для подкатегорий и breadcrumbs
   List<Map<String, dynamic>> _subcategories = [];
   String _breadcrumb = '';
   bool _isLoadingSubcategories = false;
   int? _parentCategoryId; // ID родительской категории для показа siblings
-  
+
   // Для фильтров (из SearchFiltersScreen)
   final FiltersApiRepository _filtersApi = FiltersApiRepository();
   final GeoApiRepository _geoApi = GeoApiRepository();
@@ -76,10 +77,10 @@ class _SearchScreenState extends State<SearchScreen> {
   Map<String, dynamic>? _filterData;
   late TextEditingController _priceFromController;
   late TextEditingController _priceToController;
-  
+
   // Для скрытия/раскрытия категорий
   bool _showSubcategories = true;
-  
+
   // Debounce timer для текстовых полей
   Timer? _debounceTimer;
 
@@ -94,13 +95,13 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     print('🔵 [initState] START');
     print('🔵 [initState] - initialQuery: "${widget.initialQuery}"');
     print('🔵 [initState] - categoryId: ${widget.categoryId}');
     print('🔵 [initState] - categoryName: "${widget.categoryName}"');
     print('🔵 [initState] - initialFilters: ${widget.initialFilters}');
-    
+
     _searchBloc = SearchBloc();
     _storiesBloc = StoriesBloc();
     _query = widget.initialQuery;
@@ -113,91 +114,114 @@ class _SearchScreenState extends State<SearchScreen> {
     );
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    
+
     if (widget.initialFilters != null) {
       _filters = widget.initialFilters!;
       // Если в фильтрах есть категория, используем её
       if (_filters.categoryId != null) {
         _selectedCategoryId = _filters.categoryId;
         _selectedCategoryName = _filters.category;
-        print('🔵 [initState] Category from filters: id=$_selectedCategoryId, name="$_selectedCategoryName"');
+        print(
+          '🔵 [initState] Category from filters: id=$_selectedCategoryId, name="$_selectedCategoryName"',
+        );
       }
     }
-    
+
     // Приоритет у явно переданных categoryId/categoryName
     if (widget.categoryId != null) {
       _selectedCategoryId = widget.categoryId;
       _selectedCategoryName = widget.categoryName;
-      print('🔵 [initState] Category from widget params: id=$_selectedCategoryId, name="$_selectedCategoryName"');
+      print(
+        '🔵 [initState] Category from widget params: id=$_selectedCategoryId, name="$_selectedCategoryName"',
+      );
     }
-    
+
     _focusNode = FocusNode();
-    
+
     // Загружаем кэшированный город
     _loadCachedCity();
-    
-    print('🔵 [initState] Final state: categoryId=$_selectedCategoryId, categoryName="$_selectedCategoryName", breadcrumb="$_breadcrumb"');
-    
+
+    print(
+      '🔵 [initState] Final state: categoryId=$_selectedCategoryId, categoryName="$_selectedCategoryName", breadcrumb="$_breadcrumb"',
+    );
+
     // Автофокус при открытии (убран, чтобы не мешать при переходе из категорий)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('🔵 [initState] PostFrameCallback executing');
       _performSearch();
-      
+
       // Загружаем сторисы с фильтрами
       _loadStoriesWithFilters();
-      
+
       // Загружаем подкатегории и фильтры
       _loadSubcategories();
       _loadFilterOptions();
     });
-    
+
     print('🔵 [initState] END');
   }
 
   Future<void> _loadSubcategories() async {
     print('🔵 [_loadSubcategories] START');
-    print('🔵 [_loadSubcategories] - Current selectedCategoryId: $_selectedCategoryId');
-    print('🔵 [_loadSubcategories] - Current selectedCategoryName: $_selectedCategoryName');
+    print(
+      '🔵 [_loadSubcategories] - Current selectedCategoryId: $_selectedCategoryId',
+    );
+    print(
+      '🔵 [_loadSubcategories] - Current selectedCategoryName: $_selectedCategoryName',
+    );
     print('🔵 [_loadSubcategories] - Current breadcrumb: "$_breadcrumb"');
-    print('🔵 [_loadSubcategories] - Current parentCategoryId: $_parentCategoryId');
-    
+    print(
+      '🔵 [_loadSubcategories] - Current parentCategoryId: $_parentCategoryId',
+    );
+
     setState(() => _isLoadingSubcategories = true);
-    
+
     try {
       final categoriesApi = CategoriesApiRepository();
-      
+
       if (_selectedCategoryId == null) {
         // Если категория не выбрана, загружаем корневые категории
         print('🔵 [_loadSubcategories] Loading root categories (parentId=0)');
         final result = await categoriesApi.getCategories(parentId: 0);
-        
+
         print('🔵 [_loadSubcategories] Root categories API response:');
         print('🔵 [_loadSubcategories] - status: ${result['status']}');
-        print('🔵 [_loadSubcategories] - data count: ${(result['data'] as List?)?.length ?? 0}');
+        print(
+          '🔵 [_loadSubcategories] - data count: ${(result['data'] as List?)?.length ?? 0}',
+        );
         print('🔵 [_loadSubcategories] - title: ${result['title']}');
-        
+
         if (result['status'] == true && mounted) {
           setState(() {
-            _subcategories = (result['data'] as List).cast<Map<String, dynamic>>();
+            _subcategories = (result['data'] as List)
+                .cast<Map<String, dynamic>>();
             _breadcrumb = ''; // Очищаем breadcrumb для корневого уровня
             _parentCategoryId = null;
             _isLoadingSubcategories = false;
           });
-          print('🔵 [_loadSubcategories] ROOT LEVEL SET: ${_subcategories.length} categories, breadcrumb cleared');
+          print(
+            '🔵 [_loadSubcategories] ROOT LEVEL SET: ${_subcategories.length} categories, breadcrumb cleared',
+          );
         }
       } else {
         // Загружаем подкатегории выбранной категории
-        print('🔵 [_loadSubcategories] Loading subcategories for category: $_selectedCategoryId ($_selectedCategoryName)');
-        final result = await categoriesApi.getCategories(parentId: _selectedCategoryId!);
-        
+        print(
+          '🔵 [_loadSubcategories] Loading subcategories for category: $_selectedCategoryId ($_selectedCategoryName)',
+        );
+        final result = await categoriesApi.getCategories(
+          parentId: _selectedCategoryId!,
+        );
+
         print('🔵 [_loadSubcategories] Subcategories API response:');
         print('🔵 [_loadSubcategories] - status: ${result['status']}');
-        print('🔵 [_loadSubcategories] - data count: ${(result['data'] as List?)?.length ?? 0}');
+        print(
+          '🔵 [_loadSubcategories] - data count: ${(result['data'] as List?)?.length ?? 0}',
+        );
         print('🔵 [_loadSubcategories] - title from API: "${result['title']}"');
-        
+
         if (result['status'] == true && mounted) {
           final data = result['data'] as List?;
-          
+
           // Определяем breadcrumb:
           // 1. Если breadcrumb уже установлен (пришел из клика по подкатегории), используем его
           // 2. Иначе используем title из API (для корневых категорий)
@@ -205,37 +229,52 @@ class _SearchScreenState extends State<SearchScreen> {
           if (_breadcrumb.isNotEmpty) {
             // Breadcrumb уже установлен из клика по подкатегории
             breadcrumbPath = _breadcrumb;
-            print('🔵 [_loadSubcategories] Using existing breadcrumb: "$breadcrumbPath"');
+            print(
+              '🔵 [_loadSubcategories] Using existing breadcrumb: "$breadcrumbPath"',
+            );
           } else {
             // Используем title из API
-            breadcrumbPath = result['title']?.toString() ?? _selectedCategoryName ?? '';
-            print('🔵 [_loadSubcategories] Using title from API as breadcrumb: "$breadcrumbPath"');
+            breadcrumbPath =
+                result['title']?.toString() ?? _selectedCategoryName ?? '';
+            print(
+              '🔵 [_loadSubcategories] Using title from API as breadcrumb: "$breadcrumbPath"',
+            );
           }
-          
+
           // Если есть подкатегории - показываем их
           if (data != null && data.isNotEmpty) {
-            print('🔵 [_loadSubcategories] Found ${data.length} subcategories:');
+            print(
+              '🔵 [_loadSubcategories] Found ${data.length} subcategories:',
+            );
             for (var i = 0; i < data.length && i < 3; i++) {
-              print('🔵 [_loadSubcategories]   - ${data[i]['category_board_name']} (id: ${data[i]['category_board_id']}, breadcrumb: ${data[i]['breadcrumb']})');
+              print(
+                '🔵 [_loadSubcategories]   - ${data[i]['category_board_name']} (id: ${data[i]['category_board_id']}, breadcrumb: ${data[i]['breadcrumb']})',
+              );
             }
-            
+
             setState(() {
               _subcategories = data.cast<Map<String, dynamic>>();
               _breadcrumb = breadcrumbPath;
               _parentCategoryId = _selectedCategoryId;
               _isLoadingSubcategories = false;
             });
-            print('🔵 [_loadSubcategories] STATE UPDATED: ${_subcategories.length} subcategories, breadcrumb="$_breadcrumb", parent=$_parentCategoryId');
+            print(
+              '🔵 [_loadSubcategories] STATE UPDATED: ${_subcategories.length} subcategories, breadcrumb="$_breadcrumb", parent=$_parentCategoryId',
+            );
           } else {
             // Если подкатегорий нет, скрываем блок категорий
-            print('🔵 [_loadSubcategories] No subcategories found, hiding categories block');
-            
+            print(
+              '🔵 [_loadSubcategories] No subcategories found, hiding categories block',
+            );
+
             setState(() {
               _subcategories = [];
               _breadcrumb = breadcrumbPath;
               _isLoadingSubcategories = false;
             });
-            print('🔵 [_loadSubcategories] STATE UPDATED: no subcategories, breadcrumb="$_breadcrumb"');
+            print(
+              '🔵 [_loadSubcategories] STATE UPDATED: no subcategories, breadcrumb="$_breadcrumb"',
+            );
           }
         }
       }
@@ -243,19 +282,19 @@ class _SearchScreenState extends State<SearchScreen> {
       print('🔴 [_loadSubcategories] ERROR: $e');
       setState(() => _isLoadingSubcategories = false);
     }
-    
+
     print('🔵 [_loadSubcategories] END');
   }
 
   Future<void> _loadFilterOptions() async {
     setState(() => _isLoadingFilters = true);
-    
+
     try {
       final result = await _filtersApi.getFilterOptions(
         categoryId: _selectedCategoryId ?? 0,
         filters: _filters.filters.isNotEmpty ? _filters.filters : null,
       );
-      
+
       if (result['status'] == true && mounted) {
         setState(() {
           _filterData = result['data'];
@@ -272,14 +311,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _onOptionChanged(String key, bool value) {
     print('🔵 [SearchScreen] _onOptionChanged: key=$key, value=$value');
-    
+
     final newOptions = Map<String, bool>.from(_filters.options);
     newOptions[key] = value;
-    
+
     setState(() {
       _filters = _filters.copyWith(options: newOptions);
     });
-    
+
     // Выполняем поиск после обновления состояния с небольшой задержкой
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _performSearch();
@@ -287,8 +326,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onFilterChanged(String filterId, String itemId, bool isSelected) {
-    print('🔵 [SearchScreen] _onFilterChanged: filterId=$filterId, itemId=$itemId, isSelected=$isSelected');
-    
+    print(
+      '🔵 [SearchScreen] _onFilterChanged: filterId=$filterId, itemId=$itemId, isSelected=$isSelected',
+    );
+
     final newFilters = Map<String, List<String>>.from(_filters.filters);
     if (!newFilters.containsKey(filterId)) {
       newFilters[filterId] = [];
@@ -301,13 +342,13 @@ class _SearchScreenState extends State<SearchScreen> {
     } else {
       newFilters[filterId]!.add(itemId);
     }
-    
+
     print('🔵 [SearchScreen] New filters: $newFilters');
-    
+
     setState(() {
       _filters = _filters.copyWith(filters: newFilters);
     });
-    
+
     // Выполняем поиск после обновления состояния с небольшой задержкой
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _performSearch();
@@ -316,32 +357,41 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _onSelectCategory(int? categoryId, String? categoryNameOrBreadcrumb) {
     print('🔵 [SearchScreen] _onSelectCategory called');
-    print('🔵 [SearchScreen] - New category: id=$categoryId, nameOrBreadcrumb=$categoryNameOrBreadcrumb');
-    print('🔵 [SearchScreen] - Previous category: id=$_selectedCategoryId, name=$_selectedCategoryName');
+    print(
+      '🔵 [SearchScreen] - New category: id=$categoryId, nameOrBreadcrumb=$categoryNameOrBreadcrumb',
+    );
+    print(
+      '🔵 [SearchScreen] - Previous category: id=$_selectedCategoryId, name=$_selectedCategoryName',
+    );
     print('🔵 [SearchScreen] - Current breadcrumb: "$_breadcrumb"');
     print('🔵 [SearchScreen] - Current parent: $_parentCategoryId');
-    
+
     setState(() {
       _selectedCategoryId = categoryId;
       _selectedCategoryName = categoryNameOrBreadcrumb;
       // Если передан breadcrumb (содержит " - " или " > "), используем его
       // Иначе сбрасываем и дадим _loadSubcategories установить его
-      if (categoryNameOrBreadcrumb != null && 
-          (categoryNameOrBreadcrumb.contains(' - ') || categoryNameOrBreadcrumb.contains(' > '))) {
+      if (categoryNameOrBreadcrumb != null &&
+          (categoryNameOrBreadcrumb.contains(' - ') ||
+              categoryNameOrBreadcrumb.contains(' > '))) {
         // Это breadcrumb, используем его напрямую
         _breadcrumb = categoryNameOrBreadcrumb;
-        print('🔵 [SearchScreen] Using breadcrumb from parameter: "$_breadcrumb"');
+        print(
+          '🔵 [SearchScreen] Using breadcrumb from parameter: "$_breadcrumb"',
+        );
       } else {
         // Это просто имя категории, сбрасываем breadcrumb
         _breadcrumb = '';
-        print('🔵 [SearchScreen] Clearing breadcrumb, will be set by _loadSubcategories');
+        print(
+          '🔵 [SearchScreen] Clearing breadcrumb, will be set by _loadSubcategories',
+        );
       }
       // Также сбрасываем subcategories чтобы избежать показа старых данных
       _subcategories = [];
     });
-    
+
     print('🔵 [SearchScreen] State updated');
-    
+
     _performSearch();
     _loadSubcategories();
     _loadFilterOptions();
@@ -355,13 +405,16 @@ class _SearchScreenState extends State<SearchScreen> {
       final cachedDeclination = box.get('selectedCityDeclination') as String?;
       final cityLat = box.get('selectedCityLat') as double?;
       final cityLon = box.get('selectedCityLon') as double?;
-      
+
       if (cityId != null && cityName != null) {
         // Если склонения нет в кэше, попробуем загрузить из API
         String? declination = cachedDeclination;
         if ((declination == null || declination.isEmpty) && cityId != 0) {
           try {
-            final result = await _geoApi.searchCities(query: cityName, onlyCity: true);
+            final result = await _geoApi.searchCities(
+              query: cityName,
+              onlyCity: true,
+            );
             if (result['status'] == true) {
               final cities = result['data'] as List;
               final city = cities.firstWhere(
@@ -372,14 +425,16 @@ class _SearchScreenState extends State<SearchScreen> {
                 declination = city['declination'] ?? '';
                 // Сохраняем склонение в кэш
                 await box.put('selectedCityDeclination', declination);
-                print('✅ [SearchScreen] Loaded declination from API: $declination');
+                print(
+                  '✅ [SearchScreen] Loaded declination from API: $declination',
+                );
               }
             }
           } catch (e) {
             print('🔴 [SearchScreen] Error loading declination from API: $e');
           }
         }
-        
+
         setState(() {
           _cityDeclination = declination;
           _filters = _filters.copyWith(
@@ -389,7 +444,9 @@ class _SearchScreenState extends State<SearchScreen> {
             cityLon: cityLon,
           );
         });
-        print('✅ [SearchScreen] Loaded cached city: $cityName (ID: $cityId, declination: $declination)');
+        print(
+          '✅ [SearchScreen] Loaded cached city: $cityName (ID: $cityId, declination: $declination)',
+        );
       } else {
         // Устанавливаем "Все города" по умолчанию
         setState(() {
@@ -408,7 +465,13 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<void> _saveCityToCache(int? cityId, String? cityName, double? lat, double? lon, {String? declination}) async {
+  Future<void> _saveCityToCache(
+    int? cityId,
+    String? cityName,
+    double? lat,
+    double? lon, {
+    String? declination,
+  }) async {
     try {
       final box = await Hive.openBox('settings');
       if (cityId != null && cityName != null) {
@@ -417,7 +480,9 @@ class _SearchScreenState extends State<SearchScreen> {
         await box.put('selectedCityDeclination', declination ?? '');
         await box.put('selectedCityLat', lat);
         await box.put('selectedCityLon', lon);
-        print('✅ [SearchScreen] Cached city: $cityName (ID: $cityId, declination: $declination)');
+        print(
+          '✅ [SearchScreen] Cached city: $cityName (ID: $cityId, declination: $declination)',
+        );
       } else {
         await box.delete('selectedCityId');
         await box.delete('selectedCityName');
@@ -466,7 +531,6 @@ class _SearchScreenState extends State<SearchScreen> {
     return lines.join('\n');
   }
 
-
   @override
   void dispose() {
     _searchBloc.close();
@@ -490,9 +554,11 @@ class _SearchScreenState extends State<SearchScreen> {
   void _performSearch() {
     final priceFrom = int.tryParse(_priceFromController.text);
     final priceTo = int.tryParse(_priceToController.text);
-    
-    print('🔵 [SearchScreen] _performSearch called with filters: ${_filters.filters}');
-    
+
+    print(
+      '🔵 [SearchScreen] _performSearch called with filters: ${_filters.filters}',
+    );
+
     final params = CatalogSearchParams(
       categoryId: _selectedCategoryId,
       search: _query.isNotEmpty ? _query : null,
@@ -508,17 +574,17 @@ class _SearchScreenState extends State<SearchScreen> {
       booking: _filters.options['booking'],
       filters: _filters.filters.isNotEmpty ? _filters.filters : null,
     );
-    
+
     _searchBloc.add(SearchAds(params));
-    
+
     // Перезагружаем сторисы с новыми фильтрами
     _loadStoriesWithFilters();
   }
-  
+
   void _performSearchWithDebounce() {
     // Отменяем предыдущий таймер если он есть
     _debounceTimer?.cancel();
-    
+
     // Создаем новый таймер на 250ms
     _debounceTimer = Timer(const Duration(milliseconds: 250), () {
       _performSearch();
@@ -531,11 +597,10 @@ class _SearchScreenState extends State<SearchScreen> {
     print('🔵 [SearchScreen] Loading stories with filters:');
     print('🔵 [SearchScreen] - catId: $_selectedCategoryId');
     print('🔵 [SearchScreen] - cityId: ${_filters.cityId}');
-    
-    _storiesBloc.add(LoadStories(
-      catId: _selectedCategoryId,
-      cityId: _filters.cityId,
-    ));
+
+    _storiesBloc.add(
+      LoadStories(catId: _selectedCategoryId, cityId: _filters.cityId),
+    );
   }
 
   String _getSortingParam() {
@@ -632,8 +697,9 @@ class _SearchScreenState extends State<SearchScreen> {
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle(
           statusBarColor: Theme.of(context).scaffoldBackgroundColor,
-          statusBarIconBrightness: Theme.of(context).brightness == Brightness.dark 
-              ? Brightness.light 
+          statusBarIconBrightness:
+              Theme.of(context).brightness == Brightness.dark
+              ? Brightness.light
               : Brightness.dark,
           statusBarBrightness: Theme.of(context).brightness,
         ),
@@ -644,7 +710,7 @@ class _SearchScreenState extends State<SearchScreen> {
               children: [
                 // AppBar с поиском
                 _buildSearchBar(),
-                
+
                 // Основной контент
                 Expanded(
                   child: BlocBuilder<SearchBloc, SearchState>(
@@ -665,22 +731,22 @@ class _SearchScreenState extends State<SearchScreen> {
                           slivers: [
                             // Stories
                             _buildStories(),
-                            
+
                             // Breadcrumbs (хлебные крошки) - над заголовком
                             _buildBreadcrumbs(),
-                            
+
                             // Заголовок результатов
                             _buildResultsHeader(state),
-                            
+
                             // Подкатегории
                             _buildSubcategories(),
-                            
+
                             // Встроенные фильтры
                             _buildInlineFilters(),
-                            
+
                             // Строка сортировки + переключатель вида
                             _buildSortingBar(),
-                            
+
                             // Сетка/список объявлений
                             _buildAdsList(state),
                           ],
@@ -692,7 +758,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
-          
+
           // Кнопка «Карта» внизу
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () {
@@ -714,7 +780,8 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerFloat,
         ),
       ),
     );
@@ -723,7 +790,9 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSearchBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
-    final inputBgColor = isDark ? const Color(0xff213140) : const Color(0xFFF5F7FA);
+    final inputBgColor = isDark
+        ? const Color(0xff213140)
+        : const Color(0xFFF5F7FA);
     final cityName = _filters.city ?? 'Все города';
 
     return Padding(
@@ -754,7 +823,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: inputBgColor,
-                  hintText: 'Поиск',   // <-- всегда просто "Поиск"
+                  hintText: 'Поиск', // <-- всегда просто "Поиск"
                   hintStyle: GoogleFonts.montserrat(
                     fontSize: 12,
                     color: isDark ? Colors.white54 : const Color(0xff999999),
@@ -766,15 +835,23 @@ class _SearchScreenState extends State<SearchScreen> {
                       height: 16,
                       width: 16,
                       colorFilter: isDark
-                          ? const ColorFilter.mode(Colors.white54, BlendMode.srcIn)
-                          : const ColorFilter.mode(Color(0xff999999), BlendMode.srcIn),
+                          ? const ColorFilter.mode(
+                              Colors.white54,
+                              BlendMode.srcIn,
+                            )
+                          : const ColorFilter.mode(
+                              Color(0xff999999),
+                              BlendMode.srcIn,
+                            ),
                     ),
                   ),
                   suffixIcon: _query.isNotEmpty
                       ? IconButton(
                           icon: Icon(
                             Icons.close,
-                            color: isDark ? Colors.white54 : const Color(0xff999999),
+                            color: isDark
+                                ? Colors.white54
+                                : const Color(0xff999999),
                             size: 18,
                           ),
                           onPressed: () {
@@ -813,7 +890,13 @@ class _SearchScreenState extends State<SearchScreen> {
                 final lat = result['lat'] as double?;
                 final lon = result['lon'] as double?;
 
-                await _saveCityToCache(cityId, cityName, lat, lon, declination: declination);
+                await _saveCityToCache(
+                  cityId,
+                  cityName,
+                  lat,
+                  lon,
+                  declination: declination,
+                );
 
                 setState(() {
                   _cityDeclination = declination;
@@ -830,9 +913,14 @@ class _SearchScreenState extends State<SearchScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 44),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA),
+                  color: isDark
+                      ? const Color(0xff233040)
+                      : const Color(0xFFF5F7FA),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: IntrinsicHeight(
@@ -859,13 +947,12 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
               ),
-            )
+            ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _buildStories() {
     return SliverToBoxAdapter(
@@ -876,9 +963,7 @@ class _SearchScreenState extends State<SearchScreen> {
               height: 100,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xff917dfa),
-                ),
+                child: CircularProgressIndicator(color: Color(0xff917dfa)),
               ),
             );
           }
@@ -893,7 +978,7 @@ class _SearchScreenState extends State<SearchScreen> {
               // Если нет сторисов, не показываем блок
               return SizedBox.shrink();
             }
-            
+
             return Container(
               height: 100,
               margin: EdgeInsets.only(bottom: 8),
@@ -913,27 +998,29 @@ class _SearchScreenState extends State<SearchScreen> {
                           // Если нет данных о сервисах, разрешаем (обратная совместимость)
                           return _buildAddStoryButton(context);
                         }
-                        
+
                         // Проверяем наличие сервиса 'stories' или любого начинающегося с 'stories_'
-                        final hasPermission = activeServices.any((service) => 
-                          service == 'stories' || service.startsWith('stories_')
+                        final hasPermission = activeServices.any(
+                          (service) =>
+                              service == 'stories' ||
+                              service.startsWith('stories_'),
                         );
-                        
+
                         if (!hasPermission) {
                           return SizedBox.shrink();
                         }
-                        
+
                         return _buildAddStoryButton(context);
                       },
                     );
                   }
-                  
+
                   // Остальные элементы - сторисы пользователей
                   final userIndex = index - 1;
                   final user = state.users[userIndex];
                   final userName = user['name'] ?? 'Пользователь';
                   final avatar = ApiConfig.replaceMediaUrl(
-                    user['avatar']?.toString() ?? ''
+                    user['avatar']?.toString() ?? '',
                   );
                   final stories = user['stories'] as List? ?? [];
                   final hasUnviewed = stories.any((s) => s['status'] == 1);
@@ -989,8 +1076,10 @@ class _SearchScreenState extends State<SearchScreen> {
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.montserrat(
                               fontSize: 11,
-                              color: Theme.of(context).brightness == Brightness.dark 
-                                  ? Colors.white 
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white
                                   : Colors.black,
                             ),
                           ),
@@ -1009,7 +1098,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-  
+
   Widget _buildAddStoryButton(BuildContext context) {
     return GestureDetector(
       onTap: () {
@@ -1022,10 +1111,7 @@ class _SearchScreenState extends State<SearchScreen> {
             height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 2,
-              ),
+              border: Border.all(color: Colors.grey[300]!, width: 2),
             ),
             child: Stack(
               children: [
@@ -1054,11 +1140,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       shape: BoxShape.circle,
                       color: Color(0xff917dfa),
                     ),
-                    child: Icon(
-                      Icons.add,
-                      size: 14,
-                      color: Colors.white,
-                    ),
+                    child: Icon(Icons.add, size: 14, color: Colors.white),
                   ),
                 ),
               ],
@@ -1074,8 +1156,8 @@ class _SearchScreenState extends State<SearchScreen> {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.montserrat(
                 fontSize: 11,
-                color: Theme.of(context).brightness == Brightness.dark 
-                    ? Colors.white 
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
                     : Colors.black,
               ),
             ),
@@ -1084,7 +1166,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-  
+
   void _showAddStoryDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -1102,17 +1184,26 @@ class _SearchScreenState extends State<SearchScreen> {
                   onPressed: () async {
                     Navigator.of(dialogContext).pop();
                     // Запрашиваем разрешение на доступ к файлам
-                    final hasPermission = await PermissionService.requestStoragePermission(context);
+                    final hasPermission =
+                        await PermissionService.requestStoragePermission(
+                          context,
+                        );
                     if (!hasPermission) {
                       return;
                     }
                     // Выбор фото
                     final picker = ImagePicker();
-                    final image = await picker.pickImage(source: ImageSource.gallery);
+                    final image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                    );
                     if (image != null && context.mounted) {
                       // Переход на экран создания стории (можно добавить позже)
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Функция создания стории будет добавлена')),
+                        SnackBar(
+                          content: Text(
+                            'Функция создания стории будет добавлена',
+                          ),
+                        ),
                       );
                     }
                   },
@@ -1137,17 +1228,26 @@ class _SearchScreenState extends State<SearchScreen> {
                   onPressed: () async {
                     Navigator.of(dialogContext).pop();
                     // Запрашиваем разрешение на доступ к файлам
-                    final hasPermission = await PermissionService.requestStoragePermission(context);
+                    final hasPermission =
+                        await PermissionService.requestStoragePermission(
+                          context,
+                        );
                     if (!hasPermission) {
                       return;
                     }
                     // Выбор видео
                     final picker = ImagePicker();
-                    final video = await picker.pickVideo(source: ImageSource.gallery);
+                    final video = await picker.pickVideo(
+                      source: ImageSource.gallery,
+                    );
                     if (video != null && context.mounted) {
                       // Переход на экран создания стории (можно добавить позже)
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Функция создания стории будет добавлена')),
+                        SnackBar(
+                          content: Text(
+                            'Функция создания стории будет добавлена',
+                          ),
+                        ),
                       );
                     }
                   },
@@ -1177,7 +1277,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildResultsHeader(SearchState state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
@@ -1185,9 +1285,8 @@ class _SearchScreenState extends State<SearchScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _selectedCategoryName ?? (_query.isEmpty
-                  ? 'Все категории'
-                  : 'Результаты поиска'),
+              _selectedCategoryName ??
+                  (_query.isEmpty ? 'Все категории' : 'Результаты поиска'),
               style: GoogleFonts.montserrat(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -1213,39 +1312,51 @@ class _SearchScreenState extends State<SearchScreen> {
     print('🔵 [_buildBreadcrumbs] RENDER START');
     print('🔵 [_buildBreadcrumbs] - breadcrumb: "$_breadcrumb"');
     print('🔵 [_buildBreadcrumbs] - selectedCategoryId: $_selectedCategoryId');
-    print('🔵 [_buildBreadcrumbs] - selectedCategoryName: "$_selectedCategoryName"');
+    print(
+      '🔵 [_buildBreadcrumbs] - selectedCategoryName: "$_selectedCategoryName"',
+    );
     print('🔵 [_buildBreadcrumbs] - parentCategoryId: $_parentCategoryId');
-    
+
     // Скрываем breadcrumbs если пользователь ввел поисковый запрос
     if (_query.isNotEmpty) {
       print('🔵 [_buildBreadcrumbs] Query is not empty, hiding breadcrumbs');
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
+
     if (_breadcrumb.isEmpty && _selectedCategoryId == null) {
-      print('🔵 [_buildBreadcrumbs] Empty breadcrumb and no category selected, hiding');
+      print(
+        '🔵 [_buildBreadcrumbs] Empty breadcrumb and no category selected, hiding',
+      );
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white70 : const Color(0xff666666);
-    
+
     // Разбиваем breadcrumb на части
     // Поддерживаем оба формата: "Категория > Подкатегория" и "Категория - Подкатегория"
     List<String> breadcrumbParts = [];
     if (_breadcrumb.contains('>')) {
-      breadcrumbParts = _breadcrumb.split('>').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      breadcrumbParts = _breadcrumb
+          .split('>')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       print('🔵 [_buildBreadcrumbs] Split by ">": $breadcrumbParts');
     } else if (_breadcrumb.contains('-')) {
-      breadcrumbParts = _breadcrumb.split('-').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      breadcrumbParts = _breadcrumb
+          .split('-')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       print('🔵 [_buildBreadcrumbs] Split by "-": $breadcrumbParts');
     } else if (_breadcrumb.isNotEmpty) {
       breadcrumbParts = [_breadcrumb.trim()];
       print('🔵 [_buildBreadcrumbs] Single part: $breadcrumbParts');
     }
-    
+
     print('🔵 [_buildBreadcrumbs] Final parts: $breadcrumbParts');
-    
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -1263,7 +1374,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 'Все категории',
                 style: GoogleFonts.montserrat(
                   fontSize: 13,
-                  color: _selectedCategoryId == null ? const Color(0xff917dfa) : textColor,
+                  color: _selectedCategoryId == null
+                      ? const Color(0xff917dfa)
+                      : textColor,
                 ),
               ),
             ),
@@ -1273,32 +1386,45 @@ class _SearchScreenState extends State<SearchScreen> {
                 Icon(Icons.chevron_right, size: 16, color: textColor),
                 GestureDetector(
                   onTap: () {
-                    print('🔵 [_buildBreadcrumbs] Clicked breadcrumb part $i: "${breadcrumbParts[i]}"');
-                    print('🔵 [_buildBreadcrumbs] - Is last part: ${i == breadcrumbParts.length - 1}');
-                    print('🔵 [_buildBreadcrumbs] - parentCategoryId: $_parentCategoryId');
-                    
+                    print(
+                      '🔵 [_buildBreadcrumbs] Clicked breadcrumb part $i: "${breadcrumbParts[i]}"',
+                    );
+                    print(
+                      '🔵 [_buildBreadcrumbs] - Is last part: ${i == breadcrumbParts.length - 1}',
+                    );
+                    print(
+                      '🔵 [_buildBreadcrumbs] - parentCategoryId: $_parentCategoryId',
+                    );
+
                     // Все элементы кликабельны, кроме последнего (текущая категория)
                     if (i < breadcrumbParts.length - 1) {
-                      print('🔵 [_buildBreadcrumbs] Navigating to parent category');
+                      print(
+                        '🔵 [_buildBreadcrumbs] Navigating to parent category',
+                      );
                       // Клик по родительской категории
                       // Переходим к родительской категории
                       if (i == 0 && _parentCategoryId != null) {
                         // Первый элемент - переходим к родительской категории
-                        _onSelectCategory(_parentCategoryId, breadcrumbParts[i]);
+                        _onSelectCategory(
+                          _parentCategoryId,
+                          breadcrumbParts[i],
+                        );
                       }
                     } else {
-                      print('🔵 [_buildBreadcrumbs] Current category clicked (no action)');
+                      print(
+                        '🔵 [_buildBreadcrumbs] Current category clicked (no action)',
+                      );
                     }
                   },
                   child: Text(
                     breadcrumbParts[i],
                     style: GoogleFonts.montserrat(
                       fontSize: 13,
-                      color: i == breadcrumbParts.length - 1 
-                          ? const Color(0xff917dfa) 
+                      color: i == breadcrumbParts.length - 1
+                          ? const Color(0xff917dfa)
                           : textColor,
-                      fontWeight: i == breadcrumbParts.length - 1 
-                          ? FontWeight.w500 
+                      fontWeight: i == breadcrumbParts.length - 1
+                          ? FontWeight.w500
                           : FontWeight.normal,
                     ),
                   ),
@@ -1316,15 +1442,15 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_query.isNotEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
+
     if (_subcategories.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA);
     final textColor = isDark ? Colors.white : Colors.black;
-    
+
     return SliverToBoxAdapter(
       child: Column(
         children: [
@@ -1352,7 +1478,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     const Spacer(),
                     Icon(
-                      _showSubcategories ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      _showSubcategories
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
                       color: textColor,
                       size: 20,
                     ),
@@ -1370,11 +1498,15 @@ class _SearchScreenState extends State<SearchScreen> {
                     children: _subcategories.asMap().entries.map((entry) {
                       final index = entry.key;
                       final category = entry.value;
-                      final categoryId = _parseInt(category['category_board_id']);
-                      final categoryName = category['category_board_name'] ?? '';
-                      final categoryBreadcrumb = category['breadcrumb'] ?? categoryName;
+                      final categoryId = _parseInt(
+                        category['category_board_id'],
+                      );
+                      final categoryName =
+                          category['category_board_name'] ?? '';
+                      final categoryBreadcrumb =
+                          category['breadcrumb'] ?? categoryName;
                       final isSelected = _selectedCategoryId == categoryId;
-                      
+
                       return Padding(
                         padding: EdgeInsets.only(
                           left: 20,
@@ -1385,16 +1517,25 @@ class _SearchScreenState extends State<SearchScreen> {
                           color: Colors.transparent,
                           child: InkWell(
                             onTap: () {
-                              print('🔵 [SubcategoryClick] Clicked: $categoryName (id: $categoryId)');
-                              print('🔵 [SubcategoryClick] Breadcrumb from category: $categoryBreadcrumb');
+                              print(
+                                '🔵 [SubcategoryClick] Clicked: $categoryName (id: $categoryId)',
+                              );
+                              print(
+                                '🔵 [SubcategoryClick] Breadcrumb from category: $categoryBreadcrumb',
+                              );
                               // Передаем breadcrumb вместо просто имени
                               _onSelectCategory(categoryId, categoryBreadcrumb);
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Ink(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
                               decoration: BoxDecoration(
-                                color: isSelected ? const Color(0xff917dfa) : bgColor,
+                                color: isSelected
+                                    ? const Color(0xff917dfa)
+                                    : bgColor,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -1405,14 +1546,20 @@ class _SearchScreenState extends State<SearchScreen> {
                                       style: GoogleFonts.montserrat(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w500,
-                                        color: isSelected ? Colors.white : textColor,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : textColor,
                                       ),
                                     ),
                                   ),
                                   Icon(
                                     Icons.arrow_forward_ios,
                                     size: 14,
-                                    color: isSelected ? Colors.white : (isDark ? Colors.white54 : Colors.black54),
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark
+                                              ? Colors.white54
+                                              : Colors.black54),
                                   ),
                                 ],
                               ),
@@ -1438,7 +1585,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSortingBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xff444444);
-    
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -1457,20 +1604,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    size: 18,
-                    color: textColor,
-                  ),
+                  Icon(Icons.keyboard_arrow_down, size: 18, color: textColor),
                 ],
               ),
             ),
             GestureDetector(
               onTap: () => setState(() => _isGridView = !_isGridView),
               child: Icon(
-                _isGridView
-                    ? Icons.grid_view_rounded
-                    : Icons.view_list_rounded,
+                _isGridView ? Icons.grid_view_rounded : Icons.view_list_rounded,
                 color: textColor,
                 size: 22,
               ),
@@ -1492,11 +1633,12 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-    
-    if (_filterData == null || (_filterData!['filters'] == null && _filterData!['options'] == null)) {
+
+    if (_filterData == null ||
+        (_filterData!['filters'] == null && _filterData!['options'] == null)) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
+
     return SliverToBoxAdapter(
       child: InlineFilters(
         filterData: _filterData,
@@ -1520,7 +1662,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-    
+
     if (state is SearchError) {
       return SliverFillRemaining(
         child: Center(
@@ -1545,18 +1687,14 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-    
+
     if (state is SearchLoaded && state.ads.isEmpty) {
       return SliverFillRemaining(
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.search_off,
-                size: 64,
-                color: Color(0xffcccccc),
-              ),
+              const Icon(Icons.search_off, size: 64, color: Color(0xffcccccc)),
               const SizedBox(height: 16),
               Text(
                 'Ничего не найдено',
@@ -1580,12 +1718,12 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-    
+
     if (state is SearchLoaded || state is SearchLoadingMore) {
-      final ads = state is SearchLoaded 
-          ? state.ads 
+      final ads = state is SearchLoaded
+          ? state.ads
           : (state as SearchLoadingMore).currentAds;
-      
+
       if (_isGridView) {
         return SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -1620,7 +1758,7 @@ class _SearchScreenState extends State<SearchScreen> {
         );
       }
     }
-    
+
     return const SliverToBoxAdapter(child: SizedBox());
   }
 }

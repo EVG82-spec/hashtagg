@@ -22,6 +22,7 @@ import 'package:dio/dio.dart';
 import 'package:hashtagg/core/network/shop_api_repository.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hashtagg/features/shop/screens/shop_page_edit_screen.dart';
+import 'package:hashtagg/features/shop/widgets/shop_description_edit_modal.dart';
 import 'dart:async';
 
 class ShopEditScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
   Shop? _currentShop;
   int? _selectedPageId;
   String? _selectedPageContent;
-  StreamSubscription<ShopState>? _shopBlocSubscription; // 👈 ДОБАВИТЬ!
+  StreamSubscription<ShopState>? _shopBlocSubscription;
 
   @override
   void initState() {
@@ -348,7 +349,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
                       shopId: _currentShop!.id,
                       title: newTitle,
                       description: _currentShop!.description,
-                      links: _currentShop!.links, // 👈 ДОБАВИТЬ!
+                      links: _currentShop!.links,
                     )
                     .timeout(
                       const Duration(seconds: 30),
@@ -479,7 +480,7 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         shopId: _currentShop!.id,
         title: newTitle,
         description: _currentShop!.description,
-        links: _getCurrentLinks(), // 👈 ДОБАВИТЬ!
+        links: _getCurrentLinks(),
         // 👇 ДОБАВЛЯЕМ СТАТУС
         status: 0, // 0 - на модерации
       );
@@ -876,6 +877,33 @@ class _ShopEditScreenState extends State<ShopEditScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Соцсети обновлены!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    });
+  }
+
+  void _editDescription() {
+    print('📝 [ShopEdit] Edit description');
+
+    if (_currentShop == null) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => ShopDescriptionEditModal(
+        shop: _currentShop!,
+        repository: _shopPublicBloc.repository,
+      ),
+    ).then((result) {
+      if (result == true && mounted) {
+        print('✅ [ShopEdit] Description updated');
+        _shopPublicBloc.add(
+          LoadPublicShop(shopId: widget.shopId, forceRefresh: true),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Описание обновлено!'),
             backgroundColor: Colors.green,
           ),
         );

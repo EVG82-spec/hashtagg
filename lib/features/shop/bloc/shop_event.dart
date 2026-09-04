@@ -7,21 +7,14 @@ class LoadShop extends ShopEvent {
   final String token;
   final int shopId;
 
-  LoadShop({
-    required this.userId,
-    required this.token,
-    required this.shopId,
-  });
+  LoadShop({required this.userId, required this.token, required this.shopId});
 }
 
 class CreateShop extends ShopEvent {
   final int userId;
   final String token;
 
-  CreateShop({
-    required this.userId,
-    required this.token,
-  });
+  CreateShop({required this.userId, required this.token});
 }
 
 class UpdateShop extends ShopEvent {
@@ -119,8 +112,8 @@ class UploadShopImage extends ShopEvent {
   final String filePath;
   final int userId;
   final String token;
-  final String? shopHash;  // 👈 НЕОБЯЗАТЕЛЬНЫЙ
-  final String? type;      // 👈 НЕОБЯЗАТЕЛЬНЫЙ
+  final String? shopHash; // 👈 НЕОБЯЗАТЕЛЬНЫЙ
+  final String? type; // 👈 НЕОБЯЗАТЕЛЬНЫЙ
 
   UploadShopImage({
     required this.filePath,
@@ -129,4 +122,12 @@ class UploadShopImage extends ShopEvent {
     this.shopHash,
     this.type,
   });
+}
+
+class DeleteShop extends ShopEvent {
+  final int userId;
+  final String token;
+  final int shopId;
+
+  DeleteShop({required this.userId, required this.token, required this.shopId});
 }

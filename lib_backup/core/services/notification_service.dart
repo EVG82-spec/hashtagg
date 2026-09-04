@@ -7,6 +7,8 @@ import 'package:hashtagg/core/network/api_config.dart';
 import 'package:hashtagg/core/services/notification_background_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -15,8 +17,9 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  final NotificationBackgroundService _backgroundService = NotificationBackgroundService();
-  
+  final NotificationBackgroundService _backgroundService =
+      NotificationBackgroundService();
+
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   bool _isInitialized = false;
@@ -25,7 +28,7 @@ class NotificationService {
   String? _currentAuthToken;
   String? _socketId;
   Timer? _pingTimer;
-  
+
   // Callbacks
   Function(String dialogId, bool isSupport)? onNotificationTap;
   Function(Map<String, dynamic> data)? onMessageReceived;
@@ -36,8 +39,10 @@ class NotificationService {
     required String authToken,
   }) async {
     print('🔔 Initializing NotificationService for user $userId');
-    print('   Current state: initialized=$_isInitialized, connected=$_isConnected, currentUser=$_currentUserId');
-    
+    print(
+      '   Current state: initialized=$_isInitialized, connected=$_isConnected, currentUser=$_currentUserId',
+    );
+
     _currentUserId = userId;
     _currentAuthToken = authToken;
 
@@ -48,15 +53,14 @@ class NotificationService {
     }
 
     // Start background service to check notifications periodically
-    await _backgroundService.start(
-      userId: userId,
-      authToken: authToken,
-    );
-    
+    await _backgroundService.start(userId: userId, authToken: authToken);
+
     // Настраиваем callback для клика на уведомления от background service
     // Используем тот же обработчик что и для WebSocket уведомлений
     NotificationBackgroundService.onNotificationTap = (dialogId, isSupport) {
-      print('🔔 [NotificationService] Background notification tapped: dialogId=$dialogId, isSupport=$isSupport');
+      print(
+        '🔔 [NotificationService] Background notification tapped: dialogId=$dialogId, isSupport=$isSupport',
+      );
       onNotificationTap?.call(dialogId, isSupport);
     };
 
@@ -67,8 +71,11 @@ class NotificationService {
   }
 
   /// Initialize local notifications
+  /// Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -85,24 +92,61 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
+    // ============================================================
+    // 🔥 ДОБАВИТЬ: СЛУШАТЕЛЬ УВЕДОМЛЕНИЙ (когда приложение открыто)
+    // ============================================================
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print(
+        '📨 [FCM] onMessage (приложение открыто): ${message.notification?.title}',
+      );
+
+      // Показываем локальное уведомление
+      _showLocalNotification(
+        title: message.notification?.title ?? 'Новое уведомление',
+        body: message.notification?.body ?? '',
+        payload: jsonEncode(message.data),
+      );
+    });
+
+    // ============================================================
+    // 🔥 ДОБАВИТЬ: ОБРАБОТЧИК НАЖАТИЯ НА УВЕДОМЛЕНИЕ (когда приложение закрыто)
+    // ============================================================
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('📨 [FCM] onMessageOpenedApp: ${message.notification?.title}');
+      // Здесь можно открыть нужный экран
+    });
+
     // Request permissions
     if (defaultTargetPlatform == TargetPlatform.android) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     }
 
     print('✅ Local notifications initialized');
+  }
+
+  Future<String?> getFcmToken() async {
+    try {
+      // 🔥 ПРИНУДИТЕЛЬНО УДАЛЯЕМ СТАРЫЙ ТОКЕН
+      await FirebaseMessaging.instance.deleteToken();
+
+      // 🔥 ПОЛУЧАЕМ НОВЫЙ
+      String? token = await FirebaseMessaging.instance.getToken();
+      print('📱 [FCM] НОВЫЙ токен получен: $token');
+      return token;
+    } catch (e) {
+      print('❌ [FCM] Ошибка получения токена: $e');
+      return null;
+    }
   }
 
   /// Initialize WebSocket connection
@@ -114,8 +158,9 @@ class NotificationService {
       _currentAuthToken = authToken;
 
       final wsScheme = ApiConfig.reverbScheme == 'https' ? 'wss' : 'ws';
-      final wsUrl = '$wsScheme://${ApiConfig.reverbUrl}:${ApiConfig.reverbPort}/app/${ApiConfig.reverbKey}';
-      
+      final wsUrl =
+          '$wsScheme://${ApiConfig.reverbUrl}:${ApiConfig.reverbPort}/app/${ApiConfig.reverbKey}';
+
       print('🔌 Connecting to WebSocket: $wsUrl');
 
       // Create WebSocket connection
@@ -129,10 +174,12 @@ class NotificationService {
         onError: (error) {
           print('❌ WebSocket error: $error');
           _isConnected = false;
-          
+
           // Попытка переподключения через 5 секунд
           Future.delayed(const Duration(seconds: 5), () {
-            if (!_isConnected && _currentUserId != null && _currentAuthToken != null) {
+            if (!_isConnected &&
+                _currentUserId != null &&
+                _currentAuthToken != null) {
               print('🔄 Attempting to reconnect...');
               _initializeWebSocket(_currentUserId!, _currentAuthToken!);
             }
@@ -141,10 +188,12 @@ class NotificationService {
         onDone: () {
           print('🔌 WebSocket connection closed');
           _isConnected = false;
-          
+
           // Автоматическое переподключение
           Future.delayed(const Duration(seconds: 3), () {
-            if (!_isConnected && _currentUserId != null && _currentAuthToken != null) {
+            if (!_isConnected &&
+                _currentUserId != null &&
+                _currentAuthToken != null) {
               print('🔄 Auto-reconnecting after connection close...');
               _initializeWebSocket(_currentUserId!, _currentAuthToken!);
             }
@@ -182,21 +231,31 @@ class NotificationService {
   }
 
   /// Subscribe to a channel with authorization
-  Future<void> _subscribeToChannelWithAuth(String channelName, String userId) async {
+  Future<void> _subscribeToChannelWithAuth(
+    String channelName,
+    String userId,
+  ) async {
     if (_socketId == null || _currentAuthToken == null) {
       print('❌ Cannot subscribe: missing socket_id or auth token');
       print('   socket_id: $_socketId');
-      print('   auth token: ${_currentAuthToken != null ? "present (${_currentAuthToken!.length} chars)" : "null"}');
+      print(
+        '   auth token: ${_currentAuthToken != null ? "present (${_currentAuthToken!.length} chars)" : "null"}',
+      );
       return;
     }
 
     try {
       print('🔐 Requesting authorization for channel: $channelName');
       print('   socket_id: $_socketId');
-      print('   token (first 10 chars): ${_currentAuthToken!.substring(0, _currentAuthToken!.length > 10 ? 10 : _currentAuthToken!.length)}...');
-      print('   token (last 4 chars): ...${_currentAuthToken!.substring(_currentAuthToken!.length > 4 ? _currentAuthToken!.length - 4 : 0)}');
+      print(
+        '   token (first 10 chars): ${_currentAuthToken!.substring(0, _currentAuthToken!.length > 10 ? 10 : _currentAuthToken!.length)}...',
+      );
+      print(
+        '   token (last 4 chars): ...${_currentAuthToken!.substring(_currentAuthToken!.length > 4 ? _currentAuthToken!.length - 4 : 0)}',
+      );
 
-      final url = '${ApiConfig.baseUrl}/systems/api/controller.php?key=${ApiConfig.apiKey}&route=broadcasting/auth';
+      final url =
+          '${ApiConfig.baseUrl}/systems/api/controller.php?key=${ApiConfig.apiKey}&route=broadcasting/auth';
       print('   URL: $url');
 
       // Запрос авторизации с бэкенда
@@ -225,15 +284,14 @@ class NotificationService {
         // Отправляем подписку с авторизацией
         _sendMessage({
           'event': 'pusher:subscribe',
-          'data': {
-            'channel': channelName,
-            'auth': auth,
-          },
+          'data': {'channel': channelName, 'auth': auth},
         });
 
         print('📡 Subscribing to channel with auth: $channelName');
       } else {
-        print('❌ Authorization failed: ${response.statusCode} ${response.body}');
+        print(
+          '❌ Authorization failed: ${response.statusCode} ${response.body}',
+        );
       }
     } catch (e, stackTrace) {
       print('❌ Error during authorization: $e');
@@ -245,9 +303,7 @@ class NotificationService {
   void _subscribeToChannel(String channelName) {
     _sendMessage({
       'event': 'pusher:subscribe',
-      'data': {
-        'channel': channelName,
-      },
+      'data': {'channel': channelName},
     });
     print('📡 Subscribing to channel: $channelName');
   }
@@ -262,7 +318,7 @@ class NotificationService {
   /// Disconnect WebSocket
   Future<void> _disconnectWebSocket() async {
     _stopPingTimer();
-    
+
     if (_subscription != null) {
       await _subscription!.cancel();
       _subscription = null;
@@ -278,63 +334,69 @@ class NotificationService {
   Future<void> _handleWebSocketMessage(dynamic rawMessage) async {
     try {
       final message = jsonDecode(rawMessage as String);
-      
+
       print('📨 WebSocket message: $message');
-      
+
       // Обработка разных типов событий
       final event = message['event'] as String?;
-      
+
       if (event == 'pusher:connection_established') {
         final data = message['data'];
         final dataMap = data is String ? jsonDecode(data) : data;
         _socketId = dataMap['socket_id'];
-        
+
         print('✅ WebSocket connection established, socket_id: $_socketId');
         _isConnected = true;
-        
+
         // Теперь можем подписаться на приватный канал
         if (_currentUserId != null) {
-          _subscribeToChannelWithAuth('private-user.$_currentUserId', _currentUserId!);
+          _subscribeToChannelWithAuth(
+            'private-user.$_currentUserId',
+            _currentUserId!,
+          );
         }
         return;
       }
-      
+
       if (event == 'pusher:ping') {
         // Отвечаем на ping сообщение
         print('🏓 Received ping, sending pong...');
         _sendMessage({'event': 'pusher:pong', 'data': {}});
         return;
       }
-      
+
       if (event == 'pusher:pong') {
         print('🏓 Received pong');
         return;
       }
-      
+
       if (event == 'pusher_internal:subscription_succeeded') {
         print('✅ Subscription succeeded');
         return;
       }
-      
+
       if (event == 'pusher:error') {
         final data = message['data'];
         final dataMap = data is String ? jsonDecode(data) : data;
-        print('❌ Pusher error: ${dataMap['message']} (code: ${dataMap['code']})');
+        print(
+          '❌ Pusher error: ${dataMap['message']} (code: ${dataMap['code']})',
+        );
         return;
       }
-      
+
       if (event == 'chat.message') {
         final data = message['data'];
         final messageData = data is String ? jsonDecode(data) : data;
-        
+
         print('💬 Received chat message from ${messageData['from_user_name']}');
-        
+
         // Формируем ID уведомления (такой же как в polling)
-        final notificationId = 'chat_${messageData['dialog_id']}_${DateTime.now().millisecondsSinceEpoch ~/ 1000}';
-        
+        final notificationId =
+            'chat_${messageData['dialog_id']}_${DateTime.now().millisecondsSinceEpoch ~/ 1000}';
+
         // Добавляем в список просмотренных чтобы не показывать дубликаты при polling
         await _addToShownNotifications(notificationId);
-        
+
         // Show local notification
         _showLocalNotification(
           title: messageData['from_user_name'] ?? 'Новое сообщение',
@@ -395,18 +457,21 @@ class NotificationService {
   Future<void> _addToShownNotifications(String notificationId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final shownNotifications = prefs.getStringList('shown_notifications') ?? [];
-      
+      final shownNotifications =
+          prefs.getStringList('shown_notifications') ?? [];
+
       if (!shownNotifications.contains(notificationId)) {
         shownNotifications.add(notificationId);
-        
+
         // Храним только последние 100 ID
         final updatedList = shownNotifications.length > 100
             ? shownNotifications.sublist(shownNotifications.length - 100)
             : shownNotifications;
-        
+
         await prefs.setStringList('shown_notifications', updatedList);
-        print('✅ [NotificationService] Added to shown notifications: $notificationId');
+        print(
+          '✅ [NotificationService] Added to shown notifications: $notificationId',
+        );
       }
     } catch (e) {
       print('❌ [NotificationService] Error adding to shown notifications: $e');
@@ -433,7 +498,7 @@ class NotificationService {
   /// Disconnect and cleanup
   Future<void> disconnect() async {
     print('🔌 Disconnecting NotificationService');
-    
+
     await _disconnectWebSocket();
     await _backgroundService.stop();
 

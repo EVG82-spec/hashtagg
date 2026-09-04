@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hashtagg/shared/presentation/widgets/app_footer.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -108,24 +109,31 @@ class _HomeScreenState extends State<HomeScreen> {
       final cityLat = box.get('selectedCityLat') as double?;
       final cityLon = box.get('selectedCityLon') as double?;
 
-      print('🔵 [HomeScreen] Cached values: ID=$cityId, Name=$cityName, Lat=$cityLat, Lon=$cityLon');
+      print(
+        '🔵 [HomeScreen] Cached values: ID=$cityId, Name=$cityName, Lat=$cityLat, Lon=$cityLon',
+      );
 
       if (cityId != null && cityName != null) {
         String? declination = cachedDeclination;
         if ((declination == null || declination.isEmpty) && cityId != 0) {
           try {
             final geoApi = GeoApiRepository();
-            final result = await geoApi.searchCities(query: cityName, onlyCity: true);
+            final result = await geoApi.searchCities(
+              query: cityName,
+              onlyCity: true,
+            );
             if (result['status'] == true) {
               final cities = result['data'] as List;
               final city = cities.firstWhere(
-                    (c) => c['city_id'].toString() == cityId.toString(),
+                (c) => c['city_id'].toString() == cityId.toString(),
                 orElse: () => null,
               );
               if (city != null) {
                 declination = city['declination'] ?? '';
                 await box.put('selectedCityDeclination', declination);
-                print('✅ [HomeScreen] Loaded declination from API: $declination');
+                print(
+                  '✅ [HomeScreen] Loaded declination from API: $declination',
+                );
               }
             }
           } catch (e) {
@@ -146,7 +154,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _regionId = 0;
           _countryId = 0;
         });
-        print('✅ [HomeScreen] Loaded cached city: $cityName (ID: $cityId, declination: $declination)');
+        print(
+          '✅ [HomeScreen] Loaded cached city: $cityName (ID: $cityId, declination: $declination)',
+        );
       } else {
         print('⚠️ [HomeScreen] No cached city, setting "Все города"');
         setState(() {
@@ -168,7 +178,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _saveCityToCache(int? cityId, String? cityName, double? lat, double? lon, {String? declination}) async {
+  Future<void> _saveCityToCache(
+    int? cityId,
+    String? cityName,
+    double? lat,
+    double? lon, {
+    String? declination,
+  }) async {
     try {
       final box = await Hive.openBox('settings');
       if (cityId != null && cityName != null) {
@@ -177,7 +193,9 @@ class _HomeScreenState extends State<HomeScreen> {
         await box.put('selectedCityDeclination', declination ?? '');
         await box.put('selectedCityLat', lat);
         await box.put('selectedCityLon', lon);
-        print('✅ [HomeScreen] Cached city: $cityName (ID: $cityId, declination: $declination)');
+        print(
+          '✅ [HomeScreen] Cached city: $cityName (ID: $cityId, declination: $declination)',
+        );
       } else {
         await box.delete('selectedCityId');
         await box.delete('selectedCityName');
@@ -238,18 +256,26 @@ class _HomeScreenState extends State<HomeScreen> {
     print('🔵 [StoriesPermission] Active services: $activeServices');
 
     if (activeServices == null || activeServices.isEmpty) {
-      print('⚠️ [StoriesPermission] No active services data, denying by default');
+      print(
+        '⚠️ [StoriesPermission] No active services data, denying by default',
+      );
       return false;
     }
 
-    final hasPermission = activeServices.any((service) =>
-    service == 'stories' || service.startsWith('stories_')
+    final hasPermission = activeServices.any(
+      (service) => service == 'stories' || service.startsWith('stories_'),
     );
-    print('${hasPermission ? "✅" : "🔴"} [StoriesPermission] Has stories permission: $hasPermission');
+    print(
+      '${hasPermission ? "✅" : "🔴"} [StoriesPermission] Has stories permission: $hasPermission',
+    );
     return hasPermission;
   }
 
-   void _showStorySettingsDialog(BuildContext context, {required String filePath, required bool isPhoto}) {
+  void _showStorySettingsDialog(
+    BuildContext context, {
+    required String filePath,
+    required bool isPhoto,
+  }) {
     String selectedPromotion = 'Свой профиль';
     String selectedLocation = 'Все города';
     String selectedCategory = 'Все категории';
@@ -284,7 +310,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: isDark ? const Color(0xff233040) : Colors.grey[300]!,
+                            color: isDark
+                                ? const Color(0xff233040)
+                                : Colors.grey[300]!,
                           ),
                         ),
                       ),
@@ -315,10 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.black,
                         child: Center(
                           child: isPhoto
-                              ? Image.file(
-                            File(filePath),
-                            fit: BoxFit.contain,
-                          )
+                              ? Image.file(File(filePath), fit: BoxFit.contain)
                               : _VideoPreview(filePath: filePath),
                         ),
                       ),
@@ -355,7 +380,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: 'Локация',
                             subtitle: selectedLocation,
                             onTap: () {
-                              _showLocationOptions(context, (value, cityId, regionId, countryId) {
+                              _showLocationOptions(context, (
+                                value,
+                                cityId,
+                                regionId,
+                                countryId,
+                              ) {
                                 setModalState(() {
                                   selectedLocation = value;
                                   selectedCityId = cityId;
@@ -383,90 +413,106 @@ class _HomeScreenState extends State<HomeScreen> {
                           SizedBox(height: 24),
 
                           ElevatedButton(
-                            onPressed: isPublishing ? null : () async {
-                              setModalState(() {
-                                isPublishing = true;
-                              });
+                            onPressed: isPublishing
+                                ? null
+                                : () async {
+                                    setModalState(() {
+                                      isPublishing = true;
+                                    });
 
-                              try {
-                                final publisher = StoryPublisher();
-                                final result = await publisher.publishStory(
-                                  filePath: filePath,
-                                  isPhoto: isPhoto,
-                                  cityId: selectedCityId ?? 0,
-                                  regionId: selectedRegionId ?? 0,
-                                  countryId: selectedCountryId ?? 0,
-                                  catId: selectedCatId ?? 0,
-                                  link: selectedLink,
-                                  adId: selectedAdId ?? 0,
-                                );
+                                    try {
+                                      final publisher = StoryPublisher();
+                                      final result = await publisher
+                                          .publishStory(
+                                            filePath: filePath,
+                                            isPhoto: isPhoto,
+                                            cityId: selectedCityId ?? 0,
+                                            regionId: selectedRegionId ?? 0,
+                                            countryId: selectedCountryId ?? 0,
+                                            catId: selectedCatId ?? 0,
+                                            link: selectedLink,
+                                            adId: selectedAdId ?? 0,
+                                          );
 
-                                if (!context.mounted) return;
+                                      if (!context.mounted) return;
 
-                                final storiesBloc = context.read<StoriesBloc>();
-                                final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                final navigator = Navigator.of(context);
-                                final goRouter = GoRouter.of(context);
+                                      final storiesBloc = context
+                                          .read<StoriesBloc>();
+                                      final scaffoldMessenger =
+                                          ScaffoldMessenger.of(context);
+                                      final navigator = Navigator.of(context);
+                                      final goRouter = GoRouter.of(context);
 
-                                navigator.pop();
+                                      navigator.pop();
 
-                                if (result['status'] == true) {
-                                  final data = result['data'];
-                                  if (data['balance'] == false) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: Text('Недостаточно средств'),
-                                        content: Text('Пополните баланс для публикации стории'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context),
-                                            child: Text('Отмена'),
+                                      if (result['status'] == true) {
+                                        final data = result['data'];
+                                        if (data['balance'] == false) {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text(
+                                                'Недостаточно средств',
+                                              ),
+                                              content: Text(
+                                                'Пополните баланс для публикации стории',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text('Отмена'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    goRouter.push('/wallet');
+                                                  },
+                                                  child: Text('Пополнить'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        } else {
+                                          scaffoldMessenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Стория опубликована!',
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                          storiesBloc.add(LoadStories());
+                                        }
+                                      } else {
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Ошибка: ${result['error']}',
+                                            ),
+                                            backgroundColor: Colors.red,
                                           ),
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              goRouter.push('/wallet');
-                                            },
-                                            child: Text('Пополнить'),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Ошибка: $e'),
+                                            backgroundColor: Colors.red,
                                           ),
-                                        ],
-                                      ),
-                                    );
-                                  } else {
-                                    scaffoldMessenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text('Стория опубликована!'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                    storiesBloc.add(LoadStories());
-                                  }
-                                } else {
-                                  scaffoldMessenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text('Ошибка: ${result['error']}'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Ошибка: $e'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              } finally {
-                                if (context.mounted) {
-                                  setModalState(() {
-                                    isPublishing = false;
-                                  });
-                                }
-                              }
-                            },
+                                        );
+                                      }
+                                    } finally {
+                                      if (context.mounted) {
+                                        setModalState(() {
+                                          isPublishing = false;
+                                        });
+                                      }
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xff917dfa),
                               foregroundColor: Colors.white,
@@ -477,20 +523,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: isPublishing
                                 ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
                                 : Text(
-                              'Опубликовать',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                                    'Опубликовать',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
@@ -505,7 +551,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showPromotionOptions(BuildContext context, Function(String, int?) onSelect) {
+  void _showPromotionOptions(
+    BuildContext context,
+    Function(String, int?) onSelect,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
@@ -551,7 +600,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showAdSelectionModal(BuildContext context, Function(String, int?) onSelect) {
+  void _showAdSelectionModal(
+    BuildContext context,
+    Function(String, int?) onSelect,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
@@ -582,25 +634,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 if (token != null && userId != null) {
                   final profileApi = ProfileApiRepository();
-                  profileApi.getMyAds(
-                    token: token,
-                    userId: userId,
-                    sorting: 'active',
-                  ).then((result) {
-                    setBottomSheetState(() {
-                      isLoading = false;
-                      if (result['data'] != null) {
-                        ads = result['data'] as List;
-                        filteredAds = ads;
-                        print('✅ [AdSelection] Loaded ${ads.length} ads');
-                      }
-                    });
-                  }).catchError((e) {
-                    print('🔴 [AdSelection] Error loading ads: $e');
-                    setBottomSheetState(() {
-                      isLoading = false;
-                    });
-                  });
+                  profileApi
+                      .getMyAds(token: token, userId: userId, sorting: 'active')
+                      .then((result) {
+                        setBottomSheetState(() {
+                          isLoading = false;
+                          if (result['data'] != null) {
+                            ads = result['data'] as List;
+                            filteredAds = ads;
+                            print('✅ [AdSelection] Loaded ${ads.length} ads');
+                          }
+                        });
+                      })
+                      .catchError((e) {
+                        print('🔴 [AdSelection] Error loading ads: $e');
+                        setBottomSheetState(() {
+                          isLoading = false;
+                        });
+                      });
                 } else {
                   setBottomSheetState(() {
                     isLoading = false;
@@ -615,7 +666,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   filteredAds = ads;
                 } else {
                   filteredAds = ads.where((ad) {
-                    final title = (ad['ads_title'] ?? '').toString().toLowerCase();
+                    final title = (ad['ads_title'] ?? '')
+                        .toString()
+                        .toLowerCase();
                     return title.contains(query.toLowerCase());
                   }).toList();
                 }
@@ -628,8 +681,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 top: 20,
                 left: 20,
                 right: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom +
-                    MediaQuery.of(context).padding.bottom + 20,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    MediaQuery.of(context).padding.bottom +
+                    20,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,7 +712,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onChanged: filterAds,
                   ),
@@ -704,7 +762,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             onTap: () {
-                              onSelect('Объявление: $title', adId is int ? adId : int.tryParse(adId?.toString() ?? '0'));
+                              onSelect(
+                                'Объявление: $title',
+                                adId is int
+                                    ? adId
+                                    : int.tryParse(adId?.toString() ?? '0'),
+                              );
                               Navigator.pop(context);
                             },
                           );
@@ -720,7 +783,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showLocationOptions(BuildContext context, Function(String, int?, int?, int?) onSelect) {
+  void _showLocationOptions(
+    BuildContext context,
+    Function(String, int?, int?, int?) onSelect,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
@@ -745,13 +811,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   isLoading = false;
                   if (result['status'] == true) {
                     locations = result['data'] as List;
-                    print('✅ [LocationOptions] Loaded ${locations.length} locations');
+                    print(
+                      '✅ [LocationOptions] Loaded ${locations.length} locations',
+                    );
                   }
                 });
               });
             }
 
-            print('🔵 [LocationOptions] Building UI - isLoading: $isLoading, locations count: ${locations.length}');
+            print(
+              '🔵 [LocationOptions] Building UI - isLoading: $isLoading, locations count: ${locations.length}',
+            );
 
             Future<void> searchLocations(String query) async {
               setBottomSheetState(() {
@@ -759,7 +829,10 @@ class _HomeScreenState extends State<HomeScreen> {
               });
 
               final geoApi = GeoApiRepository();
-              final result = await geoApi.searchCities(query: query, onlyCity: true);
+              final result = await geoApi.searchCities(
+                query: query,
+                onlyCity: true,
+              );
 
               setBottomSheetState(() {
                 isLoading = false;
@@ -777,8 +850,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 top: 20,
                 left: 20,
                 right: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom +
-                    MediaQuery.of(context).padding.bottom + 20,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    MediaQuery.of(context).padding.bottom +
+                    20,
               ),
               child: Column(
                 children: [
@@ -858,12 +933,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: Builder(
                         builder: (context) {
-                          print('🔵 [LocationOptions] Building ListView with ${locations.length} items');
+                          print(
+                            '🔵 [LocationOptions] Building ListView with ${locations.length} items',
+                          );
                           return ListView.builder(
                             itemCount: locations.length,
                             itemBuilder: (context, index) {
                               final location = locations[index];
-                              final name = location['geo_name'] ?? location['city_name'] ?? '';
+                              final name =
+                                  location['geo_name'] ??
+                                  location['city_name'] ??
+                                  '';
                               print('🔵 [LocationOptions] Item $index: $name');
                               final cityId = location['city_id'];
                               final regionId = location['region_id'];
@@ -872,14 +952,28 @@ class _HomeScreenState extends State<HomeScreen> {
                               return ListTile(
                                 title: Text(
                                   name,
-                                  style: GoogleFonts.montserrat(color: textColor),
+                                  style: GoogleFonts.montserrat(
+                                    color: textColor,
+                                  ),
                                 ),
                                 onTap: () {
                                   onSelect(
                                     name,
-                                    cityId is int ? cityId : int.tryParse(cityId?.toString() ?? '0'),
-                                    regionId is int ? regionId : int.tryParse(regionId?.toString() ?? '0'),
-                                    countryId is int ? countryId : int.tryParse(countryId?.toString() ?? '0'),
+                                    cityId is int
+                                        ? cityId
+                                        : int.tryParse(
+                                            cityId?.toString() ?? '0',
+                                          ),
+                                    regionId is int
+                                        ? regionId
+                                        : int.tryParse(
+                                            regionId?.toString() ?? '0',
+                                          ),
+                                    countryId is int
+                                        ? countryId
+                                        : int.tryParse(
+                                            countryId?.toString() ?? '0',
+                                          ),
                                   );
                                   Navigator.pop(context);
                                 },
@@ -898,7 +992,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showCategoryOptions(BuildContext context, Function(String, int?) onSelect) {
+  void _showCategoryOptions(
+    BuildContext context,
+    Function(String, int?) onSelect,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
@@ -908,7 +1005,7 @@ class _HomeScreenState extends State<HomeScreen> {
     List<dynamic> categories = [];
     List<dynamic> filteredCategories = [];
     bool isLoading = true;
-// ===== Модальное окно все категории =====
+    // ===== Модальное окно все категории =====
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -924,7 +1021,6 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(20),
             child: StatefulBuilder(
               builder: (BuildContext context, StateSetter setDialogState) {
-
                 if (isLoading && categories.isEmpty) {
                   final categoriesApi = CategoriesApiRepository();
                   categoriesApi.getCategories().then((result) {
@@ -935,7 +1031,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (data is List) {
                           categories = data;
                           filteredCategories = categories;
-                        } else if (data is Map && data.containsKey('data') && data['data'] != null) {
+                        } else if (data is Map &&
+                            data.containsKey('data') &&
+                            data['data'] != null) {
                           categories = data['data'] as List;
                           filteredCategories = categories;
                         }
@@ -950,7 +1048,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       filteredCategories = categories;
                     } else {
                       filteredCategories = categories.where((cat) {
-                        final name = (cat['category_board_name'] ?? '').toString().toLowerCase();
+                        final name = (cat['category_board_name'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         return name.contains(query.toLowerCase());
                       }).toList();
                     }
@@ -977,7 +1077,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.grey[800] : Colors.grey[200],
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -1029,7 +1131,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () {
                                 onSelect(
                                   name,
-                                  catId is int ? catId : int.tryParse(catId?.toString() ?? '0'),
+                                  catId is int
+                                      ? catId
+                                      : int.tryParse(catId?.toString() ?? '0'),
                                 );
                                 Navigator.pop(context);
                               },
@@ -1047,15 +1151,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-
-
   Widget _buildSettingItem(
-      BuildContext context, {
-        required String title,
-        required String subtitle,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
     final subtitleColor = isDark ? Colors.white70 : Colors.grey[600];
@@ -1101,7 +1202,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openGalleryForStory(BuildContext context) async {
-    final hasPermission = await PermissionService.requestStoragePermission(context);
+    final hasPermission = await PermissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) return;
 
     final picker = ImagePicker();
@@ -1121,7 +1224,11 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           RefreshIndicator(
             onRefresh: () async {
-              context.read<FeedBloc>().add(FeedCategoryChangeEvent(category: context.read<FeedBloc>().state.category));
+              context.read<FeedBloc>().add(
+                FeedCategoryChangeEvent(
+                  category: context.read<FeedBloc>().state.category,
+                ),
+              );
               context.read<StoriesBloc>().add(LoadStories());
               context.read<BannerBloc>().add(LoadBanner());
               await Future.delayed(const Duration(milliseconds: 500));
@@ -1132,19 +1239,26 @@ class _HomeScreenState extends State<HomeScreen> {
             strokeWidth: 3.0,
             child: CustomScrollView(
               controller: _scrollController,
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               slivers: [
                 SliverAppBar(
+                  //  верх страницы
                   expandedHeight: 150.0,
                   pinned: true,
                   leading: IconButton(
                     icon: Icon(
                       Icons.grid_view,
-                      color: _isCollapsed ? (isDark ? Colors.white : Colors.black) : Colors.white,
+                      color: _isCollapsed
+                          ? (isDark ? Colors.white : Colors.black)
+                          : Colors.white,
                     ),
                     style: ButtonStyle(
                       backgroundColor: WidgetStatePropertyAll(
-                        _isCollapsed ? Colors.transparent : const Color.fromRGBO(0, 0, 0, 0.4),
+                        _isCollapsed
+                            ? Colors.transparent
+                            : const Color.fromRGBO(0, 0, 0, 0.4),
                       ),
                     ),
                     onPressed: () => context.push('/menu'),
@@ -1157,7 +1271,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: SearchBar(
                           backgroundColor: WidgetStateProperty.all(
                             _isCollapsed
-                                ? (isDark ? const Color(0xff213140) : const Color(0xFFF5F7FA))
+                                ? (isDark
+                                      ? const Color(0xff213140)
+                                      : const Color(0xFFF5F7FA))
                                 : Colors.white,
                           ),
                           leading: Padding(
@@ -1167,13 +1283,19 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: 16,
                               width: 16,
                               colorFilter: _isCollapsed && isDark
-                                  ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
+                                  ? const ColorFilter.mode(
+                                      Colors.white,
+                                      BlendMode.srcIn,
+                                    )
                                   : null,
                             ),
                           ),
                           hintText: 'Поиск',
                           hintStyle: WidgetStateProperty.all(
-                            GoogleFonts.montserrat(fontSize: 12, color: const Color(0xff999999)),
+                            GoogleFonts.montserrat(
+                              fontSize: 12,
+                              color: const Color(0xff999999),
+                            ),
                           ),
                           elevation: WidgetStateProperty.all(0.0),
                         ),
@@ -1183,7 +1305,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   actions: [
                     Container(
                       margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: _isCollapsed
                             ? Colors.transparent
@@ -1192,27 +1317,43 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: GestureDetector(
                         onTap: () async {
-                          final result = await Navigator.of(context, rootNavigator: true).push<Map<String, dynamic>>(
-                            createSwipeableRoute(
-                              builder: (_) => CitySelectionScreen(
-                                selectedCityId: _filters.cityId,
-                                selectedCity: _filters.city,
-                              ),
-                            ),
-                          );
+                          final result =
+                              await Navigator.of(
+                                context,
+                                rootNavigator: true,
+                              ).push<Map<String, dynamic>>(
+                                createSwipeableRoute(
+                                  builder: (_) => CitySelectionScreen(
+                                    selectedCityId: _filters.cityId,
+                                    selectedCity: _filters.city,
+                                  ),
+                                ),
+                              );
                           if (result != null && mounted) {
                             final cityId = result['id'] as int?;
                             final cityName = result['name'] as String?;
-                            final declination = result['declination'] as String?;
+                            final declination =
+                                result['declination'] as String?;
                             final lat = result['lat'] as double?;
                             final lon = result['lon'] as double?;
-                            await _saveCityToCache(cityId, cityName, lat, lon, declination: declination);
+                            await _saveCityToCache(
+                              cityId,
+                              cityName,
+                              lat,
+                              lon,
+                              declination: declination,
+                            );
                             setState(() {
                               cityDeclination = declination;
-                              _filters = _filters.copyWith(cityId: cityId, city: cityName, cityLat: lat, cityLon: lon);
+                              _filters = _filters.copyWith(
+                                cityId: cityId,
+                                city: cityName,
+                                cityLat: lat,
+                                cityLon: lon,
+                              );
                               _cityId = cityId;
-                              _regionId = null;   // ← БЫЛО 0, СТАЛО null
-                              _countryId = null;  // ← БЫЛО 0, СТАЛО null
+                              _regionId = null; // ← БЫЛО 0, СТАЛО null
+                              _countryId = null; // ← БЫЛО 0, СТАЛО null
                             });
                           }
                         },
@@ -1243,26 +1384,37 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ],
-                  backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).appBarTheme.backgroundColor,
                   surfaceTintColor: Colors.transparent,
                   foregroundColor: isDark ? Colors.white : Colors.black,
                   systemOverlayStyle: SystemUiOverlayStyle(
-                    statusBarColor: Theme.of(context).appBarTheme.backgroundColor,
-                    statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-                    statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+                    statusBarColor: Theme.of(
+                      context,
+                    ).appBarTheme.backgroundColor,
+                    statusBarIconBrightness: isDark
+                        ? Brightness.light
+                        : Brightness.dark,
+                    statusBarBrightness: isDark
+                        ? Brightness.dark
+                        : Brightness.light,
                   ),
                   flexibleSpace: FlexibleSpaceBar(
                     background: MapMiniature(
                       filters: _filters,
                       onTap: () {
                         Navigator.of(context, rootNavigator: true).push(
-                          CupertinoPageRoute(builder: (_) => MapScreen(filters: _filters)),
+                          CupertinoPageRoute(
+                            builder: (_) => MapScreen(filters: _filters),
+                          ),
                         );
                       },
                       onMarkerTap: (adId) {
                         Navigator.of(context, rootNavigator: true).push(
                           CupertinoPageRoute(
-                            builder: (_) => MapScreen(filters: _filters, initialAdId: adId),
+                            builder: (_) =>
+                                MapScreen(filters: _filters, initialAdId: adId),
                           ),
                         );
                       },
@@ -1271,6 +1423,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 SliverToBoxAdapter(
+                  // контентная часть
                   child: BlocBuilder<CategoriesBloc, CategoriesState>(
                     builder: (context, state) {
                       if (state is CategoriesLoaded) {
@@ -1286,10 +1439,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               GestureDetector(
                                 onTap: () {
                                   _showCategoryOptions(context, (name, id) {
-                                    final filters = (_filters ?? const SearchFilters()).copyWith(
-                                      categoryId: id,
-                                      category: name,
-                                    );
+                                    final filters =
+                                        (_filters ?? const SearchFilters())
+                                            .copyWith(
+                                              categoryId: id,
+                                              category: name,
+                                            );
                                     context.push('/search', extra: filters);
                                   });
                                 },
@@ -1302,11 +1457,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 70,
                                         decoration: BoxDecoration(
                                           color: const Color(0xffF0EEFF),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: const Color(0xff917dfa), width: 2),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xff917dfa),
+                                            width: 2,
+                                          ),
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                           child: Image.asset(
                                             'assets/all_categories.jpg',
                                             fit: BoxFit.cover,
@@ -1337,7 +1499,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
                                   itemCount: categories.length,
-                                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 10),
                                   itemBuilder: (context, index) {
                                     final category = categories[index];
                                     return CategoryCard(
@@ -1363,11 +1526,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.error_outline, color: Colors.grey),
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: Colors.grey,
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Не удалось загрузить категории',
-                                  style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey),
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1388,14 +1557,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 15),
                             itemCount: state.users.length + 1,
-                            separatorBuilder: (_, __) => const SizedBox(width: 10),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 10),
                             itemBuilder: (context, index) {
                               if (index == 0) {
                                 return BlocBuilder<AuthBloc, AuthState>(
                                   builder: (context, authState) {
-                                    if (!_checkStoriesPermission(authState)) return const SizedBox.shrink();
+                                    if (!_checkStoriesPermission(authState))
+                                      return const SizedBox.shrink();
                                     return GestureDetector(
-                                      onTap: () => _openGalleryForStory(context),
+                                      onTap: () =>
+                                          _openGalleryForStory(context),
                                       child: SizedBox(
                                         width: 80,
                                         child: Column(
@@ -1406,7 +1578,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
                                                 border: Border.all(
-                                                  color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                                                  color: isDark
+                                                      ? Colors.grey[700]!
+                                                      : Colors.grey[300]!,
                                                   width: 2,
                                                 ),
                                               ),
@@ -1418,12 +1592,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       height: 76,
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
-                                                        color: isDark ? const Color(0xff233040) : Colors.grey[200],
+                                                        color: isDark
+                                                            ? const Color(
+                                                                0xff233040,
+                                                              )
+                                                            : Colors.grey[200],
                                                       ),
                                                       child: Icon(
                                                         Icons.camera_alt,
                                                         size: 35,
-                                                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                                        color: isDark
+                                                            ? Colors.grey[400]
+                                                            : Colors.grey[600],
                                                       ),
                                                     ),
                                                   ),
@@ -1433,11 +1613,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     child: Container(
                                                       width: 24,
                                                       height: 24,
-                                                      decoration: const BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: Color(0xff917dfa),
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                            shape:
+                                                                BoxShape.circle,
+                                                            color: Color(
+                                                              0xff917dfa,
+                                                            ),
+                                                          ),
+                                                      child: const Icon(
+                                                        Icons.add,
+                                                        size: 16,
+                                                        color: Colors.white,
                                                       ),
-                                                      child: const Icon(Icons.add, size: 16, color: Colors.white),
                                                     ),
                                                   ),
                                                 ],
@@ -1453,13 +1641,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               final userIndex = index - 1;
                               final user = state.users[userIndex];
                               final userName = user['name'] ?? 'Пользователь';
-                              final avatar = ApiConfig.replaceMediaUrl(user['avatar']?.toString() ?? '');
+                              final avatar = ApiConfig.replaceMediaUrl(
+                                user['avatar']?.toString() ?? '',
+                              );
                               final stories = user['stories'] as List? ?? [];
-                              final hasUnviewed = stories.any((s) => s['status'] == 1);
+                              final hasUnviewed = stories.any(
+                                (s) => s['status'] == 1,
+                              );
 
                               return GestureDetector(
                                 onTap: () {
-                                  Navigator.of(context, rootNavigator: true).push(
+                                  Navigator.of(
+                                    context,
+                                    rootNavigator: true,
+                                  ).push(
                                     createSwipeableRoute(
                                       builder: (_) => StoryViewerScreen(
                                         allUsers: state.users,
@@ -1481,20 +1676,35 @@ class _HomeScreenState extends State<HomeScreen> {
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: hasUnviewed ? Colors.orange : Colors.grey,
+                                                color: hasUnviewed
+                                                    ? Colors.orange
+                                                    : Colors.grey,
                                                 width: 2,
                                               ),
                                             ),
                                             child: ClipOval(
                                               child: Container(
                                                 decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xff233040) : Colors.grey[300],
+                                                  color: isDark
+                                                      ? const Color(0xff233040)
+                                                      : Colors.grey[300],
                                                   image: avatar.isNotEmpty
-                                                      ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
+                                                      ? DecorationImage(
+                                                          image: NetworkImage(
+                                                            avatar,
+                                                          ),
+                                                          fit: BoxFit.cover,
+                                                        )
                                                       : null,
                                                 ),
                                                 child: avatar.isEmpty
-                                                    ? Icon(Icons.person, size: 35, color: isDark ? Colors.grey[400] : Colors.grey[600])
+                                                    ? Icon(
+                                                        Icons.person,
+                                                        size: 35,
+                                                        color: isDark
+                                                            ? Colors.grey[400]
+                                                            : Colors.grey[600],
+                                                      )
                                                     : null,
                                               ),
                                             ),
@@ -1504,14 +1714,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                             left: 0,
                                             right: 0,
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 3,
+                                                    horizontal: 6,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withOpacity(0.85),
-                                                borderRadius: BorderRadius.circular(10),
+                                                color: Colors.black.withOpacity(
+                                                  0.85,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                               child: Text(
                                                 userName,
-                                                style: GoogleFonts.montserrat(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
+                                                style: GoogleFonts.montserrat(
+                                                  fontSize: 9,
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 textAlign: TextAlign.center,
@@ -1533,7 +1754,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 80,
                           margin: const EdgeInsets.symmetric(horizontal: 20),
                           child: Center(
-                            child: Text('Ошибка загрузки историй', style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey)),
+                            child: Text(
+                              'Ошибка загрузки историй',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ),
                         );
                       }
@@ -1551,6 +1778,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   countryId: _countryId,
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                // 🔥 КНОПКА ДИАГНОСТИКИ
+                SliverToBoxAdapter(
+                  child: Container(
+                    height: 60,
+                    alignment: Alignment.center,
+                    child: ElevatedButton(
+                      onPressed: () => context.go('/diagnostic'),
+                      child: Text('🔍 Диагностика'),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 16, bottom: 16),
+                    child: AppFooter(), // футер
+                  ),
+                ),
               ],
             ),
           ),
@@ -1569,7 +1813,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                        _scrollController.animateTo(
+                          0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
                       },
                       borderRadius: BorderRadius.circular(20),
                       splashColor: Colors.white.withOpacity(0.2),
@@ -1581,15 +1829,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: const Color(0xff917dfa),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2)),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 20),
+                            const Icon(
+                              Icons.keyboard_arrow_up,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             const SizedBox(width: 4),
-                            Text('Наверх', style: GoogleFonts.montserrat(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                            Text(
+                              'Наверх',
+                              style: GoogleFonts.montserrat(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1640,10 +1903,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-
-
-
-
 class _VideoPreview extends StatefulWidget {
   final String filePath;
 
@@ -1676,7 +1935,9 @@ class _VideoPreviewState extends State<_VideoPreview> {
 
       switch (event) {
         case PlaybackReadyEvent():
-          print('✅ [VideoPreview] Video ready - ${controller.videoInfo?.width}x${controller.videoInfo?.height}, duration: ${controller.videoInfo?.duration}');
+          print(
+            '✅ [VideoPreview] Video ready - ${controller.videoInfo?.width}x${controller.videoInfo?.height}, duration: ${controller.videoInfo?.duration}',
+          );
           if (mounted) {
             setState(() {
               _isReady = true;
@@ -1703,7 +1964,9 @@ class _VideoPreviewState extends State<_VideoPreview> {
           break;
 
         case PlaybackStatusChangedEvent():
-          print('🔵 [VideoPreview] Status changed: ${controller.playbackStatus}');
+          print(
+            '🔵 [VideoPreview] Status changed: ${controller.playbackStatus}',
+          );
           break;
 
         default:
@@ -1714,23 +1977,22 @@ class _VideoPreviewState extends State<_VideoPreview> {
     try {
       print('🔵 [VideoPreview] Loading video from: ${widget.filePath}');
 
-      await controller.loadVideo(
-        VideoSource(
-          path: widget.filePath,
-          type: VideoSourceType.file,
-        ),
-      ).timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          print('🔴 [VideoPreview] Video loading timeout');
-          if (mounted) {
-            setState(() {
-              _hasError = true;
-              _errorMessage = 'Не удалось загрузить видео (таймаут)';
-            });
-          }
-        },
-      );
+      await controller
+          .loadVideo(
+            VideoSource(path: widget.filePath, type: VideoSourceType.file),
+          )
+          .timeout(
+            Duration(seconds: 10),
+            onTimeout: () {
+              print('🔴 [VideoPreview] Video loading timeout');
+              if (mounted) {
+                setState(() {
+                  _hasError = true;
+                  _errorMessage = 'Не удалось загрузить видео (таймаут)';
+                });
+              }
+            },
+          );
     } catch (e) {
       print('🔴 [VideoPreview] Error loading video: $e');
       if (mounted) {
@@ -1748,11 +2010,7 @@ class _VideoPreviewState extends State<_VideoPreview> {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.videocam,
-            size: 100,
-            color: Colors.white54,
-          ),
+          Icon(Icons.videocam, size: 100, color: Colors.white54),
           SizedBox(height: 16),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 32),
@@ -1800,15 +2058,9 @@ class _VideoPreviewState extends State<_VideoPreview> {
 
     return Stack(
       children: [
-        NativeVideoPlayerView(
-          onViewReady: _onViewReady,
-        ),
+        NativeVideoPlayerView(onViewReady: _onViewReady),
         if (!_isReady)
-          Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
-            ),
-          ),
+          Center(child: CircularProgressIndicator(color: Colors.white)),
       ],
     );
   }
@@ -1865,9 +2117,7 @@ class _InfoBannersCarouselState extends State<_InfoBannersCarousel> {
       return const AspectRatio(
         aspectRatio: 16 / 9,
         child: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xff917dfa),
-          ),
+          child: CircularProgressIndicator(color: Color(0xff917dfa)),
         ),
       );
     }
@@ -1901,10 +2151,8 @@ class _InfoBannersCarouselState extends State<_InfoBannersCarousel> {
                     if (link.isNotEmpty) {
                       Navigator.of(context, rootNavigator: true).push(
                         MaterialPageRoute(
-                          builder: (context) => WebViewScreen(
-                            url: link,
-                            title: '',
-                          ),
+                          builder: (context) =>
+                              WebViewScreen(url: link, title: ''),
                         ),
                       );
                     }
@@ -1929,7 +2177,7 @@ class _InfoBannersCarouselState extends State<_InfoBannersCarousel> {
                             child: CircularProgressIndicator(
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
+                                        loadingProgress.expectedTotalBytes!
                                   : null,
                               color: const Color(0xff917dfa),
                             ),
@@ -1937,7 +2185,9 @@ class _InfoBannersCarouselState extends State<_InfoBannersCarousel> {
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        print('🔴 [PromoSlider] Error loading image: $image, error: $error');
+                        print(
+                          '🔴 [PromoSlider] Error loading image: $image, error: $error',
+                        );
                         return Container(
                           color: _parseColor(colorBg),
                           child: Center(
@@ -1962,7 +2212,7 @@ class _InfoBannersCarouselState extends State<_InfoBannersCarousel> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   _sliders.length,
-                      (index) => Container(
+                  (index) => Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: _currentPage == index ? 20 : 8,
                     height: 8,

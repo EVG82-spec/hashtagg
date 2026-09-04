@@ -2,7 +2,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hashtagg/core/services/notification_service.dart';
 import 'package:hashtagg/shared/presentation/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
-import 'package:hashtagg/core/services/push_token_service.dart';
 
 // События
 abstract class NotificationEvent {}
@@ -70,15 +69,24 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     authBloc.stream.listen((authState) {
       if (authState is Authenticated) {
         // Пользователь авторизовался - инициализируем уведомления
-        print('🔔 [NotificationBloc] User authenticated, initializing notifications');
-        _initializeForUser(authState.user.id.toString(), authState.user.token ?? '');
+        print(
+          '🔔 [NotificationBloc] User authenticated, initializing notifications',
+        );
+        _initializeForUser(
+          authState.user.id.toString(),
+          authState.user.token ?? '',
+        );
 
         // 👈 НОВОЕ: Регистрируем push-токен при авторизации
-        _registerPushToken(authState.user.id.toString(), authState.user.token ?? '');
-
+        _registerPushToken(
+          authState.user.id.toString(),
+          authState.user.token ?? '',
+        );
       } else if (authState is Unauthenticated) {
         // Пользователь вышел - отключаем уведомления
-        print('🔔 [NotificationBloc] User logged out, disconnecting notifications');
+        print(
+          '🔔 [NotificationBloc] User logged out, disconnecting notifications',
+        );
 
         // 👈 НОВОЕ: Удаляем push-токен при выходе
         _deletePushToken(_lastUserId ?? '', _lastAuthToken ?? '');
@@ -93,21 +101,24 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     final currentAuthState = authBloc.state;
     if (currentAuthState is Authenticated) {
       final user = currentAuthState.user;
-      print('🔔 [NotificationBloc] User already authenticated on app start, initializing notifications');
+      print(
+        '🔔 [NotificationBloc] User already authenticated on app start, initializing notifications',
+      );
       _initializeForUser(user.id.toString(), user.token ?? '');
 
       // 👈 НОВОЕ: Регистрируем push-токен при старте (если уже залогинены)
       _registerPushToken(user.id.toString(), user.token ?? '');
-
-    } else if (currentAuthState is AuthInitial && currentAuthState.user != null) {
+    } else if (currentAuthState is AuthInitial &&
+        currentAuthState.user != null) {
       // Пользователь был авторизован ранее (данные из Hive)
       final user = currentAuthState.user!;
-      print('🔔 [NotificationBloc] User loaded from storage, initializing notifications');
+      print(
+        '🔔 [NotificationBloc] User loaded from storage, initializing notifications',
+      );
       _initializeForUser(user.id.toString(), user.token ?? '');
 
       // 👈 НОВОЕ: Регистрируем push-токен при загрузке из Hive
       _registerPushToken(user.id.toString(), user.token ?? '');
-
     }
   }
 
@@ -121,15 +132,14 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     if (state is NotificationConnected) {
       final connectedState = state as NotificationConnected;
       if (connectedState.userId == userId && _notificationService.isConnected) {
-        print('🔔 [NotificationBloc] Notifications already initialized for user $userId');
+        print(
+          '🔔 [NotificationBloc] Notifications already initialized for user $userId',
+        );
         return;
       }
     }
 
-    add(InitializeNotifications(
-      userId: userId,
-      authToken: authToken,
-    ));
+    add(InitializeNotifications(userId: userId, authToken: authToken));
   }
 
   // 👇 НОВЫЙ МЕТОД: Регистрация push-токена
@@ -150,7 +160,9 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   // 👇 НОВЫЙ МЕТОД: Удаление push-токена
   Future<void> _deletePushToken(String userId, String authToken) async {
     if (userId.isEmpty || authToken.isEmpty) {
-      print('⚠️ [NotificationBloc] Cannot delete push token: userId or authToken is empty');
+      print(
+        '⚠️ [NotificationBloc] Cannot delete push token: userId or authToken is empty',
+      );
       return;
     }
     try {
@@ -167,11 +179,13 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onInitialize(
-      InitializeNotifications event,
-      Emitter<NotificationState> emit,
-      ) async {
+    InitializeNotifications event,
+    Emitter<NotificationState> emit,
+  ) async {
     try {
-      print('🔔 [NotificationBloc] Initializing notifications for user ${event.userId}');
+      print(
+        '🔔 [NotificationBloc] Initializing notifications for user ${event.userId}',
+      );
       emit(NotificationConnecting());
 
       await _notificationService.initialize(
@@ -200,9 +214,9 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onDisconnect(
-      DisconnectNotifications event,
-      Emitter<NotificationState> emit,
-      ) async {
+    DisconnectNotifications event,
+    Emitter<NotificationState> emit,
+  ) async {
     try {
       print('🔔 [NotificationBloc] Disconnecting notifications');
       await _notificationService.disconnect();
@@ -215,16 +229,18 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onReconnect(
-      ReconnectNotifications event,
-      Emitter<NotificationState> emit,
-      ) async {
+    ReconnectNotifications event,
+    Emitter<NotificationState> emit,
+  ) async {
     try {
       if (_lastUserId == null || _lastAuthToken == null) {
         print('❌ [NotificationBloc] Cannot reconnect: no saved credentials');
         return;
       }
 
-      print('🔄 [NotificationBloc] Reconnecting notifications for user $_lastUserId');
+      print(
+        '🔄 [NotificationBloc] Reconnecting notifications for user $_lastUserId',
+      );
       emit(NotificationConnecting());
 
       await _notificationService.initialize(
@@ -250,9 +266,9 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   void _onNotificationReceived(
-      NotificationReceived event,
-      Emitter<NotificationState> emit,
-      ) {
+    NotificationReceived event,
+    Emitter<NotificationState> emit,
+  ) {
     // Здесь можно обработать полученное уведомление
     // Например, обновить счетчик непрочитанных сообщений
     print('📬 [NotificationBloc] Processing notification: ${event.data}');

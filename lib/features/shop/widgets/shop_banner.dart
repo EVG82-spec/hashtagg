@@ -17,7 +17,7 @@ class ShopBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bannerUrl = shop.bannerUrl;
+    final bannerUrl = shop.banner ?? shop.bannerUrl;
     final hasCustomBanner =
         shop.logo != null &&
         shop.logo!.isNotEmpty &&

@@ -14,8 +14,8 @@ import 'dart:ui' as ui;
 class AddressPickerScreen extends StatefulWidget {
   final String city;
   final int? cityId;
-  final double? initialLat;   // <-- добавить
-  final double? initialLon;   // <-- добавить
+  final double? initialLat;
+  final double? initialLon;
 
   const AddressPickerScreen({
     super.key,
@@ -94,7 +94,9 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
           PlacemarkIconStyle(
             image: _markerIconBytes != null
                 ? BitmapDescriptor.fromBytes(_markerIconBytes!)
-                : BitmapDescriptor.fromAssetImage('assets/location.png'), // fallback
+                : BitmapDescriptor.fromAssetImage(
+                    'assets/location.png',
+                  ), // fallback
             scale: 1.0,
             anchor: const Offset(0.5, 1.0),
           ),
@@ -103,62 +105,80 @@ class _AddressPickerScreenState extends State<AddressPickerScreen> {
     ];
   }
 
-
-Future<void> _loadMarkerIcon() async {
-  _markerIconBytes = await _svgToPngBytes(
-    'assets/location.svg',
-    color: const Color(0xff917dfa),
-  );
-  if (mounted) setState(() {});
-}
-
-  Future<Uint8List> _svgToPngBytes(String assetPath, {double width = 96, double height = 96, Color? color}) async {
-  final String rawSvg = await rootBundle.loadString(assetPath);
-  final PictureInfo pictureInfo = await vg.loadPicture(SvgStringLoader(rawSvg), null);
-
-  final double svgWidth = pictureInfo.size.width;
-  final double svgHeight = pictureInfo.size.height;
-
-  final double scaleX = width / svgWidth;
-  final double scaleY = height / svgHeight;
-  final double scale = scaleX < scaleY ? scaleX : scaleY;
-
-  final double renderWidth = svgWidth * scale;
-  final double renderHeight = svgHeight * scale;
-
-  final double offsetX = (width - renderWidth) / 2.0;
-  final double offsetY = (height - renderHeight) / 2.0;
-
-  // 1. Рендерим SVG в ui.Image без цвета
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, width, height));
-  canvas.translate(offsetX, offsetY);
-  canvas.scale(scale);
-  canvas.drawPicture(pictureInfo.picture);
-  final ui.Image svgImage = await recorder.endRecording().toImage(width.toInt(), height.toInt());
-
-  // 2. Если задан цвет – накладываем его через ColorFilter
-  if (color != null) {
-    final coloredRecorder = ui.PictureRecorder();
-    final coloredCanvas = Canvas(coloredRecorder, Rect.fromLTWH(0, 0, width, height));
-    final paint = Paint()
-      ..colorFilter = ColorFilter.mode(color, BlendMode.srcIn);
-    coloredCanvas.drawImage(svgImage, Offset.zero, paint);
-    svgImage.dispose(); // освободим оригинал
-    final coloredImage = await coloredRecorder.endRecording().toImage(width.toInt(), height.toInt());
-    final byteData = await coloredImage.toByteData(format: ui.ImageByteFormat.png);
-    coloredImage.dispose();
-    pictureInfo.picture.dispose();
-    return byteData!.buffer.asUint8List();
-  } else {
-    final byteData = await svgImage.toByteData(format: ui.ImageByteFormat.png);
-    svgImage.dispose();
-    pictureInfo.picture.dispose();
-    return byteData!.buffer.asUint8List();
+  Future<void> _loadMarkerIcon() async {
+    _markerIconBytes = await _svgToPngBytes(
+      'assets/location.svg',
+      color: const Color(0xff917dfa),
+    );
+    if (mounted) setState(() {});
   }
-}
 
+  Future<Uint8List> _svgToPngBytes(
+    String assetPath, {
+    double width = 96,
+    double height = 96,
+    Color? color,
+  }) async {
+    final String rawSvg = await rootBundle.loadString(assetPath);
+    final PictureInfo pictureInfo = await vg.loadPicture(
+      SvgStringLoader(rawSvg),
+      null,
+    );
 
+    final double svgWidth = pictureInfo.size.width;
+    final double svgHeight = pictureInfo.size.height;
+
+    final double scaleX = width / svgWidth;
+    final double scaleY = height / svgHeight;
+    final double scale = scaleX < scaleY ? scaleX : scaleY;
+
+    final double renderWidth = svgWidth * scale;
+    final double renderHeight = svgHeight * scale;
+
+    final double offsetX = (width - renderWidth) / 2.0;
+    final double offsetY = (height - renderHeight) / 2.0;
+
+    // 1. Рендерим SVG в ui.Image без цвета
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, width, height));
+    canvas.translate(offsetX, offsetY);
+    canvas.scale(scale);
+    canvas.drawPicture(pictureInfo.picture);
+    final ui.Image svgImage = await recorder.endRecording().toImage(
+      width.toInt(),
+      height.toInt(),
+    );
+
+    // 2. Если задан цвет – накладываем его через ColorFilter
+    if (color != null) {
+      final coloredRecorder = ui.PictureRecorder();
+      final coloredCanvas = Canvas(
+        coloredRecorder,
+        Rect.fromLTWH(0, 0, width, height),
+      );
+      final paint = Paint()
+        ..colorFilter = ColorFilter.mode(color, BlendMode.srcIn);
+      coloredCanvas.drawImage(svgImage, Offset.zero, paint);
+      svgImage.dispose(); // освободим оригинал
+      final coloredImage = await coloredRecorder.endRecording().toImage(
+        width.toInt(),
+        height.toInt(),
+      );
+      final byteData = await coloredImage.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      coloredImage.dispose();
+      pictureInfo.picture.dispose();
+      return byteData!.buffer.asUint8List();
+    } else {
+      final byteData = await svgImage.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      svgImage.dispose();
+      pictureInfo.picture.dispose();
+      return byteData!.buffer.asUint8List();
+    }
+  }
 
   Future<void> _searchAddress(String query) async {
     if (query.trim().isEmpty) {
@@ -203,7 +223,7 @@ Future<void> _loadMarkerIcon() async {
 
     if (lat != null && lon != null) {
       final point = Point(latitude: lat, longitude: lon);
-      
+
       setState(() {
         _selectedPoint = point;
         _selectedAddress = result['address'];
@@ -214,10 +234,7 @@ Future<void> _loadMarkerIcon() async {
       // Перемещаем камеру к выбранной точке
       _mapController.moveCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: point,
-            zoom: 17.0,
-          ),
+          CameraPosition(target: point, zoom: 17.0),
         ),
       );
     }
@@ -258,7 +275,6 @@ Future<void> _loadMarkerIcon() async {
       });
     }
   }
-
 
   void _confirm() {
     if (_selectedAddress != null && _selectedPoint != null) {
@@ -328,10 +344,7 @@ Future<void> _loadMarkerIcon() async {
                 _mapController = controller;
                 await _mapController.moveCamera(
                   CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: _cityCenter,
-                      zoom: 13.0,
-                    ),
+                    CameraPosition(target: _cityCenter, zoom: 13.0),
                   ),
                 );
               },
@@ -391,7 +404,7 @@ Future<void> _loadMarkerIcon() async {
                     ),
                   ),
                 ),
-                
+
                 // Результаты поиска
                 if (_searchResults.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -412,7 +425,8 @@ Future<void> _loadMarkerIcon() async {
                       shrinkWrap: true,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: _searchResults.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final result = _searchResults[index];
                         return ListTile(
@@ -430,7 +444,7 @@ Future<void> _loadMarkerIcon() async {
                     ),
                   ),
                 ],
-                
+
                 if (_isSearching)
                   Container(
                     margin: const EdgeInsets.only(top: 8),
@@ -464,7 +478,9 @@ Future<void> _loadMarkerIcon() async {
               right: 16,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -569,8 +585,7 @@ Future<void> _loadMarkerIcon() async {
                         onPressed: _isLoading ? null : _confirm,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff917dfa),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
                           ),

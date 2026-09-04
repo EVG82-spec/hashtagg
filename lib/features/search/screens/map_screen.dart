@@ -1,5 +1,5 @@
+//G:\hashtagg_app\lib\features\search\screens\map_screen.dart
 import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -19,7 +19,7 @@ class MapScreen extends StatefulWidget {
   final int? initialAdId;
 
   const MapScreen({
-    super.key, 
+    super.key,
     this.filters = const SearchFilters(),
     this.initialAdId,
   });
@@ -38,7 +38,9 @@ class _MapScreenState extends State<MapScreen> {
   static const _defaultTarget = Point(latitude: 55.7558, longitude: 37.6173);
   static const _defaultZoom = 12.0;
 
-  final CatalogApiRepository _catalogApi = CatalogApiRepository(DioClient.createDio());
+  final CatalogApiRepository _catalogApi = CatalogApiRepository(
+    DioClient.createDio(),
+  );
   List<FeedAd> _listings = [];
   bool _isLoading = true;
 
@@ -50,24 +52,28 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _requestLocationPermissionAndLoad() async {
     // Запрашиваем разрешение на геолокацию
-    final hasPermission = await PermissionService.requestLocationPermission(context);
+    final hasPermission = await PermissionService.requestLocationPermission(
+      context,
+    );
     if (!hasPermission) {
       // Если разрешение не предоставлено, все равно загружаем объявления
-      print('⚠️ [MapScreen] Location permission denied, loading listings anyway');
+      print(
+        '⚠️ [MapScreen] Location permission denied, loading listings anyway',
+      );
     }
     _loadListings();
   }
 
   Future<void> _loadListings() async {
     setState(() => _isLoading = true);
-    
+
     try {
       print('🔵 [MapScreen] Loading listings with filters');
-      
+
       List<FeedAd> allAds = [];
       int currentPage = 1;
       int totalCount = 0;
-      
+
       // Загружаем первую страницу
       print('🔵 [MapScreen] Loading page $currentPage...');
       var result = await _catalogApi.getAds(
@@ -86,15 +92,17 @@ class _MapScreenState extends State<MapScreen> {
           page: currentPage,
         ),
       );
-      
+
       if (!result.success || result.data == null) {
         throw Exception(result.error ?? 'Failed to load listings');
       }
-      
+
       // Получаем общее количество (может быть String или int)
       final countValue = result.data!['count'];
-      print('🔵 [MapScreen] Count value: $countValue (type: ${countValue.runtimeType})');
-      
+      print(
+        '🔵 [MapScreen] Count value: $countValue (type: ${countValue.runtimeType})',
+      );
+
       if (countValue is int) {
         totalCount = countValue;
       } else if (countValue is String) {
@@ -104,22 +112,26 @@ class _MapScreenState extends State<MapScreen> {
       } else {
         totalCount = 0;
       }
-      
+
       var data = result.data!['data'] as List;
       allAds.addAll(data.map((json) => FeedAd.fromJson(json)).toList());
-      
-      print('✅ [MapScreen] Page 1: loaded ${data.length} ads, total count: $totalCount, loaded so far: ${allAds.length}');
-      
+
+      print(
+        '✅ [MapScreen] Page 1: loaded ${data.length} ads, total count: $totalCount, loaded so far: ${allAds.length}',
+      );
+
       // Загружаем остальные страницы, если есть
       int maxPages = 10; // Защита от бесконечного цикла
       int pageCount = 1;
-      
+
       while (allAds.length < totalCount && pageCount < maxPages) {
         currentPage++;
         pageCount++;
-        
-        print('🔵 [MapScreen] Loading page $currentPage... (loaded: ${allAds.length}/$totalCount)');
-        
+
+        print(
+          '🔵 [MapScreen] Loading page $currentPage... (loaded: ${allAds.length}/$totalCount)',
+        );
+
         result = await _catalogApi.getAds(
           CatalogSearchParams(
             search: '',
@@ -136,43 +148,52 @@ class _MapScreenState extends State<MapScreen> {
             page: currentPage,
           ),
         );
-        
+
         if (!result.success || result.data == null) {
-          print('⚠️ [MapScreen] Failed to load page $currentPage: ${result.error}');
+          print(
+            '⚠️ [MapScreen] Failed to load page $currentPage: ${result.error}',
+          );
           break;
         }
-        
+
         data = result.data!['data'] as List;
         if (data.isEmpty) {
           print('⚠️ [MapScreen] Page $currentPage is empty, stopping');
           break;
         }
-        
+
         allAds.addAll(data.map((json) => FeedAd.fromJson(json)).toList());
-        print('✅ [MapScreen] Page $currentPage: loaded ${data.length} ads, total loaded: ${allAds.length}/$totalCount');
+        print(
+          '✅ [MapScreen] Page $currentPage: loaded ${data.length} ads, total loaded: ${allAds.length}/$totalCount',
+        );
       }
-      
+
       print('🔵 [MapScreen] Finished loading. Total ads: ${allAds.length}');
-      
+
       // Фильтруем только объявления с координатами
-      final adsWithCoords = allAds.where((ad) => 
-        ad.latitude != null && 
-        ad.longitude != null &&
-        ad.latitude != 0 &&
-        ad.longitude != 0
-      ).toList();
-      
+      final adsWithCoords = allAds
+          .where(
+            (ad) =>
+                ad.latitude != null &&
+                ad.longitude != null &&
+                ad.latitude != 0 &&
+                ad.longitude != 0,
+          )
+          .toList();
+
       final adsWithoutCoords = allAds.length - adsWithCoords.length;
-      
-      print('✅ [MapScreen] Total: ${allAds.length} ads, with coordinates: ${adsWithCoords.length}, without: $adsWithoutCoords');
-      
+
+      print(
+        '✅ [MapScreen] Total: ${allAds.length} ads, with coordinates: ${adsWithCoords.length}, without: $adsWithoutCoords',
+      );
+
       _listings = adsWithCoords;
-      
+
       setState(() => _isLoading = false);
-      
+
       // Строим метки после загрузки
       await _buildPlacemarks();
-      
+
       // Если передан initialAdId, открываем это объявление
       if (widget.initialAdId != null) {
         final ad = _listings.firstWhere(
@@ -202,7 +223,7 @@ class _MapScreenState extends State<MapScreen> {
         print('⚠️ [MapScreen] No listings to display on map');
         return;
       }
-      
+
       final placemarks = <PlacemarkMapObject>[];
 
       for (final listing in listings) {
@@ -252,10 +273,12 @@ class _MapScreenState extends State<MapScreen> {
         },
         onClusterTap: (self, cluster) {
           final listings = cluster.placemarks
-              .map((p) => _listings.firstWhere(
-                    (l) => MapObjectId('listing_${l.id}') == p.mapId,
-                    orElse: () => _listings.first,
-                  ))
+              .map(
+                (p) => _listings.firstWhere(
+                  (l) => MapObjectId('listing_${l.id}') == p.mapId,
+                  orElse: () => _listings.first,
+                ),
+              )
               .toList();
           _showClusterBottomSheet(listings);
         },
@@ -266,7 +289,7 @@ class _MapScreenState extends State<MapScreen> {
           ..clear()
           ..add(collection);
       });
-      
+
       print('✅ [MapScreen] Built ${placemarks.length} placemarks');
     } catch (e, st) {
       debugPrint('🔴 [MapScreen] _buildPlacemarks error: $e\n$st');
@@ -339,7 +362,8 @@ class _MapScreenState extends State<MapScreen> {
   Future<Uint8List> _buildPriceBubble(FeedAd listing) async {
     final isSelected = _selectedListing?.id == listing.id;
     // price это String, парсим его для проверки
-    final priceInt = int.tryParse(listing.price.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+    final priceInt =
+        int.tryParse(listing.price.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
     final priceText = priceInt > 0
         ? '${_formatPrice(priceInt)} ₽'
         : listing.title;
@@ -392,10 +416,12 @@ class _MapScreenState extends State<MapScreen> {
           ..isAntiAlias = true;
 
         final bubblePath = Path()
-          ..addRRect(RRect.fromRectAndRadius(
-            Rect.fromLTWH(0, 0, bubbleW, bubbleH),
-            const Radius.circular(radius),
-          ));
+          ..addRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(0, 0, bubbleW, bubbleH),
+              const Radius.circular(radius),
+            ),
+          );
 
         final tailPath = Path()
           ..moveTo(bubbleW / 2 - 8, bubbleH)
@@ -403,7 +429,11 @@ class _MapScreenState extends State<MapScreen> {
           ..lineTo(bubbleW / 2, totalH)
           ..close();
 
-        final combinedPath = Path.combine(PathOperation.union, bubblePath, tailPath);
+        final combinedPath = Path.combine(
+          PathOperation.union,
+          bubblePath,
+          tailPath,
+        );
 
         canvas.drawPath(combinedPath, fillPaint);
         canvas.drawPath(combinedPath, strokePaint);
@@ -522,7 +552,7 @@ class _MapScreenState extends State<MapScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff151e27) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: bgColor,
@@ -548,15 +578,15 @@ class _MapScreenState extends State<MapScreen> {
               nightModeEnabled: isDark,
               onMapCreated: (controller) async {
                 _mapController = controller;
-                
+
                 // Определяем начальную позицию карты
                 Point targetPoint;
                 double zoom;
-                
+
                 // Проверяем координаты города (не null и не 0.0)
-                if (widget.filters.cityLat != null && 
+                if (widget.filters.cityLat != null &&
                     widget.filters.cityLon != null &&
-                    widget.filters.cityLat != 0.0 && 
+                    widget.filters.cityLat != 0.0 &&
                     widget.filters.cityLon != 0.0) {
                   // Используем координаты выбранного города
                   targetPoint = Point(
@@ -564,20 +594,19 @@ class _MapScreenState extends State<MapScreen> {
                     longitude: widget.filters.cityLon!,
                   );
                   zoom = 12.0;
-                  print('🗺️ [MapScreen] Using city coordinates: ${widget.filters.cityLat}, ${widget.filters.cityLon}');
+                  print(
+                    '🗺️ [MapScreen] Using city coordinates: ${widget.filters.cityLat}, ${widget.filters.cityLon}',
+                  );
                 } else {
                   // Используем координаты по умолчанию (Москва)
                   targetPoint = _defaultTarget;
                   zoom = _defaultZoom;
                   print('🗺️ [MapScreen] Using default coordinates (Moscow)');
                 }
-                
+
                 await _mapController.moveCamera(
                   CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: targetPoint,
-                      zoom: zoom,
-                    ),
+                    CameraPosition(target: targetPoint, zoom: zoom),
                   ),
                 );
               },
@@ -596,9 +625,7 @@ class _MapScreenState extends State<MapScreen> {
               child: Container(
                 color: Colors.white.withOpacity(0.8),
                 child: const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xff917dfa),
-                  ),
+                  child: CircularProgressIndicator(color: Color(0xff917dfa)),
                 ),
               ),
             ),
@@ -631,7 +658,7 @@ class _ClusterListingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = listing.images.isNotEmpty ? listing.images.first : null;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -760,7 +787,7 @@ class _ListingPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = listing.images.isNotEmpty ? listing.images.first : null;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(

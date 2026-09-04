@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\shop\screens\shop_page_edit_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,11 +16,7 @@ class ShopPageEditScreen extends StatefulWidget {
   final int shopId;
   final ShopPage? page; // null = создание, не null = редактирование
 
-  const ShopPageEditScreen({
-    super.key,
-    required this.shopId,
-    this.page,
-  });
+  const ShopPageEditScreen({super.key, required this.shopId, this.page});
 
   @override
   State<ShopPageEditScreen> createState() => _ShopPageEditScreenState();
@@ -39,14 +36,14 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Инициализируем Quill контроллер
     if (isEditing && widget.page!.text.isNotEmpty) {
       // Логируем HTML который пришёл от сервера
       print('📄 [ShopPageEdit] HTML from server:');
       print(widget.page!.text);
       print('---');
-      
+
       // Если редактируем, загружаем существующий HTML и конвертируем в Delta
       try {
         final delta = HtmlToDelta().convert(widget.page!.text);
@@ -59,7 +56,8 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
         // Если конвертация не удалась, загружаем как plain text
         print('⚠️ [ShopPageEdit] Failed to convert HTML to Delta: $e');
         _quillController = quill.QuillController(
-          document: quill.Document()..insert(0, widget.page!.text.replaceAll(RegExp(r'<[^>]*>'), '')),
+          document: quill.Document()
+            ..insert(0, widget.page!.text.replaceAll(RegExp(r'<[^>]*>'), '')),
           selection: const TextSelection.collapsed(offset: 0),
         );
       }
@@ -68,7 +66,7 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
       print('📝 [ShopPageEdit] Creating new page');
       _quillController = quill.QuillController.basic();
     }
-    
+
     if (isEditing) {
       _nameController.text = widget.page!.name;
       _aliasController.text = widget.page!.alias ?? '';
@@ -99,12 +97,41 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
 
   String _transliterate(String text) {
     const Map<String, String> translitMap = {
-      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
-      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-      'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-      ' ': '-', '_': '-',
+      'а': 'a',
+      'б': 'b',
+      'в': 'v',
+      'г': 'g',
+      'д': 'd',
+      'е': 'e',
+      'ё': 'yo',
+      'ж': 'zh',
+      'з': 'z',
+      'и': 'i',
+      'й': 'y',
+      'к': 'k',
+      'л': 'l',
+      'м': 'm',
+      'н': 'n',
+      'о': 'o',
+      'п': 'p',
+      'р': 'r',
+      'с': 's',
+      'т': 't',
+      'у': 'u',
+      'ф': 'f',
+      'х': 'h',
+      'ц': 'ts',
+      'ч': 'ch',
+      'ш': 'sh',
+      'щ': 'sch',
+      'ъ': '',
+      'ы': 'y',
+      'ь': '',
+      'э': 'e',
+      'ю': 'yu',
+      'я': 'ya',
+      ' ': '-',
+      '_': '-',
     };
 
     String result = text.toLowerCase();
@@ -129,11 +156,11 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
 
     // Получаем текст из Quill редактора
     final plainText = _quillController.document.toPlainText();
-    
-    if (plainText.trim().length < 50) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Минимум 50 символов в тексте')),
-      );
+
+    if (plainText.trim().length < 20) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Минимум 20 символов в тексте')));
       return;
     }
 
@@ -144,7 +171,7 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
       ConverterOptions.forEmail(),
     );
     final htmlText = converter.convert();
-    
+
     // Логируем HTML который отправляем на сервер
     print('📤 [ShopPageEdit] HTML to send to server:');
     print(htmlText);
@@ -161,25 +188,29 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
     if (isEditing) {
       // Редактирование
       print('✏️ [ShopPageEdit] Updating page ID: ${widget.page!.id}');
-      context.read<ShopBloc>().add(UpdateShopPage(
-            userId: user.id,
-            token: user.token ?? '',
-            pageId: widget.page!.id,
-            name: _nameController.text.trim(),
-            text: htmlText,
-            alias: _aliasController.text.trim(),
-          ));
+      context.read<ShopBloc>().add(
+        UpdateShopPage(
+          userId: user.id,
+          token: user.token ?? '',
+          pageId: widget.page!.id,
+          name: _nameController.text.trim(),
+          text: htmlText,
+          alias: _aliasController.text.trim(),
+        ),
+      );
     } else {
       // Создание
       print('➕ [ShopPageEdit] Creating new page for shop ID: ${widget.shopId}');
-      context.read<ShopBloc>().add(AddShopPage(
-            userId: user.id,
-            token: user.token ?? '',
-            shopId: widget.shopId,
-            name: _nameController.text.trim(),
-            text: htmlText,
-            alias: _aliasController.text.trim(),
-          ));
+      context.read<ShopBloc>().add(
+        AddShopPage(
+          userId: user.id,
+          token: user.token ?? '',
+          shopId: widget.shopId,
+          name: _nameController.text.trim(),
+          text: htmlText,
+          alias: _aliasController.text.trim(),
+        ),
+      );
     }
   }
 
@@ -194,7 +225,10 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -210,9 +244,9 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
         listener: (context, state) {
           if (state is ShopError) {
             setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
           } else if (state is ShopPageAdded || state is ShopPageUpdated) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -344,7 +378,9 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
                               ),
                             )
                           : Text(
-                              isEditing ? 'Сохранить изменения' : 'Создать страницу',
+                              isEditing
+                                  ? 'Сохранить изменения'
+                                  : 'Создать страницу',
                               style: GoogleFonts.montserrat(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -425,7 +461,8 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
             ),
             counterStyle: GoogleFonts.montserrat(fontSize: 12),
           ),
-          validator: validator ??
+          validator:
+              validator ??
               (value) {
                 if (required && (value == null || value.trim().isEmpty)) {
                   return 'Это поле обязательно';
@@ -453,7 +490,7 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
 
     return null;
   }
-  
+
   Widget _buildQuillEditor(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,7 +512,7 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
           ),
         ),
         SizedBox(height: 8),
-        
+
         // Toolbar
         Container(
           decoration: BoxDecoration(
@@ -520,7 +557,7 @@ class _ShopPageEditScreenState extends State<ShopPageEditScreen> {
             ),
           ),
         ),
-        
+
         // Editor
         Container(
           height: 300,

@@ -39,25 +39,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // Загружаем публичный профиль при инициализации
     context.read<ProfileBloc>().add(LoadPublicProfile(widget.userId));
   }
-  
+
   String _getAuthToken() {
     var box = Hive.box('user');
     return box.get('auth_token', defaultValue: '') as String;
   }
-  
+
   Future<void> _refreshProfile() async {
     context.read<ProfileBloc>().add(LoadPublicProfile(widget.userId));
     // Небольшая задержка для визуального эффекта
     await Future.delayed(const Duration(milliseconds: 500));
   }
-  
+
   Future<void> _shareProfile(String userLink) async {
     try {
       if (userLink.isNotEmpty) {
-        await Share.share(
-          userLink,
-          subject: 'Профиль пользователя',
-        );
+        await Share.share(userLink, subject: 'Профиль пользователя');
       }
     } catch (e) {
       print('🔴 [UserProfile] Error sharing: $e');
@@ -75,18 +72,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     }
   }
-  
-  Future<void> _toggleBlockUser(BuildContext context, bool currentlyBlocked) async {
+
+  Future<void> _toggleBlockUser(
+    BuildContext context,
+    bool currentlyBlocked,
+  ) async {
     try {
       print('🔵 [UserProfile] _toggleBlockUser called');
       print('🔵 [UserProfile] currentlyBlocked: $currentlyBlocked');
-      
+
       final authState = context.read<AuthBloc>().state;
       final token = _getAuthToken();
-      
+
       print('🔵 [UserProfile] authState.user: ${authState.user}');
-      print('🔵 [UserProfile] token from Hive: ${token.isNotEmpty ? "${token.substring(0, 20)}..." : "empty"}');
-      
+      print(
+        '🔵 [UserProfile] token from Hive: ${token.isNotEmpty ? "${token.substring(0, 20)}..." : "empty"}',
+      );
+
       if (authState.user == null || token.isEmpty) {
         print('🔴 [UserProfile] User or token is null/empty');
         if (mounted) {
@@ -103,26 +105,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         }
         return;
       }
-      
+
       print('🔵 [UserProfile] Calling blockUser API');
       print('🔵 [UserProfile] idUserFrom: ${authState.user!.id}');
       print('🔵 [UserProfile] idUserTo: ${widget.userId}');
-      
+
       final response = await ProfileApiRepository().blockUser(
         idUserFrom: authState.user!.id,
         token: token,
         idUserTo: widget.userId,
       );
-      
+
       print('🔵 [UserProfile] blockUser response: $response');
-      
+
       if (response['status'] == 'added' || response['status'] == 'delete') {
-        final message = currentlyBlocked 
-            ? 'Пользователь разблокирован' 
+        final message = currentlyBlocked
+            ? 'Пользователь разблокирован'
             : 'Пользователь заблокирован';
-        
+
         print('✅ [UserProfile] Block/unblock successful: $message');
-        
+
         if (mounted) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -134,12 +136,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               backgroundColor: isDark ? const Color(0xff233040) : null,
             ),
           );
-          
+
           // Обновляем профиль
           context.read<ProfileBloc>().add(LoadPublicProfile(widget.userId));
         }
       } else {
-        print('⚠️ [UserProfile] Unexpected response status: ${response['status']}');
+        print(
+          '⚠️ [UserProfile] Unexpected response status: ${response['status']}',
+        );
       }
     } catch (e, stackTrace) {
       print('🔴 [UserProfile] Error blocking user: $e');
@@ -158,11 +162,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     }
   }
-  
+
   void _showComplaintDialog(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textController = TextEditingController();
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -172,8 +176,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 
-                  MediaQuery.of(ctx).padding.bottom,
+          bottom:
+              MediaQuery.of(ctx).viewInsets.bottom +
+              MediaQuery.of(ctx).padding.bottom,
         ),
         child: SafeArea(
           child: Column(
@@ -212,7 +217,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: isDark ? const Color(0xff151e27) : const Color(0xffF0F0F0),
+                        fillColor: isDark
+                            ? const Color(0xff151e27)
+                            : const Color(0xffF0F0F0),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -230,14 +237,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               SnackBar(
                                 content: Text(
                                   'Опишите причину жалобы',
-                                  style: GoogleFonts.montserrat(color: Colors.white),
+                                  style: GoogleFonts.montserrat(
+                                    color: Colors.white,
+                                  ),
                                 ),
-                                backgroundColor: isDark ? const Color(0xff233040) : null,
+                                backgroundColor: isDark
+                                    ? const Color(0xff233040)
+                                    : null,
                               ),
                             );
                             return;
                           }
-                          
+
                           Navigator.pop(ctx);
                           await _submitComplaint(text);
                         },
@@ -266,12 +277,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
     );
   }
-  
+
   Future<void> _submitComplaint(String text) async {
     try {
       final authState = context.read<AuthBloc>().state;
       final token = _getAuthToken();
-      
+
       if (authState.user == null || token.isEmpty) {
         if (mounted) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -287,14 +298,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         }
         return;
       }
-      
+
       final response = await ProfileApiRepository().complainUser(
         idUserFrom: authState.user!.id,
         token: token,
         idUserTo: widget.userId,
         text: text,
       );
-      
+
       if (mounted) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final message = response['answer'] ?? 'Жалоба отправлена';
@@ -354,12 +365,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   String _formatRegistrationDate(String? dateStr) {
     if (dateStr == null) return '';
-    
+
     try {
       final date = DateTime.parse(dateStr);
       final months = [
-        'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+        'янв',
+        'фев',
+        'мар',
+        'апр',
+        'май',
+        'июн',
+        'июл',
+        'авг',
+        'сен',
+        'окт',
+        'ноя',
+        'дек',
       ];
       final day = date.day.toString().padLeft(2, '0');
       final month = months[date.month - 1];
@@ -379,7 +400,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     required List<String> images,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: () {
         context.push("/listing/$adId");
@@ -410,11 +431,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       dotHeight: 7,
                     )
                   : Container(
-                      color: isDark ? const Color(0xff151e27) : const Color(0xfff0f0f0),
+                      color: isDark
+                          ? const Color(0xff151e27)
+                          : const Color(0xfff0f0f0),
                       child: Icon(
                         Icons.image,
                         size: 50,
-                        color: isDark ? const Color(0xff808080) : const Color(0xffcccccc),
+                        color: isDark
+                            ? const Color(0xff808080)
+                            : const Color(0xffcccccc),
                       ),
                     ),
             ),
@@ -456,7 +481,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   final listing = Listing(
                                     id: adId,
                                     title: title,
-                                    price: int.tryParse(price.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+                                    price:
+                                        int.tryParse(
+                                          price.replaceAll(
+                                            RegExp(r'[^0-9]'),
+                                            '',
+                                          ),
+                                        ) ??
+                                        0,
                                     location: location,
                                     publishedAt: date,
                                     images: images,
@@ -497,14 +529,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         Icon(
                           Icons.visibility_outlined,
                           size: 11,
-                          color: isDark ? Colors.white70 : const Color(0xff808080),
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xff808080),
                         ),
                         const SizedBox(width: 3),
                         Text(
                           views.toString(),
                           style: GoogleFonts.montserrat(
                             fontSize: 10,
-                            color: isDark ? Colors.white70 : const Color(0xff808080),
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xff808080),
                           ),
                         ),
                       ],
@@ -514,7 +550,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       location,
                       style: GoogleFonts.montserrat(
                         fontSize: 10,
-                        color: isDark ? Colors.white70 : const Color(0xff808080),
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xff808080),
                       ),
                     ),
                     // Дата публикации (если есть)
@@ -525,7 +563,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.montserrat(
                           fontSize: 10,
-                          color: isDark ? Colors.white70 : const Color(0xff808080),
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xff808080),
                         ),
                       ),
                   ],
@@ -541,15 +581,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   void _showOptionsBottomSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = context.read<ProfileBloc>().state;
-    
+
     if (state is! PublicProfileLoaded) return;
-    
+
     final userData = state.profileData['data'];
     if (userData == null) return;
-    
+
     final isBlocked = userData['is_blocked'] == true;
     final userLink = _fixImageUrl(userData['link']) ?? '';
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? const Color(0xff233040) : Colors.white,
@@ -587,7 +627,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
                     children: [
-                      Icon(Icons.share, color: isDark ? Colors.white : Colors.black87, size: 24),
+                      Icon(
+                        Icons.share,
+                        color: isDark ? Colors.white : Colors.black87,
+                        size: 24,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'Поделиться',
@@ -611,7 +655,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
                     children: [
-                      Icon(Icons.flag, color: isDark ? Colors.white : Colors.black87, size: 24),
+                      Icon(
+                        Icons.flag,
+                        color: isDark ? Colors.white : Colors.black87,
+                        size: 24,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'Пожаловаться',
@@ -665,7 +713,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -678,12 +726,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.more_vert, color: isDark ? Colors.white : Colors.black),
+            icon: Icon(
+              Icons.more_vert,
+              color: isDark ? Colors.white : Colors.black,
+            ),
             onPressed: () => _showOptionsBottomSheet(context),
           ),
         ],
@@ -740,339 +794,372 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
               children: [
-              // Аватар с датой регистрации
-              Center(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(50),
-                        color: const Color(0xfff0f0f0),
-                        image: userData['avatar'] != null
-                            ? DecorationImage(
-                                image: NetworkImage(_fixImageUrl(userData['avatar'])!),
-                                fit: BoxFit.cover,
+                // Аватар с датой регистрации
+                Center(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(50),
+                          color: const Color(0xfff0f0f0),
+                          image: userData['avatar'] != null
+                              ? DecorationImage(
+                                  image: NetworkImage(
+                                    _fixImageUrl(userData['avatar'])!,
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: userData['avatar'] == null
+                            ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Color(0xffcccccc),
                               )
                             : null,
                       ),
-                      child: userData['avatar'] == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Color(0xffcccccc),
-                            )
-                          : null,
-                    ),
-                    if (userData['registration_date'] != null)
-                      Positioned(
-                        bottom: -5,
-                        right: -5,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                      if (userData['registration_date'] != null)
+                        Positioned(
+                          bottom: -5,
+                          right: -5,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xff917dfa),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _formatRegistrationDate(userData['date']),
+                              style: GoogleFonts.montserrat(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Имя пользователя
+                Center(
+                  child: Text(
+                    userData['display_name'] ?? 'Пользователь',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                // Название компании (если есть)
+                if (userData['name_company'] != null &&
+                    userData['name_company'].toString().isNotEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        userData['name_company'],
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+
+                // Статистика
+                ProfileStats(
+                  rating: _parseDouble(userData['rating']),
+                  reviews: _parseInt(userData['reviews']),
+                  listings: _parseInt(userData['count_ads']),
+                  subscribers: _parseInt(userData['subscribers_count']),
+                  userId: widget.userId,
+                ),
+
+                const SizedBox(height: 20),
+
+                // Кнопка подписки
+                BlocListener<ProfileBloc, ProfileStateOld>(
+                  listener: (context, state) {
+                    if (state is SubscribeToggled) {
+                      final message = state.status == 'added'
+                          ? 'Вы подписались на пользователя'
+                          : 'Вы отписались от пользователя';
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            message,
+                            style: GoogleFonts.montserrat(color: Colors.white),
+                          ),
+                          backgroundColor: isDark
+                              ? const Color(0xff233040)
+                              : const Color(0xff917dfa),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+
+                      // Перезагружаем данные профиля после изменения подписки
+                      context.read<ProfileBloc>().add(
+                        LoadPublicProfile(widget.userId),
+                      );
+                    }
+                  },
+                  child: BlocBuilder<SubscriptionsBloc, SubscriptionsState>(
+                    builder: (context, subscriptionState) {
+                      final isSubscribed = subscriptionState.ids.contains(
+                        widget.userId,
+                      );
+
+                      return GestureDetector(
+                        onTap: () {
+                          // Используем новый ProfileBloc метод
+                          context.read<ProfileBloc>().add(
+                            ToggleSubscribe(widget.userId),
+                          );
+
+                          // Также обновляем локальный SubscriptionsBloc для UI
+                          final bloc = context.read<SubscriptionsBloc>();
+                          if (isSubscribed) {
+                            bloc.add(RemoveSubscription(widget.userId));
+                          } else {
+                            final user = User(
+                              id: widget.userId,
+                              name: userData['display_name'] ?? 'Пользователь',
+                              avatar: userData['avatar'],
+                            );
+                            bloc.add(
+                              AddSubscription(
+                                userId: widget.userId,
+                                shopId: 0,
+                                user: user,
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xff917dfa),
-                            borderRadius: BorderRadius.circular(6),
+                            color: isSubscribed
+                                ? const Color(0xfff0f0f0)
+                                : const Color(0xff917dfa),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            _formatRegistrationDate(userData['date']),
+                            isSubscribed ? 'Отписаться' : 'Подписаться',
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.montserrat(
-                              fontSize: 11,
-                              color: Colors.white,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
+                              color: isSubscribed
+                                  ? const Color(0xff666666)
+                                  : Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 25),
+
+                // Табы "Активные" / "Завершённые"
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xff233040)
+                        : const Color(0xFFF5F7FA),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _showActiveListings = true;
+                            });
+                          },
+                          splashColor: const Color(0xff917dfa).withOpacity(0.3),
+                          highlightColor: const Color(
+                            0xff917dfa,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'Активные',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.montserrat(
+                                fontSize: 15,
+                                fontWeight: _showActiveListings
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: _showActiveListings
+                                    ? const Color(0xff917dfa)
+                                    : (isDark
+                                          ? Colors.white54
+                                          : Colors.black54),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Имя пользователя
-              Center(
-                child: Text(
-                  userData['display_name'] ?? 'Пользователь',
-                  style: GoogleFonts.montserrat(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-
-              // Название компании (если есть)
-              if (userData['name_company'] != null && userData['name_company'].toString().isNotEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      userData['name_company'],
-                      style: GoogleFonts.montserrat(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 20),
-
-              // Статистика
-              ProfileStats(
-                rating: _parseDouble(userData['rating']),
-                reviews: _parseInt(userData['reviews']),
-                listings: _parseInt(userData['count_ads']),
-                subscribers: _parseInt(userData['subscribers_count']),
-                userId: widget.userId,
-              ),
-
-              const SizedBox(height: 20),
-
-              // Кнопка подписки
-              BlocListener<ProfileBloc, ProfileStateOld>(
-                listener: (context, state) {
-                  if (state is SubscribeToggled) {
-                    final message = state.status == 'added' 
-                        ? 'Вы подписались на пользователя' 
-                        : 'Вы отписались от пользователя';
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          message,
-                          style: GoogleFonts.montserrat(color: Colors.white),
-                        ),
-                        backgroundColor: isDark ? const Color(0xff233040) : const Color(0xff917dfa),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                    
-                    // Перезагружаем данные профиля после изменения подписки
-                    context.read<ProfileBloc>().add(LoadPublicProfile(widget.userId));
-                  }
-                },
-                child: BlocBuilder<SubscriptionsBloc, SubscriptionsState>(
-                  builder: (context, subscriptionState) {
-                    final isSubscribed = subscriptionState.ids.contains(widget.userId);
-
-                    return GestureDetector(
-                      onTap: () {
-                        // Используем новый ProfileBloc метод
-                        context.read<ProfileBloc>().add(ToggleSubscribe(widget.userId));
-                        
-                        // Также обновляем локальный SubscriptionsBloc для UI
-                        final bloc = context.read<SubscriptionsBloc>();
-                        if (isSubscribed) {
-                          bloc.add(RemoveSubscription(widget.userId));
-                        } else {
-                          final user = User(
-                            id: widget.userId,
-                            name: userData['display_name'] ?? 'Пользователь',
-                            avatar: userData['avatar'],
-                          );
-                          bloc.add(AddSubscription(widget.userId, user));
-                        }
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isSubscribed
-                              ? const Color(0xfff0f0f0)
-                              : const Color(0xff917dfa),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          isSubscribed ? 'Отписаться' : 'Подписаться',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.montserrat(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: isSubscribed
-                                ? const Color(0xff666666)
-                                : Colors.white,
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _showActiveListings = false;
+                            });
+                          },
+                          splashColor: const Color(0xff917dfa).withOpacity(0.3),
+                          highlightColor: const Color(
+                            0xff917dfa,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'Завершённые',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.montserrat(
+                                fontSize: 15,
+                                fontWeight: !_showActiveListings
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: !_showActiveListings
+                                    ? const Color(0xff917dfa)
+                                    : (isDark
+                                          ? Colors.white54
+                                          : Colors.black54),
+                              ),
+                            ),
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Сетка объявлений
+                FutureBuilder<Map<String, dynamic>>(
+                  future: ProfileApiRepository().getUserAds(
+                    userId: widget.userId,
+                    status: _showActiveListings ? 'active' : 'sold',
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: Text(
+                            'Ошибка загрузки объявлений',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final ads = snapshot.data!['data'] as List? ?? [];
+
+                    if (ads.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: Text(
+                            _showActiveListings
+                                ? 'Нет активных объявлений'
+                                : 'Нет завершённых объявлений',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.6,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                          ),
+                      itemCount: ads.length,
+                      itemBuilder: (context, index) {
+                        final ad = ads[index];
+
+                        // Получаем цену как строку (уже отформатирована на бэкенде)
+                        String? priceString;
+                        if (ad['ads_price'] is Map) {
+                          priceString = ad['ads_price']['now']?.toString();
+                        } else {
+                          priceString = ad['ads_price']?.toString();
+                        }
+
+                        // Получаем изображения
+                        final images = ad['ads_images'] != null
+                            ? (ad['ads_images'] as List)
+                                  .map(
+                                    (img) => _fixImageUrl(img.toString()) ?? '',
+                                  )
+                                  .toList()
+                            : <String>[];
+
+                        return _buildAdCard(
+                          adId: _parseInt(ad['ads_id']),
+                          title: ad['ads_title'] ?? '',
+                          price: priceString ?? 'Цена не указана',
+                          location: ad['city_name'] ?? '',
+                          date: ad['ads_datetime_add'] ?? '',
+                          views: _parseInt(ad['count_view']),
+                          images: images,
+                        );
+                      },
                     );
                   },
                 ),
-              ),
 
-              const SizedBox(height: 25),
-
-              // Табы "Активные" / "Завершённые"
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xff233040) : const Color(0xFFF5F7FA),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _showActiveListings = true;
-                          });
-                        },
-                        splashColor: const Color(0xff917dfa).withOpacity(0.3),
-                        highlightColor: const Color(0xff917dfa).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(
-                            'Активные',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 15,
-                              fontWeight: _showActiveListings
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: _showActiveListings
-                                  ? const Color(0xff917dfa)
-                                  : (isDark ? Colors.white54 : Colors.black54),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _showActiveListings = false;
-                          });
-                        },
-                        splashColor: const Color(0xff917dfa).withOpacity(0.3),
-                        highlightColor: const Color(0xff917dfa).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(
-                            'Завершённые',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 15,
-                              fontWeight: !_showActiveListings
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: !_showActiveListings
-                                  ? const Color(0xff917dfa)
-                                  : (isDark ? Colors.white54 : Colors.black54),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Сетка объявлений
-              FutureBuilder<Map<String, dynamic>>(
-                future: ProfileApiRepository().getUserAds(
-                  userId: widget.userId,
-                  status: _showActiveListings ? 'active' : 'sold',
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  }
-
-                  if (snapshot.hasError || !snapshot.hasData) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: Text(
-                          'Ошибка загрузки объявлений',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  final ads = snapshot.data!['data'] as List? ?? [];
-                  
-                  if (ads.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: Text(
-                          _showActiveListings
-                              ? 'Нет активных объявлений'
-                              : 'Нет завершённых объявлений',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.6,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
-                    ),
-                    itemCount: ads.length,
-                    itemBuilder: (context, index) {
-                      final ad = ads[index];
-                      
-                      // Получаем цену как строку (уже отформатирована на бэкенде)
-                      String? priceString;
-                      if (ad['ads_price'] is Map) {
-                        priceString = ad['ads_price']['now']?.toString();
-                      } else {
-                        priceString = ad['ads_price']?.toString();
-                      }
-                      
-                      // Получаем изображения
-                      final images = ad['ads_images'] != null 
-                          ? (ad['ads_images'] as List).map((img) => _fixImageUrl(img.toString()) ?? '').toList()
-                          : <String>[];
-                      
-                      return _buildAdCard(
-                        adId: _parseInt(ad['ads_id']),
-                        title: ad['ads_title'] ?? '',
-                        price: priceString ?? 'Цена не указана',
-                        location: ad['city_name'] ?? '',
-                        date: ad['ads_datetime_add'] ?? '',
-                        views: _parseInt(ad['count_view']),
-                        images: images,
-                      );
-                    },
-                  );
-                },
-              ),
-
-              const SizedBox(height: 100),
-            ],
-          ),
+                const SizedBox(height: 100),
+              ],
+            ),
           );
         },
       ),

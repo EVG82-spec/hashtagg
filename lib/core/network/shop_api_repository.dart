@@ -16,16 +16,14 @@ class ShopApiRepository {
 
   /// Получение списка всех магазинов через JSON API
   /// // используется профиль навигатор
+  /// Получение списка магазинов
   Future<List<Shop>> getShops() async {
     print('📥 [ShopApi] Loading shops...');
     try {
-      // ✅ ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ API
+      // ✅ ВОЗВРАЩАЕМСЯ К РАБОЧЕМУ API
       final response = await _dio.get(
         '/systems/api/controller.php',
-        queryParameters: {
-          'key': ApiConfig.apiKey,
-          'route': 'shops/getShops', // 👈 ПРАВИЛЬНЫЙ РОУТ
-        },
+        queryParameters: {'key': ApiConfig.apiKey, 'route': 'shops/getShops'},
       );
 
       final data = _parseResponse(response.data);
@@ -37,10 +35,6 @@ class ShopApiRepository {
         }).toList();
 
         print('✅ [ShopApi] Loaded ${shops.length} shops');
-        for (var shop in shops) {
-          print('   📊 ${shop.title} - adsCount: ${shop.adsCount}');
-        }
-
         return shops;
       }
 

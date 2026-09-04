@@ -8,7 +8,7 @@ import 'package:hive/hive.dart';
 class ShopPublicBloc extends Bloc<ShopPublicEvent, ShopPublicState> {
   final ShopApiRepository _repository;
 
-  ShopApiRepository get repository => _repository; // 👈 ДОБАВЬ
+  ShopApiRepository get repository => _repository;
 
   ShopPublicBloc(this._repository) : super(ShopPublicInitial()) {
     on<LoadPublicShop>(_onLoadPublicShop);
@@ -53,22 +53,22 @@ class ShopPublicBloc extends Bloc<ShopPublicEvent, ShopPublicState> {
       );
       print('✅ [ShopPublicBloc] Ads loaded: ${ads.length}');
 
-      // В _onLoadPublicShop:
-      print('🔴🔴🔴 [ShopPublicBloc] BEFORE getUserTariff');
+      // ✅ ЗАГРУЖАЕМ ТАРИФ
       UserTariff? tariff;
       if (shop.userId > 0) {
         print(
           '🔴🔴🔴 [ShopPublicBloc] Calling getUserTariff for userId: ${shop.userId}',
         );
         tariff = await _repository.getUserTariff(userId: shop.userId);
-        print('🔴🔴🔴 [ShopPublicBloc] AFTER getUserTariff');
         print('📦📦📦 [ShopPublicBloc] TARIFF RECEIVED:');
         print('   name: ${tariff?.name}');
         print('   services: ${tariff?.services}');
         print('   has shop_links: ${tariff?.hasService('shop_links')}');
       }
 
-      // ✅ ПРАВИЛЬНЫЙ ВЫЗОВ С 3 ПАРАМЕТРАМИ
+      // ❌ УБИРАЕМ ГЕНЕРАЦИЮ QR-КОДА
+      // QR-код будет показан через QrImageView в ShopQrWidget
+
       emit(ShopPublicLoaded(shop, ads: ads, tariff: tariff));
     } catch (e) {
       print('❌❌❌ [ShopPublicBloc] ERROR: $e');

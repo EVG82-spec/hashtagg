@@ -71,9 +71,9 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
   // Смена категории
   void _onCategoryChange(
-      FeedCategoryChangeEvent event,
-      Emitter<FeedState> emit,
-      ) async {
+    FeedCategoryChangeEvent event,
+    Emitter<FeedState> emit,
+  ) async {
     if (event.category == FeedCategory.companies) {
       try {
         print('🔄 [FeedBloc] Loading shops...');
@@ -92,42 +92,35 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           print('      UserId: ${shop.userId}');
         }
 
-        emit(state.copyWith(
-          category: event.category,
-          shops: shops,
-          ads: const [],
-        ));
+        emit(
+          state.copyWith(category: event.category, shops: shops, ads: const []),
+        );
       } catch (e) {
         print('❌ [FeedBloc] Error loading shops: $e');
       }
     } else {
       // Для других категорий - обычная лента
-      emit(state.copyWith(
-        category: event.category,
-        currentPage: 1,
-        shops: const [],
-      ));
+      emit(
+        state.copyWith(
+          category: event.category,
+          currentPage: 1,
+          shops: const [],
+        ),
+      );
     }
   }
 
   // Загрузка следующих страниц
-  void _onLoadMore(
-      FeedLoadMoreEvent event,
-      Emitter<FeedState> emit,
-      ) {
+  void _onLoadMore(FeedLoadMoreEvent event, Emitter<FeedState> emit) {
     if (!state.hasNext) return;
 
-    emit(state.copyWith(
-      currentPage: state.currentPage + 1,
-      isLoadingMore: true,
-    ));
+    emit(
+      state.copyWith(currentPage: state.currentPage + 1, isLoadingMore: true),
+    );
   }
 
   // Загрузка магазинов (для вкладки "Компании")
-  void _onLoadShops(
-      FeedLoadShopsEvent event,
-      Emitter<FeedState> emit,
-      ) async {
+  void _onLoadShops(FeedLoadShopsEvent event, Emitter<FeedState> emit) async {
     try {
       final shops = await _repository.getShops();
       emit(state.copyWith(shops: shops));

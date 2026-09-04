@@ -1,3 +1,4 @@
+//G:\hashtagg_app\lib\features\shop\screens\shop_pages_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -39,11 +40,13 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
     // Проверяем доступ к страницам
     final authState = context.read<AuthBloc>().state;
     final user = authState.user;
-    
+
     if (user != null && !ShopAccessChecker.hasShopPagesAccess(user)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ShopAccessChecker.getFeatureAccessDeniedMessage('shop_page')),
+          content: Text(
+            ShopAccessChecker.getFeatureAccessDeniedMessage('shop_page'),
+          ),
           action: SnackBarAction(
             label: 'Тарифы',
             onPressed: () => context.push('/tariffs'),
@@ -52,20 +55,17 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
       );
       return;
     }
-    
+
     if (_pages.length >= maxPages) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Максимум $maxPages страниц')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Максимум $maxPages страниц')));
       return;
     }
 
     final result = await Navigator.of(context, rootNavigator: true).push(
       createSwipeableRoute(
-        builder: (_) => ShopPageEditScreen(
-          shopId: widget.shopId,
-          page: null,
-        ),
+        builder: (_) => ShopPageEditScreen(shopId: widget.shopId, page: null),
       ),
     );
 
@@ -77,10 +77,7 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
   void _editPage(ShopPage page) async {
     final result = await Navigator.of(context, rootNavigator: true).push(
       createSwipeableRoute(
-        builder: (_) => ShopPageEditScreen(
-          shopId: widget.shopId,
-          page: page,
-        ),
+        builder: (_) => ShopPageEditScreen(shopId: widget.shopId, page: page),
       ),
     );
 
@@ -117,11 +114,13 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
     final user = authState.user;
 
     if (user != null) {
-      context.read<ShopBloc>().add(DeleteShopPage(
-            userId: user.id,
-            token: user.token ?? '',
-            pageId: page.id,
-          ));
+      context.read<ShopBloc>().add(
+        DeleteShopPage(
+          userId: user.id,
+          token: user.token ?? '',
+          pageId: page.id,
+        ),
+      );
     }
   }
 
@@ -130,11 +129,13 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
     final user = authState.user;
 
     if (user != null) {
-      context.read<ShopBloc>().add(LoadShop(
-            userId: user.id,
-            token: user.token ?? '',
-            shopId: widget.shopId,
-          ));
+      context.read<ShopBloc>().add(
+        LoadShop(
+          userId: user.id,
+          token: user.token ?? '',
+          shopId: widget.shopId,
+        ),
+      );
     }
   }
 
@@ -149,7 +150,10 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           onPressed: () => context.pop(true),
         ),
         title: Text(
@@ -163,7 +167,10 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
         actions: [
           if (_pages.length < maxPages)
             IconButton(
-              icon: Icon(Icons.add, color: isDark ? Colors.white : Colors.black),
+              icon: Icon(
+                Icons.add,
+                color: isDark ? Colors.white : Colors.black,
+              ),
               onPressed: _addPage,
             ),
         ],
@@ -171,13 +178,13 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
       body: BlocConsumer<ShopBloc, ShopState>(
         listener: (context, state) {
           if (state is ShopError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
           } else if (state is ShopPageDeleted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Страница удалена')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Страница удалена')));
             _reloadPages();
           } else if (state is ShopLoaded) {
             setState(() {
@@ -208,11 +215,7 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.description_outlined,
-            size: 80,
-            color: Colors.grey,
-          ),
+          Icon(Icons.description_outlined, size: 80, color: Colors.grey),
           SizedBox(height: 16),
           Text(
             'Нет страниц',
@@ -225,10 +228,7 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
           SizedBox(height: 8),
           Text(
             'Создайте первую страницу магазина',
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
           ),
           SizedBox(height: 24),
           ElevatedButton.icon(
@@ -401,7 +401,7 @@ class _ShopPagesScreenState extends State<ShopPagesScreen> {
   }
 }
 
-  /// Удаляет HTML теги из текста для отображения в списке
-  String _stripHtmlTags(String html) {
-    return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-  }
+/// Удаляет HTML теги из текста для отображения в списке
+String _stripHtmlTags(String html) {
+  return html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+}

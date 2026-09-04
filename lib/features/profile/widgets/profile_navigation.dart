@@ -30,7 +30,6 @@ class ProfileNavigation extends StatefulWidget {
 }
 
 class _ProfileNavigationState extends State<ProfileNavigation> {
-
   String? _shopId;
 
   @override
@@ -64,10 +63,12 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
       print('🔍 [ProfileNavigation] Checking shops for user: $userId');
 
       // Получаем список магазинов через API
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://hashtagg.ru',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://hashtagg.ru',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        ),
+      );
       final repository = ShopApiRepository(dio);
       final shops = await repository.getShops();
 
@@ -112,7 +113,6 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
     return false;
   }
 
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -123,14 +123,20 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
         // ===== 1. КОШЕЛЁК =====
         InkWell(
           onTap: () {
-            Navigator.of(context, rootNavigator: true).push(
-              createSwipeableRoute(builder: (_) => const WalletScreen()),
-            );
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).push(createSwipeableRoute(builder: (_) => const WalletScreen()));
           },
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -155,14 +161,20 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
         // ===== 2. ПЛАТНЫЕ УСЛУГИ =====
         InkWell(
           onTap: () {
-            Navigator.of(context, rootNavigator: true).push(
-              createSwipeableRoute(builder: (_) => const TariffsScreen()),
-            );
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).push(createSwipeableRoute(builder: (_) => const TariffsScreen()));
           },
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -190,13 +202,20 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
           child: InkWell(
             onTap: () {
               Navigator.of(context, rootNavigator: true).push(
-                createSwipeableRoute(builder: (_) => const ListingPackagesScreen()),
+                createSwipeableRoute(
+                  builder: (_) => const ListingPackagesScreen(),
+                ),
               );
             },
             splashColor: const Color(0xff917dfa).withOpacity(0.3),
             highlightColor: const Color(0xff917dfa).withOpacity(0.1),
             child: Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+              padding: const EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 10,
+                bottom: 10,
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -227,14 +246,20 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
               context.push('/shop/$_shopId');
             } else {
               // ❌ НЕТ МАГАЗИНА → ПРОВЕРЯЕМ ТАРИФ И ПОКАЗЫВАЕМ ПРОМО
-              final hasTariff = _checkTariff(); // Проверяем, есть ли услуга "shop"
+              final hasTariff =
+                  _checkTariff(); // Проверяем, есть ли услуга "shop"
               context.push('/shop/empty?hasTariff=$hasTariff');
             }
           },
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -259,14 +284,20 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
         // ===== 5. ЗАКАЗЫ =====
         InkWell(
           onTap: () {
-            Navigator.of(context, rootNavigator: true).push(
-              createSwipeableRoute(builder: (_) => const OrdersScreen()),
-            );
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).push(createSwipeableRoute(builder: (_) => const OrdersScreen()));
           },
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -298,7 +329,12 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -330,7 +366,12 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -356,7 +397,10 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
                     }
                     if (count == 0) return const SizedBox.shrink();
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xff917dfa),
                         borderRadius: BorderRadius.circular(12),
@@ -387,7 +431,12 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
             splashColor: const Color(0xff917dfa).withOpacity(0.3),
             highlightColor: const Color(0xff917dfa).withOpacity(0.1),
             child: Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+              padding: const EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 10,
+                bottom: 10,
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -420,7 +469,12 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 Icon(
@@ -459,10 +513,7 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context, false),
-                    child: Text(
-                      'Отмена',
-                      style: GoogleFonts.montserrat(),
-                    ),
+                    child: Text('Отмена', style: GoogleFonts.montserrat()),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
@@ -495,14 +546,15 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
           splashColor: const Color(0xff917dfa).withOpacity(0.3),
           highlightColor: const Color(0xff917dfa).withOpacity(0.1),
           child: Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 10),
+            padding: const EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
-                Icon(
-                  Icons.exit_to_app,
-                  size: 26,
-                  color: Colors.red,
-                ),
+                Icon(Icons.exit_to_app, size: 26, color: Colors.red),
                 const SizedBox(width: 10),
                 Text(
                   'Выйти',
@@ -524,7 +576,8 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
   void _showPartnerProgramModal(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = context.read<AuthBloc>().state.user;
-    final referralLink = user?.referralLink ?? 'https://hashtagg.gg/ru/ref/loading';
+    final referralLink =
+        user?.referralLink ?? 'https://hashtagg.gg/ru/ref/loading';
 
     if (kDebugMode) {
       debugPrint('🔗 [PartnerModal] User referralLink: ${user?.referralLink}');
@@ -608,7 +661,10 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xff917dfa).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -628,7 +684,11 @@ class _ProfileNavigationState extends State<ProfileNavigation> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Icon(Icons.copy, size: 16, color: const Color(0xff917dfa)),
+                        Icon(
+                          Icons.copy,
+                          size: 16,
+                          color: const Color(0xff917dfa),
+                        ),
                       ],
                     ),
                   ),
