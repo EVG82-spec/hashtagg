@@ -1,11 +1,20 @@
-# codemagic.yaml
 workflows:
   ios-workflow:
     name: iOS Build
     max_build_duration: 60
     environment:
       flutter: stable
+      vars:
+        APNS_TEAM_ID: $APNS_TEAM_ID
+        APNS_KEY_ID: $APNS_KEY_ID
+        APNS_KEY: $APNS_KEY
+        APNS_TOPIC: $APNS_TOPIC
+        APNS_USE_SANDBOX: $APNS_USE_SANDBOX
     scripts:
-      - flutter build ios --release
+      - name: Build iOS
+        script: |
+          flutter clean
+          flutter pub get
+          flutter build ios --release
     artifacts:
       - build/ios/ipa/*.ipa
