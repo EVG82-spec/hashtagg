@@ -9,6 +9,7 @@ workflows:
       ios_signing:
         distribution_type: development
         bundle_identifier: "com.webbelov87.hashtag.app"
+        team_id: "UM5PKKJJPV"
       vars:
         APP_STORE_CONNECT_KEY_ID: $APP_STORE_CONNECT_KEY_ID
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
@@ -39,7 +40,6 @@ workflows:
       - name: Set up code signing
         script: |
           echo "Setting up code signing for iOS..."
-          # Проверка наличия сертификатов
           security find-identity -v -p codesigning
           
       - name: Build iOS IPA
@@ -57,12 +57,10 @@ workflows:
             echo "❌ IPA not found!"
             exit 1
           fi
-          
     artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/ipa/manifest.plist
       - flutter_drive.log
-      
     publishing:
       email:
         recipients:
