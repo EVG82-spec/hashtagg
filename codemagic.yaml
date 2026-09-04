@@ -62,7 +62,7 @@ workflows:
             ls -la build/ios/ || echo "build/ios folder not found"
             exit 1
           fi
-          artifacts:
+    artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/ipa/manifest.plist
       - flutter_drive.log
