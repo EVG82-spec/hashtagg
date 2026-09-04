@@ -9,7 +9,6 @@ workflows:
       ios_signing:
         distribution_type: development
         bundle_identifier: "com.webbelov87.hashtag.app"
-        team_id: "UM5PKKJJPV"
       vars:
         APP_STORE_CONNECT_KEY_ID: $APP_STORE_CONNECT_KEY_ID
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
