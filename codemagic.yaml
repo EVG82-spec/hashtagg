@@ -36,16 +36,15 @@ workflows:
           pod install --repo-update
           cd ..
       
-      - name: Set up code signing
-        script: |
-          echo "Setting up code signing for iOS..."
-          security find-identity -v -p codesigning
+      - name: Set up code signing settings on Xcode project
+        script: xcode-project use-profiles
           
       - name: Build iOS IPA
         script: |
           flutter build ipa --release \
             --build-name=1.0.0 \
             --build-number=$BUILD_NUMBER
+            --export-options-plist=/Users/builder/export_options.plist
           
       - name: Verify IPA
         script: |
