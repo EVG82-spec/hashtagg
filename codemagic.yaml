@@ -7,7 +7,7 @@ workflows:
       flutter: stable
       xcode: latest
       ios_signing:
-        distribution_type: development
+        distribution_type: ad_hoc
         bundle_identifier: "com.webbelov87.hashtag.app"
       vars:
         APP_STORE_CONNECT_KEY_ID: $APP_STORE_CONNECT_KEY_ID
