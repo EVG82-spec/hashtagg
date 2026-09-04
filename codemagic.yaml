@@ -2,19 +2,71 @@ workflows:
   ios-workflow:
     name: iOS Build
     max_build_duration: 60
+    instance_type: mac_mini_m1
     environment:
       flutter: stable
+      xcode: latest
+      ios_signing:
+        distribution_type: development
+        bundle_identifier: "com.webbelov87.hashtag.app"
       vars:
+        APP_STORE_CONNECT_KEY_ID: $APP_STORE_CONNECT_KEY_ID
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
         APNS_TEAM_ID: $APNS_TEAM_ID
         APNS_KEY_ID: $APNS_KEY_ID
         APNS_KEY: $APNS_KEY
         APNS_TOPIC: $APNS_TOPIC
         APNS_USE_SANDBOX: $APNS_USE_SANDBOX
     scripts:
-      - name: Build iOS
+      - name: Clean up
         script: |
           flutter clean
+          rm -rf ios/Pods
+          rm -rf ios/Podfile.lock
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+      
+      - name: Get packages
+        script: |
           flutter pub get
-          flutter build ios --release
+          
+      - name: Install CocoaPods
+        script: |
+          cd ios
+          pod install --repo-update
+          cd ..
+      
+      - name: Set up code signing
+        script: |
+          echo "Setting up code signing for iOS..."
+          # Проверка наличия сертификатов
+          security find-identity -v -p codesigning
+          
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release \
+            --build-name=1.0.0 \
+            --build-number=$BUILD_NUMBER
+          
+      - name: Verify IPA
+        script: |
+          if [ -f build/ios/ipa/*.ipa ]; then
+            echo "✅ IPA built successfully!"
+            ls -la build/ios/ipa/
+          else
+            echo "❌ IPA not found!"
+            exit 1
+          fi
+          
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/ipa/manifest.plist
+      - flutter_drive.log
+      
+    publishing:
+      email:
+        recipients:
+          - your_email@example.com
+        notify:
+          success: true
+          failure: true
