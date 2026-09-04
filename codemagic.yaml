@@ -47,17 +47,22 @@ workflows:
             --build-name=1.0.0 \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=ios/ExportOptions.plist
-          
+
       - name: Verify IPA
         script: |
-          if [ -f build/ios/ipa/*.ipa ]; then
+          echo "=== Looking for IPA file ==="
+          IPA_FILE=$(find build -name "*.ipa" | head -n 1)
+          if [ -n "$IPA_FILE" ]; then
             echo "✅ IPA built successfully!"
-            ls -la build/ios/ipa/
+            echo "Found: $IPA_FILE"
+            ls -la "$IPA_FILE"
           else
             echo "❌ IPA not found!"
+            echo "Contents of build/ios:"
+            ls -la build/ios/ || echo "build/ios folder not found"
             exit 1
           fi
-    artifacts:
+          artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/ipa/manifest.plist
       - flutter_drive.log
