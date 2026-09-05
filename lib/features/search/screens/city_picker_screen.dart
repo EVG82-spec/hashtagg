@@ -1,4 +1,4 @@
-//G:\hashtagg_app\lib\features\search\screens\city_picker_screen.dart
+// G:\hashtagg_app\lib\features\search\screens\city_picker_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hashtagg/core/network/geo_api_repository.dart';
@@ -49,16 +49,27 @@ class CityModel {
   }
 }
 
+/// Режим работы экрана выбора города
+enum CityPickerMode {
+  /// Режим поиска/фильтра - плоский список всех городов с фильтром по стране
+  search,
+
+  /// Режим выбора города (для объявлений) - двухуровневый (Край → Город)
+  picker,
+}
+
 class CityPickerScreen extends StatefulWidget {
   final int? selectedCityId;
   final String? selectedCity;
-  final bool returnId; // Если true, возвращает Map с id и name
+  final bool returnId;
+  final CityPickerMode mode;
 
   const CityPickerScreen({
     super.key,
     this.selectedCityId,
     this.selectedCity,
     this.returnId = false,
+    this.mode = CityPickerMode.search,
   });
 
   @override
@@ -69,32 +80,59 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
   final GeoApiRepository _geoApi = GeoApiRepository();
   final TextEditingController _searchController = TextEditingController();
 
+  // ---- Режим поиска (search) ----
   List<CityModel> _cities = [];
-  List<CityModel> _allCities = []; // Все города без фильтра
+  List<CityModel> _allCities = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  String? _selectedCountry; // Выбранная страна для фильтрации
+  String? _selectedCountry;
 
+  // ---- Режим выбора города (picker) ----
+  List<Map<String, dynamic>> _regions = [];
+  List<Map<String, dynamic>> _citiesByRegion = [];
+  int? _selectedRegionId;
+  String? _selectedRegionName;
+  bool _isLoadingRegions = true;
+  bool _isLoadingCities = false;
+  String _currentLevel = 'regions'; // 'regions' или 'cities'
+
+  // ---- Общее ----
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
   final CategoriesApiRepository _categoriesApi = CategoriesApiRepository();
 
+  // Выбранный город
+  int? _selectedCityId;
+  String? _selectedCityName;
+  String? _selectedDeclination;
+  double? _selectedLat;
+  double? _selectedLon;
+
   @override
   void initState() {
     super.initState();
-    _loadCities();
+    _selectedCityId = widget.selectedCityId;
+    _selectedCityName = widget.selectedCity;
+
+    if (widget.mode == CityPickerMode.search) {
+      _loadCities();
+    } else {
+      _loadRegions();
+    }
   }
+
+  // ============================================================
+  // РЕЖИМ ПОИСКА (search)
+  // ============================================================
 
   Future<void> _loadCities({String query = ''}) async {
     setState(() => _isLoading = true);
 
     try {
-      // Если query пустой, загружаем все города, иначе ищем по запросу
       final result = await _geoApi.searchCities(
         query: query,
         onlyCity: true,
-        allCities:
-            query.isEmpty, // Все города только если нет поискового запроса
+        allCities: query.isEmpty,
       );
 
       if (result['status'] == true) {
@@ -137,26 +175,162 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
     return countries;
   }
 
+  // ============================================================
+  // РЕЖИМ ВЫБОРА ГОРОДА (picker)
+  // ============================================================
+
+  Future<void> _loadRegions() async {
+    setState(() => _isLoadingRegions = true);
+
+    try {
+      final result = await _geoApi.getRegions();
+
+      if (result['status'] == true) {
+        final data = result['data'] as List;
+
+        // 👇 ДОБАВЬТЕ ЭТОТ ЛОГ
+        print('🔍 [CityPicker] ===== ВСЕ РЕГИОНЫ =====');
+        for (var region in data) {
+          print(
+            '  ID: ${region['region_id']}, Название: ${region['region_name']}',
+          );
+        }
+        print('🔍 [CityPicker] =========================');
+
+        setState(() {
+          _regions = data.cast<Map<String, dynamic>>();
+          _isLoadingRegions = false;
+        });
+      } else {
+        throw Exception(result['error'] ?? 'Failed to load regions');
+      }
+    } catch (e) {
+      print('🔴 [CityPicker] Error loading regions: $e');
+      setState(() => _isLoadingRegions = false);
+    }
+  }
+
+  Future<void> _loadCitiesByRegion(int regionId) async {
+    setState(() {
+      _isLoadingCities = true;
+      _currentLevel = 'cities';
+      _selectedRegionId = regionId;
+    });
+
+    try {
+      final result = await _geoApi.getCitiesByRegion(regionId: regionId);
+
+      if (result['status'] == true) {
+        final data = result['data'] as List;
+
+        // Сортируем города: главный город края первым
+        final sortedCities = _sortCitiesByRegion(
+          data.cast<Map<String, dynamic>>(),
+          regionId,
+        );
+
+        setState(() {
+          _citiesByRegion = sortedCities;
+          _isLoadingCities = false;
+        });
+        print(
+          '✅ [CityPicker] Loaded ${_citiesByRegion.length} cities for region $regionId',
+        );
+      } else {
+        throw Exception(result['error'] ?? 'Failed to load cities');
+      }
+    } catch (e) {
+      print('🔴 [CityPicker] Error loading cities: $e');
+      setState(() => _isLoadingCities = false);
+    }
+  }
+
+  /// Сортировка городов: главный город края первым
+  List<Map<String, dynamic>> _sortCitiesByRegion(
+    List<Map<String, dynamic>> cities,
+    int regionId,
+  ) {
+    // Список главных городов для краев по ID городов
+    final mainCityIds = {
+      55: [732], // Приморский Край → Владивосток (ID: 732)
+      78: [1040], // Хабаровский Край → Хабаровск (ID: 1040)
+    };
+
+    // Получаем список ID главных городов для этого региона
+    final mainIds = mainCityIds[regionId] ?? [];
+
+    // Разделяем на главный город и остальные
+    List<Map<String, dynamic>> mainCitiesList = [];
+    List<Map<String, dynamic>> otherCities = [];
+
+    for (var city in cities) {
+      final cityId = _parseInt(city['city_id']);
+
+      // Проверяем, является ли город главным по ID
+      if (mainIds.contains(cityId)) {
+        mainCitiesList.add(city);
+        print(
+          '✅ [CityPicker] Main city found: ${city['city_name']} (ID: $cityId)',
+        );
+      } else {
+        otherCities.add(city);
+      }
+    }
+
+    // Сортируем остальные города по алфавиту
+    otherCities.sort((a, b) {
+      final nameA = (a['city_name'] ?? a['geo_name'] ?? '')
+          .toString()
+          .toLowerCase();
+      final nameB = (b['city_name'] ?? b['geo_name'] ?? '')
+          .toString()
+          .toLowerCase();
+      return nameA.compareTo(nameB);
+    });
+
+    final result = [...mainCitiesList, ...otherCities];
+
+    // Логируем результат
+    print('🔍 [CityPicker] First 5 cities after sorting:');
+    for (int i = 0; i < (result.length > 5 ? 5 : result.length); i++) {
+      final city = result[i];
+      final name = city['city_name'] ?? city['geo_name'] ?? 'unknown';
+      final id = city['city_id'];
+      print('  ${i + 1}. $name (ID: $id)');
+    }
+
+    return result;
+  }
+
+  void _goBackToRegions() {
+    setState(() {
+      _currentLevel = 'regions';
+      _selectedRegionId = null;
+      _selectedRegionName = null;
+      _citiesByRegion.clear();
+      _searchController.clear();
+    });
+  }
+
+  // ============================================================
+  // ОБЩЕЕ
+  // ============================================================
+
   void _onSearchChanged(String query) async {
-    if (query.length < 2) {
+    if (widget.mode == CityPickerMode.search) {
+      // Режим поиска - фильтруем города
       setState(() {
-        _searchQuery = '';
-        _searchResults = [];
+        _searchQuery = query;
       });
+      await _loadCities(query: query);
       return;
     }
 
+    // Режим выбора города - поиск по регионам
+    // Просто фильтруем список, без API запроса
     setState(() {
       _searchQuery = query;
-      _isSearching = true;
     });
-
-    final result = await _categoriesApi.searchCategories(query);
-    if (result['status'] == true) {
-      setState(() {
-        _searchResults = List<Map<String, dynamic>>.from(result['data'] ?? []);
-      });
-    }
   }
 
   @override
@@ -167,6 +341,18 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.mode == CityPickerMode.search) {
+      return _buildSearchMode();
+    } else {
+      return _buildPickerMode();
+    }
+  }
+
+  // ============================================================
+  // ПОСТРОЕНИЕ РЕЖИМА ПОИСКА
+  // ============================================================
+
+  Widget _buildSearchMode() {
     final countries = _getAvailableCountries();
     final showTabs = _allCities.isNotEmpty && countries.length > 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -266,12 +452,12 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xff917dfa)),
               )
-            : _buildCityList(),
+            : _buildSearchCityList(),
       ),
     );
   }
 
-  Widget _buildCityList() {
+  Widget _buildSearchCityList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
     final subtitleColor = isDark ? Colors.white70 : const Color(0xff808080);
@@ -367,5 +553,357 @@ class _CityPickerScreenState extends State<CityPickerScreen> {
         }),
       ],
     );
+  }
+
+  // ============================================================
+  // ПОСТРОЕНИЕ РЕЖИМА ВЫБОРА ГОРОДА
+  // ============================================================
+
+  Widget _buildPickerMode() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xff151e27) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: bgColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: textColor),
+          onPressed: () {
+            if (_currentLevel == 'cities') {
+              _goBackToRegions();
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        title: Text(
+          _currentLevel == 'regions' ? 'Выбор края' : 'Выбор города',
+          style: GoogleFonts.montserrat(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        bottom: _currentLevel == 'regions'
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(60),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: inputBgColor,
+                      hintText: 'Поиск края',
+                      hintStyle: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xff999999),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xff999999),
+                        size: 20,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.close,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xff999999),
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : null,
+      ),
+      body: _currentLevel == 'regions'
+          ? _buildPickerRegionsList()
+          : _buildPickerCitiesList(),
+    );
+  }
+
+  Widget _buildPickerRegionsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    if (_isLoadingRegions) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xff917dfa)),
+      );
+    }
+
+    // Фильтруем регионы по поиску
+    final filteredRegions = _regions.where((region) {
+      final regionName = (region['region_name'] ?? '').toString().toLowerCase();
+      final query = _searchController.text.toLowerCase();
+      return query.isEmpty || regionName.contains(query);
+    }).toList();
+
+    return ListView.builder(
+      itemCount: filteredRegions.length,
+      itemBuilder: (context, index) {
+        final region = filteredRegions[index];
+        final regionId = _parseInt(region['region_id']);
+        final regionName = region['region_name'] ?? '';
+
+        return ListTile(
+          title: Text(
+            regionName,
+            style: GoogleFonts.montserrat(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+          trailing: Icon(
+            Icons.chevron_right,
+            color: isDark ? Colors.white54 : Colors.black54,
+          ),
+          onTap: () {
+            setState(() {
+              _selectedRegionName = regionName;
+            });
+            _loadCitiesByRegion(regionId);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPickerCitiesList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
+
+    if (_isLoadingCities) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xff917dfa)),
+      );
+    }
+
+    // Фильтруем города по поиску
+    final filteredCities = _citiesByRegion.where((city) {
+      final cityName = (city['city_name'] ?? city['geo_name'] ?? '')
+          .toString()
+          .toLowerCase();
+      final query = _searchController.text.toLowerCase();
+      return query.isEmpty || cityName.contains(query);
+    }).toList();
+
+    return Column(
+      children: [
+        // Заголовок с названием края
+        if (_selectedRegionName != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
+              children: [
+                Text(
+                  'Города в крае: ',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 14,
+                    color: isDark ? Colors.white54 : const Color(0xff808080),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    _selectedRegionName!,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xff917dfa),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Поле поиска
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {});
+            },
+            style: GoogleFonts.montserrat(fontSize: 14, color: textColor),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: inputBgColor,
+              hintText: 'Поиск города',
+              hintStyle: GoogleFonts.montserrat(
+                fontSize: 14,
+                color: isDark ? Colors.white54 : const Color(0xff999999),
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: isDark ? Colors.white54 : const Color(0xff999999),
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xff999999),
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ),
+
+        // Список городов
+        Expanded(
+          child: filteredCities.isEmpty
+              ? Center(
+                  child: Text(
+                    'Ничего не найдено',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: filteredCities.length,
+                  itemBuilder: (context, index) {
+                    final city = filteredCities[index];
+                    final cityId = _parseInt(city['city_id']);
+                    final cityName =
+                        city['city_name'] ?? city['geo_name'] ?? '';
+                    final declination = city['declination'] ?? '';
+                    final region = city['region_name'] ?? '';
+                    final country = city['country_name'] ?? '';
+                    final lat = _parseDouble(city['lat']);
+                    final lon = _parseDouble(city['lon']);
+
+                    final isSelected = _selectedCityId == cityId;
+
+                    return ListTile(
+                      leading: isSelected
+                          ? const Icon(
+                              Icons.check_circle,
+                              color: Color(0xff917dfa),
+                              size: 22,
+                            )
+                          : null,
+                      title: Text(
+                        cityName,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? const Color(0xff917dfa)
+                              : textColor,
+                        ),
+                      ),
+                      subtitle: region.isNotEmpty
+                          ? Text(
+                              '$region, $country',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 13,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xff808080),
+                              ),
+                            )
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedCityId = cityId;
+                          _selectedCityName = cityName;
+                          _selectedDeclination = declination;
+                          _selectedLat = lat;
+                          _selectedLon = lon;
+                        });
+
+                        // Возвращаем результат
+                        if (widget.returnId) {
+                          Navigator.pop(context, {
+                            'id': cityId,
+                            'name': cityName,
+                            'lat': lat,
+                            'lon': lon,
+                            'declination': declination,
+                          });
+                        } else {
+                          Navigator.pop(context, cityName);
+                        }
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 }

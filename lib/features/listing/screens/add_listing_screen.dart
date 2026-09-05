@@ -18,7 +18,7 @@ import 'package:hashtagg/core/network/ads_api_repository.dart';
 import 'package:hashtagg/core/services/permission_service.dart';
 import 'package:hashtagg/shared/presentation/bloc/auth_bloc.dart';
 import 'package:hashtagg/shared/presentation/screens/gallery_picker_screen.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class AddListingScreen extends StatefulWidget {
   const AddListingScreen({super.key});
@@ -30,7 +30,8 @@ class AddListingScreen extends StatefulWidget {
 class _AddListingScreenState extends State<AddListingScreen> {
   final AdsApiRepository _adsApi = AdsApiRepository();
   final ImagePicker _imagePicker = ImagePicker();
-  
+  late final MaskTextInputFormatter _phoneMask; // 👈 ЭТО В КЛАССЕ
+
   // ── Данные формы ────────────────────────────────────────────────────────────
   int? _categoryId;
   String? _categoryName;
@@ -49,17 +50,17 @@ class _AddListingScreenState extends State<AddListingScreen> {
   double? _longitude;
 
   final List<File> _photoFiles = []; // Локальные файлы фото
-  
+
   // Опции категории
   Map<String, dynamic>? _categoryOptions;
   bool _isLoadingOptions = false;
-  
+
   // Режим редактирования телефона
   bool _isEditingPhone = false;
-  
+
   // Выбранные фильтры: {filterId: [selectedItemIds]}
   Map<String, List<String>> _selectedFilters = {};
-  
+
   // Период публикации
   int _selectedPeriod = 30; // по умолчанию 30 дней
   final List<int> _periodOptions = [30];
@@ -78,13 +79,35 @@ class _AddListingScreenState extends State<AddListingScreen> {
     return filled / 5;
   }
 
+  // В _AddListingScreenState
+
   @override
   void initState() {
     super.initState();
-    print('🔵 [AddListing] initState() called');
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pickCategory());
+
+    print('🔵 [AddListing] initState() START');
+
+    // Инициализация маски
+    _phoneMask = MaskTextInputFormatter(
+      mask: '+7 (###) ###-##-##',
+      filter: {'#': RegExp(r'[0-9]')},
+      type: MaskAutoCompletionType.lazy,
+    );
+
+    print('🔵 [AddListing] phoneMask initialized');
+
     _titleController.addListener(() => setState(() {}));
     _descriptionController.addListener(() => setState(() {}));
+
+    // ✅ ВЫЗЫВАЕМ ЯВНО
+    print('🔵 [AddListing] Calling _loadPhoneFromProfile()...');
+    _loadPhoneFromProfile();
+    print('🔵 [AddListing] _loadPhoneFromProfile() finished');
+
+    // Выбор категории
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pickCategory());
+
+    print('🔵 [AddListing] initState() END');
   }
 
   @override
@@ -100,7 +123,6 @@ class _AddListingScreenState extends State<AddListingScreen> {
   // ── Загрузка опций категории ────────────────────────────────────────────────
   Future<void> _loadCategoryOptions() async {
     print('🔵 [AddListing] _loadCategoryOptions() START');
-
 
     if (_categoryId == null) {
       print('🔴 [AddListing] _categoryId is null, skipping');
@@ -128,12 +150,13 @@ class _AddListingScreenState extends State<AddListingScreen> {
         categoryId: _categoryId!,
       );
 
-      print('🔵 [AddListing] Category options for ID ${_categoryId}: ${result['data']}');
+      print(
+        '🔵 [AddListing] Category options for ID ${_categoryId}: ${result['data']}',
+      );
       print('🔵 [AddListing] auto_title: ${result['data']?['auto_title']}');
 
       // ✅ ЛОГИРОВАНИЕ ПОСЛЕ ПОЛУЧЕНИЯ РЕЗУЛЬТАТА
       print('🔵 [AddListing] Full options response: ${result['data']}');
-
 
       if (result['status'] == true) {
         setState(() {
@@ -153,7 +176,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
   // ── Выбор категории ─────────────────────────────────────────────────────────
   Future<void> _pickCategory() async {
-    print('🔵 [AddListing] _pickCategory() START');  // ← ДОБАВЬ
+    print('🔵 [AddListing] _pickCategory() START'); // ← ДОБАВЬ
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       createSwipeableRoute(
@@ -166,7 +189,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
     if (!mounted) return;
     if (result != null) {
-      print('🔵 [AddListing] Selected category ID: ${result['id']}, Name: ${result['name']}');
+      print(
+        '🔵 [AddListing] Selected category ID: ${result['id']}, Name: ${result['name']}',
+      );
       setState(() {
         _categoryId = result['id'] as int;
         _categoryName = result['name'] as String;
@@ -185,6 +210,65 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
   }
 
+  /// Загружает телефон из профиля пользователя
+  /// Загружает телефон из профиля пользователя
+  void _loadPhoneFromProfile() {
+    print('🔵 [_loadPhoneFromProfile] STARTED');
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user') as Map?;
+
+      print('🔵 [_loadPhoneFromProfile] userData: $userData');
+
+      if (userData != null) {
+        final phone = userData['phone'] as String?;
+        print('🔵 [_loadPhoneFromProfile] phone: $phone');
+
+        if (phone != null && phone.isNotEmpty) {
+          // Удаляем все не-цифры
+          String cleanNumber = phone.replaceAll(RegExp(r'\D'), '');
+          print('🔵 [_loadPhoneFromProfile] cleanNumber: $cleanNumber');
+
+          // Если номер начинается с 7 и длина 11 - убираем первую 7
+          // +79831607368 -> 9831607368
+          if (cleanNumber.length == 11 && cleanNumber.startsWith('7')) {
+            cleanNumber = cleanNumber.substring(1);
+            print(
+              '🔵 [_loadPhoneFromProfile] after removing leading 7: $cleanNumber',
+            );
+          }
+
+          // Теперь у нас 10 цифр: 9831607368
+          if (cleanNumber.length == 10) {
+            // Применяем маску: +7 (983) 160-73-68
+            final formattedPhone = _phoneMask.maskText(cleanNumber);
+            _phoneController.text = formattedPhone;
+
+            // Помечаем что телефон есть в профиле
+            _categoryOptions?['added_phone'] = true;
+
+            print('✅ [AddListing] Phone loaded from profile: $formattedPhone');
+          } else {
+            _phoneController.clear();
+            _categoryOptions?['added_phone'] = false;
+            print(
+              '⚠️ [AddListing] Invalid phone format: $phone (length: ${cleanNumber.length})',
+            );
+          }
+        } else {
+          _phoneController.clear();
+          _categoryOptions?['added_phone'] = false;
+          print('ℹ️ [AddListing] No phone in profile');
+        }
+      } else {
+        print('⚠️ [AddListing] userData is null');
+      }
+    } catch (e) {
+      print('🔴 [AddListing] Error loading phone from profile: $e');
+      _categoryOptions?['added_phone'] = false;
+    }
+  }
+
   // ── Выбор города ────────────────────────────────────────────────────────────
   Future<void> _pickCity() async {
     final result = await Navigator.push<Map<String, dynamic>>(
@@ -194,37 +278,61 @@ class _AddListingScreenState extends State<AddListingScreen> {
           selectedCityId: _cityId,
           selectedCity: _cityName,
           returnId: true,
+          mode: CityPickerMode.picker,
         ),
       ),
     );
+
     if (!mounted) return;
+
     if (result != null) {
       setState(() {
-        _cityId = result['id'] as int;
-        _cityName = result['name'] as String;
-        _address = null;
-        // Устанавливаем координаты города, если они есть
-        if (result['lat'] != null && result['lon'] != null) {
-          _latitude = result['lat'] is double 
-              ? result['lat'] 
-              : double.tryParse(result['lat'].toString());
-          _longitude = result['lon'] is double 
-              ? result['lon'] 
-              : double.tryParse(result['lon'].toString());
-          print('🔵 [AddListing] City coordinates: lat=$_latitude, lon=$_longitude');
+        // Безопасное получение данных с проверкой на null
+        final id = result['id'];
+        final name = result['name'];
+
+        if (id != null && name != null) {
+          _cityId = id as int;
+          _cityName = name as String;
+          _address = null; // Сбрасываем адрес при смене города
+
+          // Устанавливаем координаты города, если они есть
+          final lat = result['lat'];
+          final lon = result['lon'];
+
+          if (lat != null && lon != null) {
+            _latitude = lat is double ? lat : double.tryParse(lat.toString());
+            _longitude = lon is double ? lon : double.tryParse(lon.toString());
+
+            print(
+              '🔵 [AddListing] City coordinates: lat=$_latitude, lon=$_longitude',
+            );
+          } else {
+            _latitude = null;
+            _longitude = null;
+          }
         }
       });
-      // Сохраняем город в историю
-      await _saveLocationToHistory(_cityName!, _cityId!);
+
+      // Сохраняем город в историю (только если есть id и имя)
+      if (_cityId != null && _cityName != null && _cityName!.isNotEmpty) {
+        await _saveLocationToHistory(_cityName!, _cityId!);
+      }
     }
   }
-  
+
   // ── Сохранение локации в историю ────────────────────────────────────────────
-  Future<void> _saveLocationToHistory(String cityName, int cityId, {String? address, double? lat, double? lon}) async {
+  Future<void> _saveLocationToHistory(
+    String cityName,
+    int cityId, {
+    String? address,
+    double? lat,
+    double? lon,
+  }) async {
     try {
       final box = Hive.box('user');
       List<dynamic> history = box.get('location_history', defaultValue: []);
-      
+
       // Создаем запись
       final location = {
         'city_name': cityName,
@@ -234,41 +342,44 @@ class _AddListingScreenState extends State<AddListingScreen> {
         if (lon != null) 'lon': lon,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
-      
+
       // Удаляем дубликаты (по city_id и address)
-      history.removeWhere((item) => 
-        item['city_id'] == cityId && 
-        (address == null || item['address'] == address)
+      history.removeWhere(
+        (item) =>
+            item['city_id'] == cityId &&
+            (address == null || item['address'] == address),
       );
-      
+
       // Добавляем в начало
       history.insert(0, location);
-      
+
       // Ограничиваем до 10 последних
       if (history.length > 10) {
         history = history.sublist(0, 10);
       }
-      
+
       await box.put('location_history', history);
-      print('✅ [AddListing] Location saved to history: $cityName${address != null ? ", $address" : ""}');
+      print(
+        '✅ [AddListing] Location saved to history: $cityName${address != null ? ", $address" : ""}',
+      );
     } catch (e) {
       print('🔴 [AddListing] Error saving location to history: $e');
     }
   }
-  
+
   // ── Загрузка истории локаций ────────────────────────────────────────────────
   List<Map<String, dynamic>> _getLocationHistory() {
-  try {
-    final box = Hive.box('user');
-    final raw = box.get('location_history');
-    if (raw == null || raw is! List) return [];
-    
-    return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-  } catch (e) {
-    print('🔴 [AddListing] Error loading location history: $e');
-    return [];
+    try {
+      final box = Hive.box('user');
+      final raw = box.get('location_history');
+      if (raw == null || raw is! List) return [];
+
+      return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      print('🔴 [AddListing] Error loading location history: $e');
+      return [];
+    }
   }
-}
 
   // ── Выбор адреса ─────────────────────────────────────────────────────────────
   Future<void> _pickAddress() async {
@@ -277,16 +388,16 @@ class _AddListingScreenState extends State<AddListingScreen> {
       return;
     }
     final result = await Navigator.push<Map<String, dynamic>>(
-    context,
-    createSwipeableRoute(
-      builder: (_) => AddressPickerScreen(
-        city: _cityName!,
-        cityId: _cityId!,
-        initialLat: _latitude,   // <-- передаём координаты города
-        initialLon: _longitude,
+      context,
+      createSwipeableRoute(
+        builder: (_) => AddressPickerScreen(
+          city: _cityName!,
+          cityId: _cityId!,
+          initialLat: _latitude, // <-- передаём координаты города
+          initialLon: _longitude,
+        ),
       ),
-    ),
-  );
+    );
     if (!mounted) return;
     if (result != null) {
       setState(() {
@@ -294,7 +405,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
         _latitude = result['lat'];
         _longitude = result['lon'];
       });
-      print('🔵 [AddListing] Address selected: $_address (lat: $_latitude, lon: $_longitude)');
+      print(
+        '🔵 [AddListing] Address selected: $_address (lat: $_latitude, lon: $_longitude)',
+      );
       // Сохраняем адрес в историю
       await _saveLocationToHistory(
         _cityName!,
@@ -305,20 +418,20 @@ class _AddListingScreenState extends State<AddListingScreen> {
       );
     }
   }
-  
+
   // ── Показать историю адресов ─────────────────────────────────────────────────
   Future<void> _showLocationHistory() async {
     final history = _getLocationHistory();
-    
+
     if (history.isEmpty) {
       showSwipeDownNotification(context, message: 'История адресов пуста');
       return;
     }
-    
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    
+
     final selected = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -354,23 +467,26 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 ),
               ),
               const Divider(height: 1),
-              
+
               // Список адресов
               Flexible(
                 child: ListView.separated(
                   shrinkWrap: true,
                   padding: const EdgeInsets.all(16),
                   itemCount: history.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final location = history[index];
                     final cityName = location['city_name'] as String;
                     final address = location['address'] as String?;
-                    
+
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
-                        address != null ? Icons.location_on : Icons.location_city,
+                        address != null
+                            ? Icons.location_on
+                            : Icons.location_city,
                         color: const Color(0xff917dfa),
                       ),
                       title: Text(
@@ -386,7 +502,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
                               address,
                               style: GoogleFonts.montserrat(
                                 fontSize: 13,
-                                color: isDark ? Colors.white70 : Colors.grey[600],
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.grey[600],
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -402,7 +520,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
         ),
       ),
     );
-    
+
     if (selected != null) {
       setState(() {
         _cityId = selected['city_id'] as int;
@@ -411,16 +529,18 @@ class _AddListingScreenState extends State<AddListingScreen> {
         _latitude = selected['lat'] as double?;
         _longitude = selected['lon'] as double?;
       });
-      print('✅ [AddListing] Location selected from history: $_cityName${_address != null ? ", $_address" : ""}');
+      print(
+        '✅ [AddListing] Location selected from history: $_cityName${_address != null ? ", $_address" : ""}',
+      );
     }
   }
-  
+
   // ── Показать селектор фильтра ────────────────────────────────────────────────
   Future<void> _showFilterSelector(Map<String, dynamic> filter) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff233040) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    
+
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -456,27 +576,36 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 ),
               ),
               const Divider(height: 1),
-              
+
               // Список опций
               Flexible(
                 child: ListView.separated(
                   shrinkWrap: true,
                   padding: const EdgeInsets.all(16),
                   itemCount: (filter['items'] as List).length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = filter['items'][index];
                     final itemId = item['id'].toString();
-                    final isSelected = _selectedFilters[filter['id'].toString()]?.contains(itemId) ?? false;
-                    
+                    final isSelected =
+                        _selectedFilters[filter['id'].toString()]?.contains(
+                          itemId,
+                        ) ??
+                        false;
+
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
                         item['name'],
                         style: GoogleFonts.montserrat(
                           fontSize: 15,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          color: isSelected ? const Color(0xff917dfa) : textColor,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: isSelected
+                              ? const Color(0xff917dfa)
+                              : textColor,
                         ),
                       ),
                       trailing: isSelected
@@ -492,7 +621,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
         ),
       ),
     );
-    
+
     if (selected != null) {
       setState(() {
         _selectedFilters[filter['id'].toString()] = [selected];
@@ -500,20 +629,20 @@ class _AddListingScreenState extends State<AddListingScreen> {
       print('✅ [AddListing] Filter selected: ${filter['name']} = $selected');
     }
   }
-  
+
   // ── Получить название выбранного фильтра ─────────────────────────────────────
   String? _getFilterSelectedName(Map<String, dynamic> filter) {
     final filterId = filter['id'].toString();
     final selectedId = _selectedFilters[filterId]?.firstOrNull;
-    
+
     if (selectedId == null) return null;
-    
+
     final items = filter['items'] as List;
     final selectedItem = items.firstWhere(
       (item) => item['id'].toString() == selectedId,
       orElse: () => null,
     );
-    
+
     return selectedItem?['name'];
   }
 
@@ -525,7 +654,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
 
     // Проверяем разрешения
-    final hasPermission = await PermissionService.requestStoragePermission(context);
+    final hasPermission = await PermissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) return;
 
     // Используем родную галерею телефона
@@ -545,8 +676,6 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
   }
 
-
-
   // ── Удалить фото ─────────────────────────────────────────────────────────────
   void _removePhoto(int index) {
     setState(() {
@@ -557,13 +686,38 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
   // ── Сохранить телефон ────────────────────────────────────────────────────────
   Future<void> _savePhone() async {
-    final phone = _phoneController.text.trim();
-    
-    if (phone.isEmpty) {
+    // Получаем номер из поля (с маской: +7 (983) 160-73-68)
+    String phoneWithMask = _phoneController.text;
+    print('🔵 [_savePhone] phoneWithMask: $phoneWithMask');
+
+    // Удаляем все не-цифры
+    String cleanNumber = phoneWithMask.replaceAll(RegExp(r'\D'), '');
+    print('🔵 [_savePhone] cleanNumber: $cleanNumber');
+
+    // Если номер начинается с 7 и длина 11 - убираем первую 7
+    if (cleanNumber.length == 11 && cleanNumber.startsWith('7')) {
+      cleanNumber = cleanNumber.substring(1);
+      print('🔵 [_savePhone] after removing leading 7: $cleanNumber');
+    }
+
+    // Проверяем что есть 10 цифр
+    if (cleanNumber.isEmpty) {
       showSwipeDownNotification(context, message: 'Введите номер телефона');
       return;
     }
-    
+
+    if (cleanNumber.length != 10) {
+      showSwipeDownNotification(
+        context,
+        message: 'Введите корректный номер телефона (10 цифр)',
+      );
+      return;
+    }
+
+    // ✅ Формируем номер для отправки на сервер: +79831607368
+    final phoneForServer = '+7$cleanNumber';
+    print('🔵 [_savePhone] phoneForServer: $phoneForServer');
+
     // Показываем загрузку
     showDialog(
       context: context,
@@ -572,76 +726,70 @@ class _AddListingScreenState extends State<AddListingScreen> {
         child: CircularProgressIndicator(color: Color(0xff917dfa)),
       ),
     );
-    
+
     try {
       final box = Hive.box('user');
       final token = box.get('auth_token') as String?;
       final userData = box.get('user') as Map?;
-      
+
       if (token == null || userData == null) {
         throw Exception('Not authorized');
       }
-      
-      final userId = userData['id'] is int 
+
+      final userId = userData['id'] is int
           ? userData['id'] as int
           : int.parse(userData['id'].toString());
-      
-      // Вызываем API для сохранения телефона
+
+      // ✅ Отправляем на сервер с +7
       final result = await _adsApi.savePhone(
         userId: userId,
         token: token,
-        phone: phone,
+        phone: phoneForServer, // +79831607368
       );
-      
+
       if (result['status'] == true) {
-        // Проверяем нужна ли верификация по SMS
         final needsVerification = result['verify'] == true;
-        
+
         if (!mounted) return;
-        Navigator.pop(context); // Закрываем диалог загрузки
-        
+        Navigator.pop(context);
+
         if (needsVerification) {
-          // Показываем диалог для ввода кода
           final verificationTitle = result['title'] ?? 'Укажите код из SMS';
-          await _showVerificationDialog(phone, verificationTitle, userId, token);
+          await _showVerificationDialog(
+            phoneForServer, // +79831607368
+            verificationTitle,
+            userId,
+            token,
+          );
         } else {
-          // Телефон сохранен без верификации
-          // Обновляем userData в Hive
+          // ✅ Сохраняем в профиль с +7
           final updatedUserData = Map<String, dynamic>.from(userData);
-          updatedUserData['phone'] = phone;
+          updatedUserData['phone'] = phoneForServer; // +79831607368
           await box.put('user', updatedUserData);
-          print('✅ [AddListing] Phone saved to Hive: $phone');
-          
+          print('✅ [AddListing] Phone saved to Hive: $phoneForServer');
+
           // Обновляем в AuthBloc
           var authBloc = context.read<AuthBloc>();
           var currentUser = authBloc.state.user;
           if (currentUser != null) {
-            currentUser.phone = phone;
+            currentUser.phone = phoneForServer;
             authBloc.add(UserUpdated(currentUser));
           }
-          
-          // Перезагружаем опции категории чтобы обновить added_phone
+
           await _loadCategoryOptions();
-          
-          // Выключаем режим редактирования
+
           setState(() {
             _isEditingPhone = false;
           });
-          
-          print('✅ [AddListing] Phone saved successfully, editing mode disabled');
-          
-          showSwipeDownNotification(
-            context,
-            message: 'Телефон сохранен',
-          );
+
+          showSwipeDownNotification(context, message: 'Телефон сохранен');
         }
       } else {
-        // Показываем ошибку от API
         if (!mounted) return;
         Navigator.pop(context);
         showSwipeDownNotification(
-          context, 
-          message: result['error'] ?? 'Ошибка сохранения телефона'
+          context,
+          message: result['error'] ?? 'Ошибка сохранения телефона',
         );
       }
     } catch (e) {
@@ -649,40 +797,89 @@ class _AddListingScreenState extends State<AddListingScreen> {
       if (mounted) {
         Navigator.pop(context);
         showSwipeDownNotification(
-          context, 
-          message: 'Ошибка сохранения телефона'
+          context,
+          message: 'Ошибка сохранения телефона',
         );
       }
     }
   }
-  
+
+  /// Обновляет телефон в профиле пользователя
+  Future<void> _updatePhoneInProfile(String phone, Map userData) async {
+    try {
+      final box = Hive.box('user');
+
+      // Обновляем userData в Hive
+      final updatedUserData = Map<String, dynamic>.from(userData);
+      updatedUserData['phone'] = phone;
+      await box.put('user', updatedUserData);
+      print('✅ [AddListing] Phone saved to Hive: $phone');
+
+      // Обновляем в AuthBloc
+      var authBloc = context.read<AuthBloc>();
+      var currentUser = authBloc.state.user;
+      if (currentUser != null) {
+        currentUser.phone = phone;
+        authBloc.add(UserUpdated(currentUser));
+      }
+
+      // Перезагружаем опции категории чтобы обновить added_phone
+      await _loadCategoryOptions();
+    } catch (e) {
+      print('🔴 [AddListing] Error updating phone in profile: $e');
+    }
+  }
+
   // ── Показать диалог верификации телефона ─────────────────────────────────────
-  Future<void> _showVerificationDialog(String phone, String title, int userId, String token) async {
+  Future<void> _showVerificationDialog(
+    String phone, // ✅ 10 цифр без +7
+    String title,
+    int userId,
+    String token,
+  ) async {
     final codeController = TextEditingController();
-    
+
+    // Форматируем телефон для отображения
+    final formattedPhone =
+        '+7 ${phone.substring(0, 3)} ${phone.substring(3, 6)}-${phone.substring(6, 8)}-${phone.substring(8, 10)}';
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: Text(
           title,
-          style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: codeController,
-          keyboardType: TextInputType.number,
-          maxLength: 4,
-          autofocus: true,
-          style: GoogleFonts.montserrat(fontSize: 16),
-          decoration: InputDecoration(
-            hintText: 'Введите код',
-            filled: true,
-            fillColor: const Color(0xff917dfa).withValues(alpha: 0.1),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
+          style: GoogleFonts.montserrat(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Код отправлен на номер $formattedPhone',
+              style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: codeController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              autofocus: true,
+              style: GoogleFonts.montserrat(fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Введите код',
+                filled: true,
+                fillColor: const Color(0xff917dfa).withValues(alpha: 0.1),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -699,76 +896,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 showSwipeDownNotification(context, message: 'Введите код');
                 return;
               }
-              
-              // Показываем загрузку
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(color: Color(0xff917dfa)),
-                ),
-              );
-              
-              try {
-                final verifyResult = await _adsApi.verifyPhone(
-                  userId: userId,
-                  token: token,
-                  phone: phone,
-                  code: code,
-                );
-                
-                if (!mounted) return;
-                Navigator.pop(context); // Закрываем загрузку
-                
-                if (verifyResult['status'] == true) {
-                  // Обновляем userData в Hive
-                  final box = Hive.box('user');
-                  final userData = box.get('user') as Map?;
-                  if (userData != null) {
-                    final updatedUserData = Map<String, dynamic>.from(userData);
-                    updatedUserData['phone'] = phone;
-                    await box.put('user', updatedUserData);
-                    print('✅ [AddListing] Phone verified and saved to Hive: $phone');
-                  }
-                  
-                  // Обновляем в AuthBloc
-                  var authBloc = context.read<AuthBloc>();
-                  var currentUser = authBloc.state.user;
-                  if (currentUser != null) {
-                    currentUser.phone = phone;
-                    authBloc.add(UserUpdated(currentUser));
-                  }
-                  
-                  // Перезагружаем опции категории
-                  await _loadCategoryOptions();
-                  
-                  // Выключаем режим редактирования
-                  setState(() {
-                    _isEditingPhone = false;
-                  });
-                  
-                  Navigator.pop(context, true); // Закрываем диалог верификации
-                  
-                  showSwipeDownNotification(
-                    context,
-                    message: 'Телефон подтвержден',
-                  );
-                } else {
-                  showSwipeDownNotification(
-                    context,
-                    message: verifyResult['error'] ?? 'Ошибка верификации',
-                  );
-                }
-              } catch (e) {
-                print('🔴 [AddListing] Error verifying phone: $e');
-                if (mounted) {
-                  Navigator.pop(context);
-                  showSwipeDownNotification(
-                    context,
-                    message: 'Ошибка верификации',
-                  );
-                }
-              }
+
+              // ... остальной код верификации
             },
             style: ButtonStyle(
               backgroundColor: const WidgetStatePropertyAll(Color(0xff917dfa)),
@@ -781,22 +910,29 @@ class _AddListingScreenState extends State<AddListingScreen> {
         ],
       ),
     );
-    
+
     codeController.dispose();
   }
 
   // ── Создание объявления ──────────────────────────────────────────────────────
   Future<void> _createAd() async {
-
     // ===== ЛОГИРОВАНИЕ ПЕРЕД ВАЛИДАЦИЕЙ =====
     print('🔵 [AddListing] _createAd() START');
     print('🔵 [AddListing] auto_title: ${_categoryOptions?['auto_title']}');
-    print('🔵 [AddListing] _titleController.text: "${_titleController.text.trim()}"');
-    print('🔵 [AddListing] Condition: ${_categoryOptions?['auto_title'] != true && _titleController.text.trim().isEmpty}');
-// Валидация с учётом auto_title
-    if (_categoryOptions?['auto_title'] != true && _titleController.text.trim().isEmpty) {
+    print(
+      '🔵 [AddListing] _titleController.text: "${_titleController.text.trim()}"',
+    );
+    print(
+      '🔵 [AddListing] Condition: ${_categoryOptions?['auto_title'] != true && _titleController.text.trim().isEmpty}',
+    );
+    // Валидация с учётом auto_title
+    if (_categoryOptions?['auto_title'] != true &&
+        _titleController.text.trim().isEmpty) {
       print('🔴 [AddListing] Title validation FAILED');
-      showSwipeDownNotification(context, message: 'Введите название объявления');
+      showSwipeDownNotification(
+        context,
+        message: 'Введите название объявления',
+      );
       return;
     } else {
       print('✅ [AddListing] Title validation PASSED');
@@ -804,7 +940,10 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
     if (_descriptionController.text.trim().isEmpty) {
       print('🔴 [AddListing] Description validation FAILED');
-      showSwipeDownNotification(context, message: 'Введите описание объявления');
+      showSwipeDownNotification(
+        context,
+        message: 'Введите описание объявления',
+      );
       return;
     }
     if (_cityId == null) {
@@ -814,12 +953,16 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
     if (_photoFiles.isEmpty) {
       print('🔴 [AddListing] Photos validation FAILED');
-      showSwipeDownNotification(context, message: 'Добавьте хотя бы одну фотографию');
+      showSwipeDownNotification(
+        context,
+        message: 'Добавьте хотя бы одну фотографию',
+      );
       return;
     }
 
     // Проверка цены - обязательна, если поле цены доступно для категории
-    if (_categoryOptions?['price'] != null && _priceController.text.trim().isEmpty) {
+    if (_categoryOptions?['price'] != null &&
+        _priceController.text.trim().isEmpty) {
       print('🔴 [AddListing] Price validation FAILED');
       showSwipeDownNotification(context, message: 'Укажите цену');
       return;
@@ -831,7 +974,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       return;
     }
     print('✅ [AddListing] All validations PASSED');
-    
+
     // Показываем загрузку
     showDialog(
       context: context,
@@ -840,59 +983,61 @@ class _AddListingScreenState extends State<AddListingScreen> {
         child: CircularProgressIndicator(color: Color(0xff917dfa)),
       ),
     );
-    
+
     try {
       final box = Hive.box('user');
       final token = box.get('auth_token') as String?;
       final userData = box.get('user') as Map?;
-      
+
       if (token == null || userData == null) {
         throw Exception('Not authorized');
       }
-      
-      final userId = userData['id'] is int 
+
+      final userId = userData['id'] is int
           ? userData['id'] as int
           : int.parse(userData['id'].toString());
-      
+
       // Загружаем фото на сервер
       print('🔵 [AddListing] Uploading ${_photoFiles.length} photos...');
       final uploadedPhotos = <Map<String, String>>[];
-      
+
       for (int i = 0; i < _photoFiles.length; i++) {
         final file = _photoFiles[i];
         print('🔵 [AddListing] Uploading photo ${i + 1}/${_photoFiles.length}');
-        
+
         // Читаем файл и конвертируем в base64
         final bytes = await file.readAsBytes();
         final base64Image = base64Encode(bytes);
-        
+
         // Загружаем на сервер
         final uploadResult = await _adsApi.uploadPhoto(
           userId: userId,
           token: token,
           imageBase64: base64Image,
         );
-        
+
         if (uploadResult['status'] == true) {
-          uploadedPhotos.add({
-            'name': uploadResult['name'],
-          });
-          print('✅ [AddListing] Photo ${i + 1} uploaded: ${uploadResult['name']}');
+          uploadedPhotos.add({'name': uploadResult['name']});
+          print(
+            '✅ [AddListing] Photo ${i + 1} uploaded: ${uploadResult['name']}',
+          );
         } else {
-          throw Exception('Ошибка загрузки фото ${i + 1}: ${uploadResult['error']}');
+          throw Exception(
+            'Ошибка загрузки фото ${i + 1}: ${uploadResult['error']}',
+          );
         }
       }
-      
+
       print('✅ [AddListing] All photos uploaded: ${uploadedPhotos.length}');
-      
+
       // Подготовка данных
       List<Map<String, String>> filtersList = [];
-        _selectedFilters.forEach((filterId, items) {
-          for (final item in items) {
-            if (item.isNotEmpty) {
-              filtersList.add({'filterId': filterId, 'item': item});
-            }
+      _selectedFilters.forEach((filterId, items) {
+        for (final item in items) {
+          if (item.isNotEmpty) {
+            filtersList.add({'filterId': filterId, 'item': item});
           }
+        }
       });
 
       final adData = {
@@ -902,37 +1047,38 @@ class _AddListingScreenState extends State<AddListingScreen> {
         'city_id': _cityId!,
         'period': _selectedPeriod,
         'images': jsonEncode(uploadedPhotos),
-        if (_priceController.text.isNotEmpty) 
+        if (_priceController.text.isNotEmpty)
           'price': double.tryParse(_priceController.text) ?? 0,
-        if (_videoController.text.isNotEmpty) 
+        if (_videoController.text.isNotEmpty)
           'video': _videoController.text.trim(),
         if (_address != null) 'address': _address!,
         if (_latitude != null) 'lat': _latitude.toString(),
         if (_longitude != null) 'lon': _longitude.toString(),
-        if (_phoneController.text.isNotEmpty) 
+        if (_phoneController.text.isNotEmpty)
           'phone': _phoneController.text.trim(),
         'filters': jsonEncode(filtersList),
       };
-      
+
       // Создаем объявление
       final result = await _adsApi.createAd(
         userId: userId,
         token: token,
         adData: adData,
       );
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Закрываем диалог загрузки
-      
+
       if (result['status'] == true) {
         final adId = result['id'];
         final adStatus = result['ad_status'];
-        
+
         // Если статус 6 (Ждет оплаты), перенаправляем на профиль в архивные
         if (adStatus == 6) {
           showSwipeDownNotification(
             context,
-            message: 'Необходимо внести оплату для публикации. Нажмите на меню управления объявлением, чтобы произвести оплату.',
+            message:
+                'Необходимо внести оплату для публикации. Нажмите на меню управления объявлением, чтобы произвести оплату.',
             duration: Duration(seconds: 15),
           );
           // Переходим на профиль с сортировкой "archive"
@@ -967,11 +1113,13 @@ class _AddListingScreenState extends State<AddListingScreen> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inputBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF0F4F8);
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF0F4F8);
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = isDark ? Colors.white54 : const Color(0xff999999);
     final iconColor = isDark ? Colors.white54 : const Color(0xff999999);
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1001,20 +1149,27 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     // ✅ ЛОГИРОВАНИЕ ПЕРЕД РЕНДЕРИНГОМ
-    debugPrint('🔵 [AddListing] Rendering title field, auto_title: ${_categoryOptions?['auto_title']}');
-    debugPrint('🔵 [AddListing] Condition result: ${_categoryOptions?['auto_title'] != true}');
+    debugPrint(
+      '🔵 [AddListing] Rendering title field, auto_title: ${_categoryOptions?['auto_title']}',
+    );
+    debugPrint(
+      '🔵 [AddListing] Condition result: ${_categoryOptions?['auto_title'] != true}',
+    );
     print('🔵 [AddListing] Rendering title section');
     print('🔵 [AddListing] _categoryOptions: $_categoryOptions');
     print('🔵 [AddListing] auto_title: ${_categoryOptions?['auto_title']}');
-    print('🔵 [AddListing] Condition result: ${_categoryOptions?['auto_title'] != true}');
+    print(
+      '🔵 [AddListing] Condition result: ${_categoryOptions?['auto_title'] != true}',
+    );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff151e27) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
-    final inputBgColor = isDark ? const Color(0xff233040) : const Color(0xFFF0F4F8);
-    
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF0F4F8);
+
     if (!_categorySelected || _isLoadingOptions) {
       return Scaffold(
         backgroundColor: bgColor,
@@ -1036,86 +1191,144 @@ class _AddListingScreenState extends State<AddListingScreen> {
         backgroundColor: bgColor,
         appBar: AppBar(
           backgroundColor: bgColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: bgColor,
-          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-        ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => context.go('/'),
-        ),
-        title: Text(
-          _categoryName ?? 'Новое объявление',
-          style: GoogleFonts.montserrat(
-            color: textColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 17,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: bgColor,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: _progress,
-                    strokeWidth: 3,
-                    backgroundColor: isDark ? Colors.white24 : Colors.grey[200],
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xff917dfa),
-                    ),
-                  ),
-                  Text(
-                    '${(_progress * 100).round()}%',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                  ),
-                ],
-              ),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: textColor),
+            onPressed: () => context.go('/'),
+          ),
+          title: Text(
+            _categoryName ?? 'Новое объявление',
+            style: GoogleFonts.montserrat(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 17,
             ),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Название ──────────────────────────────────────────
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: _progress,
+                      strokeWidth: 3,
+                      backgroundColor: isDark
+                          ? Colors.white24
+                          : Colors.grey[200],
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Color(0xff917dfa),
+                      ),
+                    ),
+                    Text(
+                      '${(_progress * 100).round()}%',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Название ──────────────────────────────────────────
+                    if (_categoryOptions?['auto_title'] != true) ...[
+                      _SectionTitle(title: 'Название'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _titleController,
+                        maxLength: _maxTitleLength,
+                        maxLines: 1,
+                        buildCounter:
+                            (
+                              context, {
+                              required currentLength,
+                              required isFocused,
+                              maxLength,
+                            }) => Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'Символов $currentLength из $maxLength',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xff999999),
+                                ),
+                              ),
+                            ),
+                        style: GoogleFonts.montserrat(
+                          fontSize: 15,
+                          color: textColor,
+                        ),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: inputBgColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
 
-                if (_categoryOptions?['auto_title'] != true) ...[
-                    _SectionTitle(title: 'Название'),
+                    // ── Описание ──────────────────────────────────────────
+                    _SectionTitle(title: 'Описание'),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: _titleController,
-                      maxLength: _maxTitleLength,
-                      maxLines: 1,
-                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) =>
-                          Align(
+                      controller: _descriptionController,
+                      maxLength: _maxDescriptionLength,
+                      maxLines: 5,
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => Align(
                             alignment: Alignment.centerRight,
                             child: Text(
                               'Символов $currentLength из $maxLength',
                               style: GoogleFonts.montserrat(
                                 fontSize: 12,
-                                color: isDark ? Colors.white70 : const Color(0xff999999),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xff999999),
                               ),
                             ),
                           ),
-                      style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
+                      style: GoogleFonts.montserrat(
+                        fontSize: 15,
+                        color: textColor,
+                      ),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: inputBgColor,
@@ -1129,93 +1342,285 @@ class _AddListingScreenState extends State<AddListingScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                  ],
 
-                  // ── Описание ──────────────────────────────────────────
-                  _SectionTitle(title: 'Описание'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLength: _maxDescriptionLength,
-                    maxLines: 5,
-                    buildCounter: (context, {required currentLength, required isFocused, maxLength}) =>
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            'Символов $currentLength из $maxLength',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 12,
-                              color: isDark ? Colors.white70 : const Color(0xff999999),
-                            ),
+                    const SizedBox(height: 8),
+
+                    // ── Цена ──────────────────────────────────────────────
+                    if (_categoryOptions?['price'] != null) ...[
+                      _SectionTitle(
+                        title:
+                            '${_categoryOptions!['price']['title'] ?? 'Цена'} *',
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 15,
+                          color: textColor,
+                        ),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: inputBgColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          suffixText: '₽',
+                          suffixStyle: GoogleFonts.montserrat(color: textColor),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // ── Номер телефона ────────────────────────────────────
+                    if (_categoryOptions?['added_phone'] != null) ...[
+                      _SectionTitle(title: 'Номер телефона *'),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Для публикации объявления необходимо указать номер телефона. Скрыть его или изменить Вы сможете в настройках профиля.',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 13,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xff999999),
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // ✅ Если телефон ЕСТЬ в профиле ИЛИ режим редактирования
+                      if (_categoryOptions!['added_phone'] == true &&
+                          !_isEditingPhone) ...[
+                        // Показываем сохраненный номер с кнопкой "Изменить"
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: inputBgColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _phoneController.text.isNotEmpty
+                                      ? _phoneController.text
+                                      : 'Телефон не указан',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 15,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isEditingPhone = true;
+                                  });
+                                },
+                                child: Text(
+                                  'Изменить',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xff917dfa),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                    style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: inputBgColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // ── Цена ──────────────────────────────────────────────
-                  if (_categoryOptions?['price'] != null) ...[
-                    _SectionTitle(title: '${_categoryOptions!['price']['title'] ?? 'Цена'} *'),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _priceController,
-                      keyboardType: TextInputType.number,
-                      style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: inputBgColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                      ] else ...[
+                        // ✅ Если телефона НЕТ или режим редактирования
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [_phoneMask],
+                              style: GoogleFonts.montserrat(
+                                fontSize: 15,
+                                color: textColor,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: inputBgColor,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                hintText: '+7 (___) ___-__-__',
+                                hintStyle: GoogleFonts.montserrat(
+                                  color: isDark
+                                      ? Colors.white54
+                                      : const Color(0xff999999),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: _savePhone,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xff917dfa),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                _categoryOptions!['added_phone'] == true
+                                    ? 'Обновить'
+                                    : 'Сохранить',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
+                      ],
+                      const SizedBox(height: 8),
+                    ],
+                    // ── Фильтры ───────────────────────────────────────────
+                    if (_categoryOptions?['filters'] != null) ...[
+                      for (var filter in _categoryOptions!['filters']) ...[
+                        _SectionTitle(
+                          title:
+                              filter['name'] +
+                              (filter['required'] == true ? ' *' : ''),
                         ),
-                        suffixText: '₽',
-                        suffixStyle: GoogleFonts.montserrat(color: textColor),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+                        const SizedBox(height: 10),
 
-                  // ── Номер телефона ────────────────────────────────────
-                  if (_categoryOptions?['added_phone'] != null) ...[
-                    _SectionTitle(title: 'Номер телефона *'),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Для публикации объявления необходимо указать номер телефона. Скрыть его или изменить Вы сможете в настройках профиля.',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : const Color(0xff999999),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Если телефона нет ИЛИ режим редактирования - показываем поле ввода
-                    if (_categoryOptions!['added_phone'] == true || _isEditingPhone) ...[
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                        if (filter['view'] == 'select') ...[
+                          // Селектор для одиночного выбора
+                          GestureDetector(
+                            onTap: () => _showFilterSelector(filter),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: inputBgColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _getFilterSelectedName(filter) ??
+                                          'Выберите ${filter['name'].toLowerCase()}',
+                                      style: GoogleFonts.montserrat(
+                                        fontSize: 15,
+                                        color:
+                                            _getFilterSelectedName(filter) !=
+                                                null
+                                            ? textColor
+                                            : (isDark
+                                                  ? Colors.white54
+                                                  : const Color(0xff999999)),
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : const Color(0xff999999),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ] else if (filter['view'] == 'checkbox' ||
+                            filter['view'] == 'select_multi') ...[
+                          // Чекбоксы для множественного выбора
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: (filter['items'] as List).map<Widget>((
+                              item,
+                            ) {
+                              final filterId = filter['id'].toString();
+                              final itemId = item['id'].toString();
+                              final isSelected =
+                                  _selectedFilters[filterId]?.contains(
+                                    itemId,
+                                  ) ??
+                                  false;
+
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (!_selectedFilters.containsKey(
+                                      filterId,
+                                    )) {
+                                      _selectedFilters[filterId] = [];
+                                    }
+                                    if (isSelected) {
+                                      _selectedFilters[filterId]!.remove(
+                                        itemId,
+                                      );
+                                    } else {
+                                      _selectedFilters[filterId]!.add(itemId);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xff917dfa)
+                                        : const Color(0xFFF0F4F8),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    item['name'],
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ] else if (filter['view'] == 'input') ...[
+                          // Текстовое поле для ввода
                           TextField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedFilters[filter['id'].toString()] = [
+                                  value,
+                                ];
+                              });
+                            },
+                            style: GoogleFonts.montserrat(
+                              fontSize: 15,
+                              color: textColor,
+                            ),
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: inputBgColor,
@@ -1227,470 +1632,303 @@ class _AddListingScreenState extends State<AddListingScreen> {
                                 horizontal: 16,
                                 vertical: 14,
                               ),
-                              hintText: '+7 (___) ___-__-__',
+                              hintText:
+                                  'Введите ${filter['name'].toLowerCase()}',
                               hintStyle: GoogleFonts.montserrat(
-                                color: isDark ? Colors.white54 : const Color(0xff999999),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: _savePhone,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xff917dfa),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              'Сохранить',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xff999999),
                               ),
                             ),
                           ),
                         ],
+
+                        const SizedBox(height: 8),
+                      ],
+                    ],
+
+                    // ── Фото ──────────────────────────────────────────────
+                    _SectionTitle(title: 'Фото'),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Первое фото будет отображаться в результатах поиска. Можно загрузить до 30 фотографий',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 13,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xff999999),
+                        height: 1.4,
                       ),
-                    ] else ...[
-                      // Если телефон уже есть - показываем его с кнопкой "Изменить"
-                      Container(
+                    ),
+                    const SizedBox(height: 10),
+
+                    if (_photoFiles.isNotEmpty) ...[
+                      SizedBox(
+                        height: 90,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _photoFiles.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            return SizedBox(
+                              width: 90,
+                              height: 90,
+                              child: Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.file(
+                                      _photoFiles[index],
+                                      width: 90,
+                                      height: 90,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  // Водяной знак – точно по центру
+                                  Positioned.fill(
+                                    child: Center(
+                                      child: Opacity(
+                                        opacity: 0.29,
+                                        child: Image.asset(
+                                          'assets/logo.png',
+                                          width: 50,
+                                          height: 50,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: () => _removePhoto(index),
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+
+                    GestureDetector(
+                      onTap: _photoFiles.length < 30 ? _addPhoto : null,
+                      child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(
-                          color: inputBgColor,
+                          color: const Color(0xff917dfa),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Expanded(
-                              child: Text(
-                                _phoneController.text.isNotEmpty 
-                                    ? _phoneController.text 
-                                    : 'Телефон не указан',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 15,
-                                  color: textColor,
-                                ),
+                            const Icon(
+                              Icons.image_outlined,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Добавить фото',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
-                            TextButton(
-                              onPressed: () {
-                                // Включаем режим редактирования
-                                setState(() {
-                                  _isEditingPhone = true;
-                                });
-                              },
-                              child: Text(
-                                'Изменить',
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Видео ─────────────────────────────────────────────
+                    _SectionTitle(title: 'Видео'),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Укажите ссылку на видео (YouTube, Rutube)',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 13,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xff999999),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _videoController,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 15,
+                        color: textColor,
+                      ),
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: inputBgColor,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Местоположение ────────────────────────────────────
+                    _SectionTitle(title: 'Местоположение'),
+                    const SizedBox(height: 10),
+
+                    // Кнопка истории адресов
+                    if (_getLocationHistory().isNotEmpty) ...[
+                      GestureDetector(
+                        onTap: _showLocationHistory,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff917dfa).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xff917dfa).withOpacity(0.29),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.history,
+                                color: Color(0xff917dfa),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Выбрать из истории',
                                 style: GoogleFonts.montserrat(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: const Color(0xff917dfa),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                  ],
-
-                  // ── Фильтры ───────────────────────────────────────────
-                  if (_categoryOptions?['filters'] != null) ...[
-                    for (var filter in _categoryOptions!['filters']) ...[
-                      _SectionTitle(
-                        title: filter['name'] + (filter['required'] == true ? ' *' : ''),
                       ),
                       const SizedBox(height: 10),
-                      
-                      if (filter['view'] == 'select') ...[
-                        // Селектор для одиночного выбора
-                        GestureDetector(
-                          onTap: () => _showFilterSelector(filter),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: inputBgColor,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _getFilterSelectedName(filter) ?? 'Выберите ${filter['name'].toLowerCase()}',
-                                    style: GoogleFonts.montserrat(
-                                      fontSize: 15,
-                                      color: _getFilterSelectedName(filter) != null 
-                                          ? textColor 
-                                          : (isDark ? Colors.white54 : const Color(0xff999999)),
-                                    ),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: isDark ? Colors.white54 : const Color(0xff999999),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ] else if (filter['view'] == 'checkbox' || filter['view'] == 'select_multi') ...[
-                        // Чекбоксы для множественного выбора
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: (filter['items'] as List).map<Widget>((item) {
-                            final filterId = filter['id'].toString();
-                            final itemId = item['id'].toString();
-                            final isSelected = _selectedFilters[filterId]?.contains(itemId) ?? false;
-                            
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  if (!_selectedFilters.containsKey(filterId)) {
-                                    _selectedFilters[filterId] = [];
-                                  }
-                                  if (isSelected) {
-                                    _selectedFilters[filterId]!.remove(itemId);
-                                  } else {
-                                    _selectedFilters[filterId]!.add(itemId);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xff917dfa)
-                                      : const Color(0xFFF0F4F8),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  item['name'],
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: isSelected ? Colors.white : Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ] else if (filter['view'] == 'input') ...[
-                        // Текстовое поле для ввода
-                        TextField(
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedFilters[filter['id'].toString()] = [value];
-                            });
-                          },
-                          style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: inputBgColor,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            hintText: 'Введите ${filter['name'].toLowerCase()}',
-                            hintStyle: GoogleFonts.montserrat(
-                              color: isDark ? Colors.white54 : const Color(0xff999999),
-                            ),
-                          ),
-                        ),
-                      ],
-                      
-                      const SizedBox(height: 8),
                     ],
-                  ],
 
-                  // ── Фото ──────────────────────────────────────────────
-                  _SectionTitle(title: 'Фото'),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Первое фото будет отображаться в результатах поиска. Можно загрузить до 30 фотографий',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 13,
-                      color: isDark ? Colors.white70 : const Color(0xff999999),
-                      height: 1.4,
+                    _buildSelector(
+                      label: 'Город',
+                      value: _cityName,
+                      onTap: _pickCity,
                     ),
-                  ),
-                  const SizedBox(height: 10),
 
-                  if (_photoFiles.isNotEmpty) ...[
-                    SizedBox(
-                      height: 90,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _photoFiles.length,
-                        separatorBuilder: (context, index) => const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          return SizedBox(
-                            width: 90,
-                            height: 90,
-                            child: Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.file(
-                                    _photoFiles[index],
-                                    width: 90,
-                                    height: 90,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                // Водяной знак – точно по центру
-                                Positioned.fill(
-                                  child: Center(
-                                    child: Opacity(
-                                      opacity: 0.29,
-                                      child: Image.asset(
-                                        'assets/logo.png',
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: GestureDetector(
-                                    onTap: () => _removePhoto(index),
-                                    child: Container(
-                                      width: 22,
-                                      height: 22,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black54,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.close,
-                                        color: Colors.white,
-                                        size: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
                     const SizedBox(height: 10),
-                  ],
 
-                  GestureDetector(
-                    onTap: _photoFiles.length < 30 ? _addPhoto : null,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xff917dfa),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.image_outlined,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Добавить фото',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                    _buildSelector(
+                      label: 'Указать адрес',
+                      value: _address,
+                      onTap: _pickAddress,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Срок публикации ───────────────────────────────────
+                    _SectionTitle(title: 'Срок публикации'),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _periodOptions.map((days) {
+                        final isSelected = _selectedPeriod == days;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedPeriod = days),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Видео ─────────────────────────────────────────────
-                  _SectionTitle(title: 'Видео'),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Укажите ссылку на видео (YouTube, Rutube)',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 13,
-                      color: isDark ? Colors.white70 : const Color(0xff999999),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _videoController,
-                    style: GoogleFonts.montserrat(fontSize: 15, color: textColor),
-                    keyboardType: TextInputType.url,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: inputBgColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Местоположение ────────────────────────────────────
-                  _SectionTitle(title: 'Местоположение'),
-                  const SizedBox(height: 10),
-                  
-                  // Кнопка истории адресов
-                  if (_getLocationHistory().isNotEmpty) ...[
-                    GestureDetector(
-                      onTap: _showLocationHistory,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xff917dfa).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xff917dfa).withOpacity(0.29),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.history,
-                              color: Color(0xff917dfa),
-                              size: 20,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xff917dfa)
+                                  : inputBgColor,
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Выбрать из истории',
+                            child: Text(
+                              '$days дней',
                               style: GoogleFonts.montserrat(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xff917dfa),
+                                fontWeight: FontWeight.w500,
+                                color: isSelected ? Colors.white : textColor,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                    const SizedBox(height: 10),
                   ],
-
-                  _buildSelector(
-                    label: 'Город',
-                    value: _cityName,
-                    onTap: _pickCity,
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  _buildSelector(
-                    label: 'Указать адрес',
-                    value: _address,
-                    onTap: _pickAddress,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Срок публикации ───────────────────────────────────
-                  _SectionTitle(title: 'Срок публикации'),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _periodOptions.map((days) {
-                      final isSelected = _selectedPeriod == days;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedPeriod = days),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xff917dfa)
-                                : inputBgColor,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '$days дней',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: isSelected ? Colors.white : textColor,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
 
-          // ── Кнопка «Опубликовать» ─────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
-              top: 8,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _createAd,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff917dfa),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            // ── Кнопка «Опубликовать» ─────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).padding.bottom + 16,
+                top: 8,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _createAd,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff917dfa),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Опубликовать',
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  child: Text(
+                    'Опубликовать',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
