@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hashtagg/shared/infrastructure/services/auth_cleanup_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class AuthInterceptor extends Interceptor {
@@ -70,15 +71,21 @@ class AuthInterceptor extends Interceptor {
 
   Future<void> _clearAuthData() async {
     try {
-      var box = Hive.box('user');
-      await box.put('auth_token', null);
-      await box.put('user', null);
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] Данные авторизации очищены');
+        debugPrint(
+          '[AuthInterceptor] 🔴 Получена 401 ошибка - очищаем все данные',
+        );
+      }
+
+      // Используем наш сервис для полной очистки
+      await AuthCleanupService.clearAllAuthData(logDetails: true);
+
+      if (kDebugMode) {
+        debugPrint('[AuthInterceptor] ✅ Данные авторизации очищены');
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] Ошибка очистки данных: $e');
+        debugPrint('[AuthInterceptor] ❌ Ошибка очистки данных: $e');
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'package:hashtagg/shared/domain/entities/user.dart';
 import 'package:hashtagg/shared/domain/services/auth_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class TestAuthService implements AuthService {
   TestAuthService();
@@ -18,18 +19,24 @@ class TestAuthService implements AuthService {
     );
   }
 
+  // lib/shared/infrastructure/services/test_auth_service.dart
+
   @override
-  bool logout() {
-    var box = Hive.box('user');
-    
-    // ВАЖНО: Сбрасываем флаг OAuth перед очисткой
-    box.put('is_oauth', false);
-    
-    // Очищаем данные пользователя
-    box.delete('user');
-    box.delete('auth_token');
-    
-    return true;
+  Future<bool> logout() async {
+    // 👈 ДОБАВЬ async И Future<bool>
+    try {
+      var box = Hive.box('user');
+      await box.delete('auth_token');
+      await box.delete('user');
+      await box.delete('is_oauth');
+
+      if (kDebugMode) {
+        debugPrint('[TestAuthService] Logout completed');
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   @override

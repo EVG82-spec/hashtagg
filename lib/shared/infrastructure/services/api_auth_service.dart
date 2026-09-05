@@ -7,6 +7,8 @@ import 'package:hashtagg/core/network/api_config.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 /// Реализация AuthService для работы с реальным API
 class ApiAuthService implements AuthService {
   late AuthApiRepository _apiRepository;
@@ -14,7 +16,7 @@ class ApiAuthService implements AuthService {
   ApiAuthService() {
     _apiRepository = AuthApiRepository(DioClient.createDio());
   }
-  
+
   /// Пересоздание репозитория (используется после logout)
   void _refreshRepository() {
     if (kDebugMode) {
@@ -66,7 +68,10 @@ class ApiAuthService implements AuthService {
   String? lastError;
 
   /// Асинхронная авторизация через API с возвратом ошибки
-  Future<(User?, String?)> loginWithErrors(String login, String password) async {
+  Future<(User?, String?)> loginWithErrors(
+    String login,
+    String password,
+  ) async {
     try {
       lastError = null;
 
@@ -107,77 +112,105 @@ class ApiAuthService implements AuthService {
   }
 
   @override
-  bool logout() {
+  Future<bool> logout() async {
+    var box = Hive.box('user');
+    await box.delete('auth_token');
+    await box.delete('user');
+    await box.delete('is_oauth');
+
+    // ✅ ТАКЖЕ ОЧИЩАЕМ SHARED PREFERENCES
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('user_id');
+    await prefs.remove('is_oauth');
     if (kDebugMode) {
       debugPrint('[ApiAuthService] 🚪 ===== LOGOUT STARTED =====');
     }
-    
+
     try {
       var box = Hive.box('user');
-      
+
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔍 BEFORE logout - is_oauth: ${box.get('is_oauth')}');
+        debugPrint(
+          '[ApiAuthService] 🔍 BEFORE logout - is_oauth: ${box.get('is_oauth')}',
+        );
       }
-      
+
       final token = box.get('auth_token');
       final userData = box.get('user');
-      
+
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🚪 Logout - current token: ${token != null ? (token as String).substring(0, 10) + '...' : 'NULL'}');
+        debugPrint(
+          '[ApiAuthService] 🚪 Logout - current token: ${token != null ? (token as String).substring(0, 10) + '...' : 'NULL'}',
+        );
       }
-      
+
       // ВАЖНО: Сначала устанавливаем is_oauth = false ПЕРЕД очисткой
       box.put('is_oauth', false);
-      
+
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔐 OAuth mode reset to false BEFORE clear');
-        debugPrint('[ApiAuthService] 🔍 AFTER setting false - is_oauth: ${box.get('is_oauth')}');
+        debugPrint(
+          '[ApiAuthService] 🔐 OAuth mode reset to false BEFORE clear',
+        );
+        debugPrint(
+          '[ApiAuthService] 🔍 AFTER setting false - is_oauth: ${box.get('is_oauth')}',
+        );
       }
-      
+
       // Если есть токен и userId, вызываем API logout
       if (token != null && userData != null && userData['id'] != null) {
-        _apiRepository.logout(
-          token: token,
-          userId: userData['id'],
-        ).then((result) {
-          if (kDebugMode) {
-            if (result.success) {
-              debugPrint('[ApiAuthService] Logout API успешно');
-            } else {
-              debugPrint('[ApiAuthService] Logout API ошибка: ${result.error}');
-            }
-          }
-        }).catchError((e) {
-          if (kDebugMode) {
-            debugPrint('[ApiAuthService] Logout API exception: $e');
-          }
-        });
+        _apiRepository
+            .logout(token: token, userId: userData['id'])
+            .then((result) {
+              if (kDebugMode) {
+                if (result.success) {
+                  debugPrint('[ApiAuthService] Logout API успешно');
+                } else {
+                  debugPrint(
+                    '[ApiAuthService] Logout API ошибка: ${result.error}',
+                  );
+                }
+              }
+            })
+            .catchError((e) {
+              if (kDebugMode) {
+                debugPrint('[ApiAuthService] Logout API exception: $e');
+              }
+            });
       }
-      
+
       // Очищаем данные пользователя, но НЕ is_oauth
       box.delete('user');
       box.delete('auth_token');
-      
+
       if (kDebugMode) {
         debugPrint('[ApiAuthService] 🗑️ Deleted user and auth_token');
-        debugPrint('[ApiAuthService] 🔍 AFTER delete - is_oauth: ${box.get('is_oauth')}');
+        debugPrint(
+          '[ApiAuthService] 🔍 AFTER delete - is_oauth: ${box.get('is_oauth')}',
+        );
       }
-      
+
       // Пересоздаём репозиторий с новым baseUrl
       _refreshRepository();
-      
+
       if (kDebugMode) {
         debugPrint('[ApiAuthService] 🔄 Repository refreshed');
-        debugPrint('[ApiAuthService] Пользователь вышел из системы, данные очищены');
-        
+        debugPrint(
+          '[ApiAuthService] Пользователь вышел из системы, данные очищены',
+        );
+
         // Проверяем, что токен действительно удален и is_oauth = false
         final checkToken = box.get('auth_token');
         final checkOAuth = box.get('is_oauth');
-        debugPrint('[ApiAuthService] 🔍 FINAL Verification - token: ${checkToken != null ? 'STILL EXISTS!' : 'NULL (OK)'}');
-        debugPrint('[ApiAuthService] 🔍 FINAL Verification - is_oauth: $checkOAuth');
+        debugPrint(
+          '[ApiAuthService] 🔍 FINAL Verification - token: ${checkToken != null ? 'STILL EXISTS!' : 'NULL (OK)'}',
+        );
+        debugPrint(
+          '[ApiAuthService] 🔍 FINAL Verification - is_oauth: $checkOAuth',
+        );
         debugPrint('[ApiAuthService] 🚪 ===== LOGOUT COMPLETED =====');
       }
-      
+
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -193,43 +226,86 @@ class ApiAuthService implements AuthService {
     return _loadUserFromHive();
   }
 
+  /// Загрузка данных пользователя из Hive
+  User? _loadUserFromHive() {
+    var box = Hive.box('user');
+    var userData = box.get('user');
+
+    if (kDebugMode) {
+      debugPrint('[ApiAuthService] 📦 Loading user from Hive...');
+    }
+
+    if (userData != null) {
+      final userId = userData['id'] is int
+          ? userData['id'] as int
+          : int.parse(userData['id'].toString());
+
+      return User(
+        id: userId,
+        name: userData['name'],
+        last_name: userData['last_name'],
+        surname: userData['surname'],
+        phone: userData['phone'],
+        email: userData['email'],
+        avatar: userData['avatar'],
+        status: userData['status'],
+        shortname: userData['shortname'],
+        isCompany: userData['isCompany'],
+        companyName: userData['companyName'],
+        safeDealEnabled: userData['safeDealEnabled'],
+        ymoneyAccount: userData['ymoneyAccount'],
+        bookingEnabled: userData['bookingEnabled'],
+        cardNumber: userData['cardNumber'],
+        showPhoneInListings: userData['showPhoneInListings'],
+        walletBalance: userData['walletBalance'] ?? 0,
+        tariffId: userData['tariffId'],
+        activeServices: userData['activeServices'],
+        referralLink: userData['referralLink'],
+      );
+    }
+
+    return null;
+  }
+
   /// Получение текущего пользователя по токену
   Future<User?> getCurrentUserAsync(String token) async {
     try {
       final result = await _apiRepository.authToken(token: token);
-      
+
       if (result.success) {
         // Получаем userId из Hive
         final box = await Hive.openBox('user');
         final userData = box.get('user');
-        
+
         if (userData is Map && userData['id'] != null) {
-          final userId = userData['id'] is int 
+          final userId = userData['id'] is int
               ? userData['id'] as int
               : int.parse(userData['id'].toString());
-          
+
           // Обновляем полные данные профиля с сервера
           if (kDebugMode) {
-            debugPrint('[ApiAuthService] 🔄 Updating profile data from server...');
+            debugPrint(
+              '[ApiAuthService] 🔄 Updating profile data from server...',
+            );
           }
-          
+
           final profile = await getCurrentUserFromApi(token, userId);
           if (profile != null) {
             // Сохраняем обновленные данные
             await _saveAuthData(token, profile);
-            
+
             if (kDebugMode) {
               debugPrint('[ApiAuthService] ✅ Profile data updated from server');
             }
-            
+
             return profile;
           }
         }
-        
+
         // Если не удалось обновить, возвращаем данные из Hive
         return _loadUserFromHive();
       }
-      
+
       return null;
     } catch (e) {
       if (kDebugMode) {
@@ -243,7 +319,7 @@ class ApiAuthService implements AuthService {
   Future<(bool, String?)> recovery(String login) async {
     try {
       final result = await _apiRepository.recovery(login: login);
-      
+
       if (result.success) {
         return (true, null);
       } else {
@@ -273,12 +349,7 @@ class ApiAuthService implements AuthService {
         final token = result.data!['token'];
         final userId = result.data!['user_id'];
 
-        final user = User(
-          id: userId,
-          name: name,
-          email: email,
-          phone: phone,
-        );
+        final user = User(id: userId, name: name, email: email, phone: phone);
 
         await _saveAuthData(token, user);
         return (user, null);
@@ -300,11 +371,14 @@ class ApiAuthService implements AuthService {
 
       if (result.success && result.data != null) {
         final data = result.data!;
-        
+
         // Парсим баланс как число
         int walletBalance = 0;
         if (data['balance'] != null) {
-          final balanceStr = data['balance'].toString().replaceAll(' ', '').replaceAll(',', '.');
+          final balanceStr = data['balance']
+              .toString()
+              .replaceAll(' ', '')
+              .replaceAll(',', '.');
           walletBalance = (double.tryParse(balanceStr) ?? 0).toInt();
         }
 
@@ -324,17 +398,21 @@ class ApiAuthService implements AuthService {
         String? avatar = data['avatar'];
         if (avatar != null && avatar.contains('localhost')) {
           // Извлекаем host:port из baseUrl (например, '192.168.1.3:8000')
-          final baseUrlHost = ApiConfig.baseUrl.replaceFirst('http://', '').replaceFirst('https://', '');
+          final baseUrlHost = ApiConfig.baseUrl
+              .replaceFirst('http://', '')
+              .replaceFirst('https://', '');
           // Заменяем localhost:port или localhost на baseUrl host
           avatar = avatar.replaceAll(RegExp(r'localhost(:\d+)?'), baseUrlHost);
         }
-        
+
         // Получаем реферальную ссылку
         String? referralLink;
         if (data['ref'] != null && data['ref']['link'] != null) {
           referralLink = data['ref']['link'].toString();
           if (kDebugMode) {
-            debugPrint('[ApiAuthService] 🔗 Referral link from API: $referralLink');
+            debugPrint(
+              '[ApiAuthService] 🔗 Referral link from API: $referralLink',
+            );
           }
         } else {
           if (kDebugMode) {
@@ -351,7 +429,8 @@ class ApiAuthService implements AuthService {
           email: data['email'],
           phone: data['phone'],
           avatar: avatar,
-          status: data['note_status']?.toString(), // Используем note_status вместо status
+          status: data['note_status']
+              ?.toString(), // Используем note_status вместо status
           token: token, // Добавляем токен в объект User
           isCompany: data['type_person'] == 'company',
           companyName: data['name_company'],
@@ -363,7 +442,7 @@ class ApiAuthService implements AuthService {
           referralLink: referralLink,
         );
       }
-      
+
       return null;
     } catch (e) {
       if (kDebugMode) {
@@ -374,12 +453,17 @@ class ApiAuthService implements AuthService {
   }
 
   /// Получение активных сервисов тарифа пользователя
-  Future<List<String>?> _getActiveTariffServices(String token, int userId) async {
+  Future<List<String>?> _getActiveTariffServices(
+    String token,
+    int userId,
+  ) async {
     try {
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔵 Загрузка активных сервисов тарифа для userId: $userId');
+        debugPrint(
+          '[ApiAuthService] 🔵 Загрузка активных сервисов тарифа для userId: $userId',
+        );
       }
-      
+
       final dio = DioClient.createDio();
       final response = await dio.get(
         '/systems/api/controller.php',
@@ -416,13 +500,17 @@ class ApiAuthService implements AuthService {
             if (services is List) {
               final servicesList = services.map((s) => s.toString()).toList();
               if (kDebugMode) {
-                debugPrint('[ApiAuthService] ✅ Активные сервисы: $servicesList');
+                debugPrint(
+                  '[ApiAuthService] ✅ Активные сервисы: $servicesList',
+                );
               }
               return servicesList;
             }
           } else {
             if (kDebugMode) {
-              debugPrint('[ApiAuthService] ⚠️ Активный тариф не найден или нет сервисов');
+              debugPrint(
+                '[ApiAuthService] ⚠️ Активный тариф не найден или нет сервисов',
+              );
             }
           }
         } else {
@@ -442,16 +530,30 @@ class ApiAuthService implements AuthService {
   }
 
   /// Сохранение данных авторизации в Hive
-  Future<void> _saveAuthData(String token, User user, {bool isOAuth = false}) async {
+  /// Сохранение данных авторизации в Hive
+  Future<void> _saveAuthData(
+    String token,
+    User user, {
+    bool isOAuth = false,
+  }) async {
     var box = Hive.box('user');
+
+    // ✅ 1. ОЧИЩАЕМ СТАРЫЕ ДАННЫЕ (ВАЖНО!)
+    await box.delete('auth_token');
+    await box.delete('user');
+    await box.delete('is_oauth');
+
+    // ✅ 2. СОХРАНЯЕМ НОВЫЕ
     await box.put('auth_token', token);
-    await box.put('is_oauth', isOAuth); // Флаг OAuth авторизации
-    
+    await box.put('is_oauth', isOAuth);
+
     if (kDebugMode) {
-      debugPrint('[ApiAuthService] 🔑 Saving auth_token to Hive: ${token.substring(0, 10)}...${token.substring(token.length - 4)}');
+      debugPrint(
+        '[ApiAuthService] 🔑 Saving auth_token to Hive: ${token.substring(0, 10)}...${token.substring(token.length - 4)}',
+      );
       debugPrint('[ApiAuthService] 🔐 OAuth mode: $isOAuth');
     }
-    
+
     await box.put('user', {
       'id': user.id,
       'name': user.name,
@@ -474,84 +576,22 @@ class ApiAuthService implements AuthService {
       'activeServices': user.activeServices,
       'referralLink': user.referralLink,
     });
-    
+
     if (kDebugMode) {
       debugPrint('[ApiAuthService] Данные авторизации сохранены');
-      debugPrint('[ApiAuthService] 🔗 Saved referralLink: ${user.referralLink}');
-      
-      // Проверяем, что токен действительно сохранился
+      debugPrint(
+        '[ApiAuthService] 🔗 Saved referralLink: ${user.referralLink}',
+      );
+
       final savedToken = box.get('auth_token');
-      debugPrint('[ApiAuthService] 🔍 Verification - token in Hive: ${savedToken != null ? (savedToken as String).substring(0, 10) + '...' : 'NULL'}');
-    }
-  }
-
-  /// Загрузка данных пользователя из Hive
-  User? _loadUserFromHive() {
-    var box = Hive.box('user');
-    var userData = box.get('user');
-
-    if (kDebugMode) {
-      debugPrint('[ApiAuthService] 📦 Loading user from Hive...');
-      debugPrint('[ApiAuthService] 🔗 referralLink in Hive: ${userData?['referralLink']}');
-    }
-
-    if (userData != null) {
-      // Безопасное преобразование id
-      final userId = userData['id'] is int 
-          ? userData['id'] as int
-          : int.parse(userData['id'].toString());
-      
-      // Безопасное преобразование walletBalance
-      final walletBalance = userData['walletBalance'] is int
-          ? userData['walletBalance'] as int
-          : (userData['walletBalance'] != null ? int.parse(userData['walletBalance'].toString()) : 0);
-      
-      // Безопасное преобразование tariffId
-      final tariffId = userData['tariffId'] == null
-          ? null
-          : (userData['tariffId'] is int 
-              ? userData['tariffId'] as int
-              : int.parse(userData['tariffId'].toString()));
-      
-      // Безопасное преобразование activeServices
-      List<String>? activeServices;
-      if (userData['activeServices'] != null) {
-        if (userData['activeServices'] is List) {
-          activeServices = (userData['activeServices'] as List)
-              .map((s) => s.toString())
-              .toList();
-        }
-      }
-      
-      return User(
-        id: userId,
-        name: userData['name'],
-        last_name: userData['last_name'],
-        surname: userData['surname'],
-        phone: userData['phone'],
-        email: userData['email'],
-        avatar: userData['avatar'],
-        status: userData['status'],
-        shortname: userData['shortname'],
-        isCompany: userData['isCompany'],
-        companyName: userData['companyName'],
-        safeDealEnabled: userData['safeDealEnabled'],
-        ymoneyAccount: userData['ymoneyAccount'],
-        bookingEnabled: userData['bookingEnabled'],
-        cardNumber: userData['cardNumber'],
-        showPhoneInListings: userData['showPhoneInListings'],
-        walletBalance: walletBalance,
-        tariffId: tariffId,
-        activeServices: activeServices,
-        referralLink: userData['referralLink'],
+      debugPrint(
+        '[ApiAuthService] 🔍 Verification - token in Hive: ${savedToken != null ? (savedToken as String).substring(0, 10) + '...' : 'NULL'}',
       );
     }
-    
-    return null;
   }
 
   /// OAuth авторизация через социальные сети
-  /// 
+  ///
   /// Принимает authorization code и возвращает пользователя
   Future<(User?, String?)> loginWithOAuth({
     required String provider,
@@ -583,11 +623,11 @@ class ApiAuthService implements AuthService {
         if (user != null) {
           // Сохраняем токен и данные пользователя
           await _saveAuthData(token, user);
-          
+
           if (kDebugMode) {
             debugPrint('[ApiAuthService] ✅ OAuth login successful');
           }
-          
+
           return (user, null);
         } else {
           lastError = 'Не удалось получить данные пользователя';
@@ -615,7 +655,9 @@ class ApiAuthService implements AuthService {
       lastError = null;
 
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔐 Login with token: ${token.substring(0, 10)}...');
+        debugPrint(
+          '[ApiAuthService] 🔐 Login with token: ${token.substring(0, 10)}...',
+        );
       }
 
       // Получаем данные пользователя через oauthUrl (т.к. OAuth происходит там)
@@ -624,11 +666,11 @@ class ApiAuthService implements AuthService {
       if (user != null) {
         // Сохраняем токен и данные пользователя с флагом OAuth
         await _saveAuthData(token, user, isOAuth: true);
-        
+
         if (kDebugMode) {
           debugPrint('[ApiAuthService] ✅ Token login successful');
         }
-        
+
         return (user, null);
       } else {
         lastError = 'Не удалось получить данные пользователя';
@@ -647,7 +689,9 @@ class ApiAuthService implements AuthService {
   Future<User?> _getCurrentUserFromOAuthApi(String token, int userId) async {
     try {
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔵 Getting user data from OAuth API: ${ApiConfig.oauthUrl}');
+        debugPrint(
+          '[ApiAuthService] 🔵 Getting user data from OAuth API: ${ApiConfig.oauthUrl}',
+        );
       }
 
       final dio = DioClient.createDio();
@@ -673,7 +717,10 @@ class ApiAuthService implements AuthService {
         // Парсим баланс как число
         int walletBalance = 0;
         if (data['balance'] != null) {
-          final balanceStr = data['balance'].toString().replaceAll(' ', '').replaceAll(',', '.');
+          final balanceStr = data['balance']
+              .toString()
+              .replaceAll(' ', '')
+              .replaceAll(',', '.');
           walletBalance = (double.tryParse(balanceStr) ?? 0).toInt();
         }
 
@@ -686,22 +733,29 @@ class ApiAuthService implements AuthService {
         // Загружаем активные сервисы тарифа
         List<String>? activeServices;
         if (tariffId != null) {
-          activeServices = await _getActiveTariffServicesFromOAuth(token, userId);
+          activeServices = await _getActiveTariffServicesFromOAuth(
+            token,
+            userId,
+          );
         }
 
         // Заменяем localhost на oauthUrl из конфигурации
         String? avatar = data['avatar'];
         if (avatar != null && avatar.contains('localhost')) {
-          final oauthUrlHost = ApiConfig.oauthUrl.replaceFirst('http://', '').replaceFirst('https://', '');
+          final oauthUrlHost = ApiConfig.oauthUrl
+              .replaceFirst('http://', '')
+              .replaceFirst('https://', '');
           avatar = avatar.replaceAll(RegExp(r'localhost(:\d+)?'), oauthUrlHost);
         }
-        
+
         // Получаем реферальную ссылку
         String? referralLink;
         if (data['ref'] != null && data['ref']['link'] != null) {
           referralLink = data['ref']['link'].toString();
           if (kDebugMode) {
-            debugPrint('[ApiAuthService] 🔗 Referral link from OAuth API: $referralLink');
+            debugPrint(
+              '[ApiAuthService] 🔗 Referral link from OAuth API: $referralLink',
+            );
           }
         }
 
@@ -726,23 +780,30 @@ class ApiAuthService implements AuthService {
           referralLink: referralLink,
         );
       }
-      
+
       return null;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] ❌ Ошибка получения профиля из OAuth API: $e');
+        debugPrint(
+          '[ApiAuthService] ❌ Ошибка получения профиля из OAuth API: $e',
+        );
       }
       return null;
     }
   }
 
   /// Получение активных сервисов тарифа через OAuth API
-  Future<List<String>?> _getActiveTariffServicesFromOAuth(String token, int userId) async {
+  Future<List<String>?> _getActiveTariffServicesFromOAuth(
+    String token,
+    int userId,
+  ) async {
     try {
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔵 Загрузка активных сервисов тарифа из OAuth API для userId: $userId');
+        debugPrint(
+          '[ApiAuthService] 🔵 Загрузка активных сервисов тарифа из OAuth API для userId: $userId',
+        );
       }
-      
+
       final dio = DioClient.createDio();
       final response = await dio.get(
         '${ApiConfig.oauthUrl}/systems/api/controller.php',
@@ -770,7 +831,9 @@ class ApiAuthService implements AuthService {
             if (services is List) {
               final servicesList = services.map((s) => s.toString()).toList();
               if (kDebugMode) {
-                debugPrint('[ApiAuthService] ✅ Активные сервисы из OAuth API: $servicesList');
+                debugPrint(
+                  '[ApiAuthService] ✅ Активные сервисы из OAuth API: $servicesList',
+                );
               }
               return servicesList;
             }
@@ -781,7 +844,9 @@ class ApiAuthService implements AuthService {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[ApiAuthService] 🔴 Ошибка получения сервисов тарифа из OAuth API: $e');
+        debugPrint(
+          '[ApiAuthService] 🔴 Ошибка получения сервисов тарифа из OAuth API: $e',
+        );
       }
       return null;
     }

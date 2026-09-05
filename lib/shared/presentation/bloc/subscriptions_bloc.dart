@@ -196,6 +196,22 @@ class SubscriptionsBloc extends Bloc<SubscriptionsEvent, SubscriptionsState> {
     print('   shopId: ${event.shopId}'); // ✅ event.shopId
     print('   user: ${event.user.name}');
 
+    // ✅ 1. МГНОВЕННО ОБНОВЛЯЕМ UI
+    final newIds = Set<int>.from(state.ids)..add(event.userId);
+    final newUsers = Map<int, User>.from(state.users)
+      ..[event.userId] = event.user;
+
+    final serialized = {
+      for (final entry in newUsers.entries) entry.key: _userToMap(entry.value),
+    };
+
+    await _subscriptionsBox.put('items', newIds.toList());
+    await _subscriptionsBox.put('users', serialized);
+
+    // ✅ 2. СРАЗУ МЕНЯЕМ СОСТОЯНИЕ
+    emit(SubscriptionsState(newIds, newUsers));
+
+    // ✅ 3. API В ФОНЕ
     try {
       final box = Hive.box('user');
       final userData = box.get('user');
@@ -247,6 +263,24 @@ class SubscriptionsBloc extends Bloc<SubscriptionsEvent, SubscriptionsState> {
     RemoveSubscription event,
     Emitter<SubscriptionsState> emit,
   ) async {
+    print('📥 [SubscriptionsBloc] _onRemoveSubscription START');
+    print('   event.id: ${event.id}');
+
+    // ✅ 1. МГНОВЕННО ОБНОВЛЯЕМ UI (ОПТИМИСТИЧНО)
+    final newIds = Set<int>.from(state.ids)..remove(event.id);
+    final newUsers = Map<int, User>.from(state.users)..remove(event.id);
+
+    final serialized = {
+      for (final entry in newUsers.entries) entry.key: _userToMap(entry.value),
+    };
+
+    await _subscriptionsBox.put('items', newIds.toList());
+    await _subscriptionsBox.put('users', serialized);
+
+    // ✅ 2. СРАЗУ МЕНЯЕМ СОСТОЯНИЕ (КНОПКА МЕНЯЕТСЯ МГНОВЕННО!)
+    emit(SubscriptionsState(newIds, newUsers));
+
+    // ✅ 3. API ЗАПРОС В ФОНЕ (НЕ БЛОКИРУЕТ UI)
     try {
       // 📤 ОТПРАВЛЯЕМ НА СЕРВЕР
       final box = Hive.box('user');

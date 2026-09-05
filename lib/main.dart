@@ -48,7 +48,7 @@ import 'package:hashtagg/features/home/bloc/banner_bloc.dart';
 import 'package:hashtagg/features/home/bloc/feed_bloc.dart';
 import 'package:hashtagg/features/shop/bloc/public/shop_public_bloc.dart';
 import 'package:hashtagg/core/network/shops_api_repository.dart';
-import 'package:hashtagg/core/network/shop_api_repository.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -336,7 +336,7 @@ class _MainAppState extends State<MainApp> {
     final authService = TestAuthService();
     _authBloc = AuthBloc(
       loginUseCase: LoginUseCase(authService),
-      logoutUseCase: LogoutUseCase(authService),
+      logoutUseCase: LogoutUsecase(authService),
       getCurrentUserUseCase: GetCurrentUserUseCase(authService),
     );
 

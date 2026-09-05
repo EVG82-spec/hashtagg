@@ -1,10 +1,14 @@
 import 'package:hashtagg/shared/domain/services/auth_service.dart';
 
-class LogoutUseCase {
-  final AuthService _authRepository;
-  LogoutUseCase(this._authRepository);
+// lib/shared/application/usecase/logout_usecase.dart
 
-  bool execute() {
-    return _authRepository.logout();
+class LogoutUsecase {
+  final AuthService _authService;
+
+  LogoutUsecase(this._authService);
+
+  // ✅ ИЗМЕНИ НА Future<bool>
+  Future<bool> execute() async {
+    return await _authService.logout();
   }
 }
