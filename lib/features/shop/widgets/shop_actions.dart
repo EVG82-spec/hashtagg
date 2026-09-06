@@ -12,6 +12,14 @@ import 'package:hashtagg/features/shop/bloc/public/shop_public_state.dart';
 import 'package:hashtagg/features/shop/widgets/shop_lock_widget.dart';
 import 'package:hashtagg/features/shop/widgets/shop_subscription_button.dart';
 import 'package:hashtagg/features/shop/widgets/shop_management_modal.dart';
+import 'package:hashtagg/features/shop/widgets/shop_qr_widget.dart';
+
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'dart:io';
 
 class ShopActions extends StatelessWidget {
   final Shop shop;
@@ -24,6 +32,45 @@ class ShopActions extends StatelessWidget {
     this.isEditing = false,
     this.onSocialEdit,
   }) : super(key: key);
+
+  void _showQRModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7, //высота модалки куара
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xff1a1a2e)
+              : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Индикатор
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ✅ ИСПОЛЬЗУЕМ ГОТОВЫЙ ВИДЖЕТ
+            ShopQrWidget(shop: shop),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,8 +87,12 @@ class ShopActions extends StatelessWidget {
       return null;
     });
 
-    final hasSocialLinks = tariff?.hasService('shop_links') ?? false;
-    // Если нет услуги и не черновик → ничего не показываем
+    // ✅ Есть ли ссылки в магазине (независимо от тарифа)
+    final hasLinks = shop.links != null && shop.links!.isNotEmpty;
+
+    // ✅ Есть ли услуга shop_links (для РЕДАКТИРОВАНИЯ владельцем)
+    final hasService =
+        tariff?.hasService('shop_links') ?? false; // 👈 ОСТАВЛЯЕМ!
 
     // Берем ссылки из shop.links
     final Map<String, String> socialLinks = {};
@@ -67,8 +118,7 @@ class ShopActions extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── ХЛЕБНЫЕ КРОШКИ ──
-          _buildBreadcrumbs(context),
-
+          //_buildBreadcrumbs(context),
           const SizedBox(height: 10),
 
           // ── Строка 1: Кнопка управления + Соцсети ──
@@ -102,8 +152,31 @@ class ShopActions extends StatelessWidget {
                       : ShopSubscriptionButton(shop: shop),
                 ),
               ),
+              // QR-КНОПКА
+              GestureDetector(
+                onTap: () => _showQRModal(context),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8956FF).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF8956FF).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.qr_code,
+                    color: Color(0xFF8956FF),
+                    size: 40,
+                  ),
+                ),
+              ),
+
               // ✅ ИКОНКИ СОЦСЕТЕЙ (ВЫРАВНЕНЫ ВПРАВО)
-              if (hasSocialLinks)
+              if (hasLinks)
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
@@ -112,7 +185,7 @@ class ShopActions extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFF8956FF),
-                        borderRadius: BorderRadius.circular(80),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -142,7 +215,7 @@ class ShopActions extends StatelessWidget {
                             onEdit: onSocialEdit,
                           ),
                           // Карандаш (только в режиме редактора)
-                          if (isEditing && onSocialEdit != null)
+                          if (isEditing && onSocialEdit != null && hasService)
                             Padding(
                               padding: const EdgeInsets.only(left: 8),
                               child: GestureDetector(
@@ -161,7 +234,7 @@ class ShopActions extends StatelessWidget {
                 ),
 
               // ЕСЛИ НЕТ УСЛУГИ И ЭТО ЧЕРНОВИК/МОДЕРАЦИЯ - ЗАМОЧЕК
-              if (!hasSocialLinks &&
+              if (!hasService &&
                   isOwner &&
                   isEditing &&
                   (isModeration || isDraft))

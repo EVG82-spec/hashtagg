@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿// это листинг магазинов
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hashtagg/core/network/dio_client.dart';
@@ -554,7 +555,7 @@ class _ShopListCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         height: 200,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
@@ -601,7 +602,7 @@ class _ShopListCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 11),
             // Информация
             Expanded(
               child: Column(
@@ -623,14 +624,19 @@ class _ShopListCard extends StatelessWidget {
                   if (shop.description != null && shop.description!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        shop.description!,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.85),
-                          height: 1.3,
+                      child: SizedBox(
+                        width:
+                            MediaQuery.of(context).size.width -
+                            160, // Ширина экрана минус отступы
+                        child: Text(
+                          shop.description!,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.85),
+                            height: 1.3,
+                          ),
                         ),
                       ),
                     ),

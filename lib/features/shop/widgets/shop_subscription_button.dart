@@ -53,7 +53,7 @@ class ShopSubscriptionButton extends StatelessWidget {
             }
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isSubscribed ? Colors.white : const Color(0xff917dfa),
               borderRadius: BorderRadius.circular(20),

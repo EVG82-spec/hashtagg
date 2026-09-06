@@ -25,29 +25,38 @@ class ShopHeader extends StatelessWidget {
           // Кнопка "Категории"
           GestureDetector(
             onTap: () => _showCategoriesModal(context),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Color(0xFF8956FF),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.grid_view, color: Colors.white, size: 18),
-                  SizedBox(width: 4),
-                  Text(
-                    'Категории',
-                    style: TextStyle(
+            child: SizedBox(
+              width: 20, // 👈 ШИРИНА
+              height: 20, // 👈 ВЫСОТА
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Color(0xFF8956FF),
+                  borderRadius: BorderRadius.circular(80),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.grid_view,
                       color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      size: 20, // 👈 УВЕЛИЧИТЬ РАЗМЕР ИКОНКИ (было 16)
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4), // 👈 УМЕНЬШИТЬ ОТСТУП (было 20)
+                    Text(
+                      'Категории',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 20),
           // Поле поиска
           Expanded(
             child: GestureDetector(
@@ -66,7 +75,7 @@ class ShopHeader extends StatelessWidget {
                     Icon(Icons.search, color: Colors.grey.shade500, size: 18),
                     SizedBox(width: 8),
                     Text(
-                      'Поиск по магазину...',
+                      'Поиск',
                       style: TextStyle(
                         color: Colors.grey.shade500,
                         fontSize: 13,

@@ -202,7 +202,6 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                                 child: AppFooter(),
                               ),
                             ),
-                            SliverToBoxAdapter(child: ShopQrWidget(shop: shop)),
                           ],
                         ),
                       ),
@@ -317,21 +316,20 @@ class _ShopPublicScreenState extends State<ShopPublicScreen> {
                 _showCategoriesModal(context, shop);
               },
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                width: 40,
+                height: 40,
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Color(0xFF8956FF),
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(80),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.grid_view, color: Colors.white, size: 18),
-                    SizedBox(width: 4),
-                  ],
+                child: Center(
+                  child: Icon(Icons.grid_view, color: Colors.white, size: 24),
                 ),
               ),
             ),
-            SizedBox(width: 12),
 
+            SizedBox(width: 12), // 👈 ДОБАВИТЬ ОТСТУП
             // Поле поиска
             Expanded(child: ShopSearchBar(shopId: shop.id)),
 

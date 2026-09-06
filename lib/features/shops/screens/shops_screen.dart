@@ -378,7 +378,7 @@ class _ShopCard extends StatelessWidget {
 
             // Количество объявлений
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(8),

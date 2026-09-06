@@ -107,7 +107,7 @@ class _ShopSearchBarState extends State<ShopSearchBar> {
                             visualDensity: VisualDensity.compact,
                             leading: Icon(
                               Icons.category,
-                              size: 18,
+                              size: 20,
                               color: Color(0xFF8956FF),
                             ),
                             title: Text(
@@ -229,7 +229,7 @@ class _ShopSearchBarState extends State<ShopSearchBar> {
     return CompositedTransformTarget(
       link: _layerLink,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(24),
@@ -244,10 +244,12 @@ class _ShopSearchBarState extends State<ShopSearchBar> {
                 focusNode: _focusNode,
                 onChanged: _onSearchChanged,
                 decoration: InputDecoration(
-                  hintText: 'Поиск по магазину...',
+                  hintText: 'Поиск',
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
                 ),
               ),
             ),
@@ -255,10 +257,7 @@ class _ShopSearchBarState extends State<ShopSearchBar> {
               SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xFF8956FF),
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             if (_controller.text.isNotEmpty && !_isLoading)
               GestureDetector(

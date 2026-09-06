@@ -1,10 +1,12 @@
 // lib/features/shop/widgets/shop_ad_card.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hashtagg/core/network/home_api_repository.dart';
 import 'package:hashtagg/shared/presentation/bloc/favorites_bloc.dart';
-import 'package:hashtagg/shared/domain/entities/listing.dart' show ListingStatus, Listing;
+import 'package:hashtagg/shared/domain/entities/listing.dart'
+    show ListingStatus, Listing;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ShopAdCard extends StatelessWidget {
@@ -29,7 +31,8 @@ class ShopAdCard extends StatelessWidget {
         // Берем имя файла из URL
         final fileName = image.split('/').last;
         final nameWithoutExt = fileName.split('.').first;
-        final newUrl = 'https://hashtagg.ru/media/images_boards/big/$nameWithoutExt.webp';
+        final newUrl =
+            'https://hashtagg.ru/media/images_boards/big/$nameWithoutExt.webp';
         print('   🔄 REPLACED: $newUrl');
         return newUrl;
       }
@@ -38,11 +41,11 @@ class ShopAdCard extends StatelessWidget {
 
     // Если это просто имя файла
     final nameWithoutExtension = image.split('.').first;
-    final newUrl = 'https://hashtagg.ru/media/images_boards/big/$nameWithoutExtension.webp';
+    final newUrl =
+        'https://hashtagg.ru/media/images_boards/big/$nameWithoutExtension.webp';
     print('   ✅ generated: $newUrl');
     return newUrl;
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -85,11 +88,19 @@ class ShopAdCard extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: ad.images.isNotEmpty
-                        ? _ShopImageSlider(imageUrls: ad.images)  // ✅ БЕЗ replaceMediaUrl
+                        ? _ShopImageSlider(
+                            imageUrls: ad.images,
+                          ) // ✅ БЕЗ replaceMediaUrl
                         : Container(
-                      color: isDark ? Colors.grey.shade800 : Colors.white,
-                      child: Icon(Icons.image, size: 40, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
-                    ),
+                            color: isDark ? Colors.grey.shade800 : Colors.white,
+                            child: Icon(
+                              Icons.image,
+                              size: 40,
+                              color: isDark
+                                  ? Colors.grey.shade600
+                                  : Colors.grey.shade400,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -126,13 +137,19 @@ class ShopAdCard extends StatelessWidget {
                             return GestureDetector(
                               onTap: () {
                                 if (isFavorite) {
-                                  context.read<FavoritesBloc>().add(RemoveFavorite(ad.id));
+                                  context.read<FavoritesBloc>().add(
+                                    RemoveFavorite(ad.id),
+                                  );
                                 } else {
-                                  context.read<FavoritesBloc>().add(AddFavorite(ad.id, listing));
+                                  context.read<FavoritesBloc>().add(
+                                    AddFavorite(ad.id, listing),
+                                  );
                                 }
                               },
                               child: Icon(
-                                isFavorite ? Icons.favorite : Icons.favorite_border_outlined,
+                                isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border_outlined,
                                 color: const Color(0xff917dfa),
                                 size: 24,
                               ),
@@ -144,32 +161,49 @@ class ShopAdCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.visibility_outlined, size: 13.2, color: isDark ? Colors.white : Colors.grey.shade600),
+                        Icon(
+                          Icons.visibility_outlined,
+                          size: 13.2,
+                          color: isDark ? Colors.white : Colors.grey.shade600,
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           ad.countView.toString(),
-                          style: GoogleFonts.montserrat(fontSize: 13.2, color: isDark ? Colors.white : Colors.grey.shade600),
+                          style: GoogleFonts.montserrat(
+                            fontSize: 13.2,
+                            color: isDark ? Colors.white : Colors.grey.shade600,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       ad.price,
-                      style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                      style: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
                     const Spacer(),
                     Text(
                       ad.cityName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.montserrat(fontSize: 13.2, color: isDark ? Colors.white : Colors.grey.shade600),
+                      style: GoogleFonts.montserrat(
+                        fontSize: 13.2,
+                        color: isDark ? Colors.white : Colors.grey.shade600,
+                      ),
                     ),
                     if (ad.dateTimeAdd != 'Дата не указана')
                       Text(
                         ad.dateTimeAdd,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.montserrat(fontSize: 13.2, color: isDark ? Colors.white : Colors.grey.shade600),
+                        style: GoogleFonts.montserrat(
+                          fontSize: 13.2,
+                          color: isDark ? Colors.white : Colors.grey.shade600,
+                        ),
                       ),
                   ],
                 ),
@@ -232,14 +266,20 @@ class _ShopImageSliderState extends State<_ShopImageSlider> {
                   child: Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(const Color(0xff917dfa)),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        const Color(0xff917dfa),
+                      ),
                     ),
                   ),
                 );
               },
               errorBuilder: (_, __, ___) => Container(
                 color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                child: Icon(Icons.broken_image, size: 40, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                child: Icon(
+                  Icons.broken_image,
+                  size: 40,
+                  color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                ),
               ),
             );
           },
@@ -260,14 +300,16 @@ class _ShopImageSliderState extends State<_ShopImageSlider> {
                   mainAxisSize: MainAxisSize.min,
                   children: List.generate(
                     widget.imageUrls.length > 5 ? 5 : widget.imageUrls.length,
-                        (index) {
+                    (index) {
                       final isActive = index == _currentPage;
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 3),
                         width: isActive ? 20 : 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
+                          color: isActive
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(3.5),
                         ),
                       );

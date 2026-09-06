@@ -41,9 +41,25 @@ class ShopPublicBloc extends Bloc<ShopPublicEvent, ShopPublicState> {
 
       print('📡 [ShopPublicBloc] Calling API for shop: ${event.shopId}');
       final shop = await _repository.getPublicShop(shopId: event.shopId);
-      print('✅ [ShopPublicBloc] Shop loaded: ${shop.title}');
-      print('📊 [ShopPublicBloc] Shop ID: ${shop.id}, UserId: ${shop.userId}');
-      print('📄 [ShopPublicBloc] Status: ${shop.status}');
+
+      // ✅ ПОЛУЧАЕМ ID ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ИЗ HIVE
+      final currentUserId = _getCurrentUserId();
+      print('👤 [ShopPublicBloc] Current user ID: $currentUserId');
+      print('🏪 [ShopPublicBloc] Shop owner ID: ${shop.userId}');
+
+      // ✅ УСТАНАВЛИВАЕМ isOwner
+      final isOwner = currentUserId == shop.userId;
+      print('🔑 [ShopPublicBloc] isOwner: $isOwner');
+
+      // ✅ ОБНОВЛЯЕМ SHOP С ПОЛЕМ isOwner
+      final updatedShop = shop.copyWith(isOwner: isOwner);
+
+      print('✅ [ShopPublicBloc] Shop loaded: ${updatedShop.title}');
+      print(
+        '📊 [ShopPublicBloc] Shop ID: ${updatedShop.id}, UserId: ${updatedShop.userId}',
+      );
+      print('📄 [ShopPublicBloc] Status: ${updatedShop.status}');
+      print('🔑 [ShopPublicBloc] isOwner: ${updatedShop.isOwner}');
 
       print('📡 [ShopPublicBloc] Calling API for ads...');
       print('   categoryId: ${event.categoryId}');
@@ -69,10 +85,27 @@ class ShopPublicBloc extends Bloc<ShopPublicEvent, ShopPublicState> {
       // ❌ УБИРАЕМ ГЕНЕРАЦИЮ QR-КОДА
       // QR-код будет показан через QrImageView в ShopQrWidget
 
-      emit(ShopPublicLoaded(shop, ads: ads, tariff: tariff));
+      emit(ShopPublicLoaded(updatedShop, ads: ads, tariff: tariff));
     } catch (e) {
       print('❌❌❌ [ShopPublicBloc] ERROR: $e');
       emit(ShopPublicError(e.toString()));
+    }
+  }
+
+  // ✅ МЕТОД ДЛЯ ПОЛУЧЕНИЯ ID ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
+  int _getCurrentUserId() {
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user') as Map?;
+      if (userData != null) {
+        final id = userData['id'];
+        if (id is int) return id;
+        if (id is String) return int.tryParse(id) ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      print('❌ [ShopPublicBloc] Error getting user ID: $e');
+      return 0;
     }
   }
 }

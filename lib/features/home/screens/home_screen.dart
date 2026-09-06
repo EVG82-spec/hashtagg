@@ -1779,16 +1779,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 // 🔥 КНОПКА ДИАГНОСТИКИ
-                SliverToBoxAdapter(
-                  child: Container(
-                    height: 60,
-                    alignment: Alignment.center,
-                    child: ElevatedButton(
-                      onPressed: () => context.go('/diagnostic'),
-                      child: Text('🔍 Диагностика'),
-                    ),
-                  ),
-                ),
+                //  SliverToBoxAdapter(
+                // child: Container(
+                //  height: 60,
+                //  alignment: Alignment.center,
+                // child: ElevatedButton(
+                //   onPressed: () => context.go('/diagnostic'),
+                //  child: Text('🔍 Диагностика'),
+                // ),
+                // ),
+                //),
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.only(top: 16, bottom: 16),
