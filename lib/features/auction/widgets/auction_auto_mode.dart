@@ -25,6 +25,35 @@ class _AuctionAutoModeState extends State<AuctionAutoMode> {
     _loadFromSettings();
   }
 
+  @override
+  void didUpdateWidget(AuctionAutoMode oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // ✅ СИНХРОНИЗАЦИЯ С СЕРВЕРОМ
+    final newSettings = widget.status.autoSettings;
+
+    if (newSettings != null) {
+      final newEnabled = newSettings.isEnabled;
+
+      if (_isEnabled != newEnabled) {
+        print('🔄 [AuctionAutoMode] Sync isEnabled: $_isEnabled → $newEnabled');
+        setState(() {
+          _isEnabled = newEnabled;
+        });
+      }
+
+      // Если автопилот выключен — синхронизируем ползунки
+      if (!newEnabled) {
+        if (_dailyLimit != newSettings.dailyLimit) {
+          setState(() => _dailyLimit = newSettings.dailyLimit);
+        }
+        if (_intervalMinutes != newSettings.bidIntervalMinutes) {
+          setState(() => _intervalMinutes = newSettings.bidIntervalMinutes);
+        }
+      }
+    }
+  }
+
   void _loadFromSettings() {
     final settings = widget.status.autoSettings;
     if (settings != null) {

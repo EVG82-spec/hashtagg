@@ -20,6 +20,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'dart:io';
+import 'package:hashtagg/features/auction/screens/auction_modal.dart';
+import 'package:hashtagg/features/auction/repository/auction_api_repository.dart';
 
 class ShopActions extends StatelessWidget {
   final Shop shop;
