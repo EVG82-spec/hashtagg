@@ -51,6 +51,7 @@ import 'package:hashtagg/core/network/shops_api_repository.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hashtagg/features/auction/repository/auction_api_repository.dart';
 
 // Константы для WorkManager (должны быть доступны в изоляте)
 const String _kWorkManagerVersion = 'v2.1'; // Версия для отладки
@@ -415,6 +416,9 @@ class _MainAppState extends State<MainApp> {
           ),
           Provider<ShopApiRepository>(
             create: (_) => ShopApiRepository(DioClient.createDio()),
+          ),
+          RepositoryProvider<AuctionApiRepository>(
+            create: (_) => AuctionApiRepository(DioClient.createDio()),
           ),
           BlocProvider<ChatBloc>(
             create: (context) {

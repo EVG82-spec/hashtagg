@@ -4,11 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hashtagg/core/network/dio_client.dart';
 import 'package:hashtagg/core/network/home_api_repository.dart';
+import 'package:hashtagg/features/auction/screens/auction_modal.dart';
 import 'package:hashtagg/features/home/bloc/feed_bloc.dart';
 import 'package:hashtagg/features/home/widgets/ad_listing.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
+import 'package:hashtagg/features/auction/screens/auction_modal.dart';
 
 class FeedHeader extends StatelessWidget {
   const FeedHeader({super.key});
@@ -543,11 +545,6 @@ class _ShopListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bannerUrl = shop.banner ?? shop.bannerUrl;
 
-    print('🔴🔴🔴 [_ShopListCard] ${shop.title}:');
-    print('   avatarUrl: ${shop.avatarUrl}');
-    print('   banner: ${shop.banner}');
-    print('   description: ${shop.description}');
-
     return GestureDetector(
       onTap: () {
         GoRouter.of(context).push('/shop/${shop.id}');
@@ -577,125 +574,162 @@ class _ShopListCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        // 👇 ОБОРАЧИВАЕМ В STACK
+        child: Stack(
           children: [
-            // Аватарка
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: shop.avatarUrl ?? '',
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.store, color: Colors.grey),
-                ),
-                errorWidget: (_, __, ___) => Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.store, color: Colors.grey),
-                ),
-              ),
-            ),
-            const SizedBox(width: 11),
-            // Информация
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Название
-                  Text(
-                    shop.title,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+            // Основное содержимое
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Аватарка
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: shop.avatarUrl ?? '',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.store, color: Colors.grey),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    errorWidget: (_, __, ___) => Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.store, color: Colors.grey),
+                    ),
                   ),
-                  // ✅ Описание (3 строки, 80 символов)
-                  if (shop.description != null && shop.description!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: SizedBox(
-                        width:
-                            MediaQuery.of(context).size.width -
-                            160, // Ширина экрана минус отступы
-                        child: Text(
-                          shop.description!,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.montserrat(
-                            fontSize: 13,
-                            color: Colors.white.withOpacity(0.85),
-                            height: 1.3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-
-                  // ✅ Статистика в одну строку (объявления + подписчики)
-                  Row(
+                ),
+                const SizedBox(width: 11),
+                // Информация
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Количество объявлений
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                      // Название
+                      Text(
+                        shop.title,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          "${shop.adsCount} ${_pluralize(shop.adsCount)}",
-                          style: GoogleFonts.montserrat(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 10),
-                      // Количество подписчиков
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(width: 4),
-                            Text(
-                              "${shop.subscribersCount} ${_pluralizeSubscribers(shop.subscribersCount)}",
+                      // Описание
+                      if (shop.description != null &&
+                          shop.description!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width - 160,
+                            child: Text(
+                              shop.description!,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.montserrat(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.8),
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.85),
+                                height: 1.3,
                               ),
                             ),
-                          ],
+                          ),
                         ),
+                      const SizedBox(height: 8),
+                      // Статистика
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              "${shop.adsCount} ${_pluralize(shop.adsCount)}",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 4),
+                                Text(
+                                  "${shop.subscribersCount} ${_pluralizeSubscribers(shop.subscribersCount)}",
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 12,
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            // Стрелка
+
+            // 👇 КНОПКА "В ТОП" в правом верхнем углу
+            if (shop.isOwner)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () => AuctionModal.show(context, shop.id),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFf7971e), Color(0xFFffd200)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFf7971e).withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.arrow_upward,
+                        color: Color(0xFF1a1a2e),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
