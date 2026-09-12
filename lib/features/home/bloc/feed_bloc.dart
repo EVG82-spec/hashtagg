@@ -20,6 +20,11 @@ class FeedLoadMoreEvent extends FeedEvent {}
 
 class FeedLoadShopsEvent extends FeedEvent {}
 
+class FeedSearchShopsEvent extends FeedEvent {
+  final String query;
+  FeedSearchShopsEvent({required this.query});
+}
+
 // ==================== СОСТОЯНИЕ ====================
 
 class FeedState {
@@ -29,6 +34,7 @@ class FeedState {
   final List<FeedAd> ads;
   final List<Shop> shops;
   final bool hasNext;
+  final String shopsSearchQuery;
 
   const FeedState({
     this.category = FeedCategory.recommendations,
@@ -37,6 +43,7 @@ class FeedState {
     this.ads = const [],
     this.shops = const [],
     this.hasNext = false,
+    this.shopsSearchQuery = '',
   });
 
   FeedState copyWith({
@@ -46,6 +53,7 @@ class FeedState {
     List<FeedAd>? ads,
     List<Shop>? shops,
     bool? hasNext,
+    String? shopsSearchQuery,
   }) {
     return FeedState(
       category: category ?? this.category,
@@ -54,6 +62,7 @@ class FeedState {
       ads: ads ?? this.ads,
       shops: shops ?? this.shops,
       hasNext: hasNext ?? this.hasNext,
+      shopsSearchQuery: shopsSearchQuery ?? this.shopsSearchQuery,
     );
   }
 }
@@ -67,39 +76,47 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<FeedCategoryChangeEvent>(_onCategoryChange);
     on<FeedLoadMoreEvent>(_onLoadMore);
     on<FeedLoadShopsEvent>(_onLoadShops);
+    on<FeedSearchShopsEvent>(_onSearchShops);
+  }
+
+  // 👇 НОВЫЙ ОБРАБОТЧИК
+  Future<void> _onSearchShops(
+    FeedSearchShopsEvent event,
+    Emitter<FeedState> emit,
+  ) async {
+    try {
+      print('🔍 [FeedBloc] Searching shops: "${event.query}"');
+      final shops = await _repository.getShops(search: event.query);
+      print('✅ [FeedBloc] Found ${shops.length} shops');
+      emit(state.copyWith(shops: shops, shopsSearchQuery: event.query));
+    } catch (e) {
+      print('❌ [FeedBloc] Error searching shops: $e');
+    }
   }
 
   // Смена категории
-  void _onCategoryChange(
+  Future<void> _onCategoryChange(
     FeedCategoryChangeEvent event,
     Emitter<FeedState> emit,
   ) async {
     if (event.category == FeedCategory.companies) {
       try {
         print('🔄 [FeedBloc] Loading shops...');
-
-        final shops = await _repository.getShops();
-
-        print('✅ [FeedBloc] Loaded ${shops.length} shops from API');
-
-        // Детальный лог каждого магазина из API
-        for (var i = 0; i < shops.length; i++) {
-          final shop = shops[i];
-          print('   📦 Shop #$i:');
-          print('      ID: ${shop.id}');
-          print('      Title: ${shop.title}');
-          print('      Logo: ${shop.logo}');
-          print('      UserId: ${shop.userId}');
-        }
-
+        final shops = await _repository
+            .getShops(); // ✅ без параметров или с search: ''
+        print('✅ [FeedBloc] Loaded ${shops.length} shops');
         emit(
-          state.copyWith(category: event.category, shops: shops, ads: const []),
+          state.copyWith(
+            category: event.category,
+            shops: shops,
+            shopsSearchQuery: '', // сбрасываем поиск при смене вкладки
+            ads: const [],
+          ),
         );
       } catch (e) {
         print('❌ [FeedBloc] Error loading shops: $e');
       }
     } else {
-      // Для других категорий - обычная лента
       emit(
         state.copyWith(
           category: event.category,

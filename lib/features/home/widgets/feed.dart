@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hashtagg/features/shop/models/shop.dart';
 import 'package:hashtagg/features/auction/screens/auction_modal.dart';
+import 'dart:async';
 
 class FeedHeader extends StatelessWidget {
   const FeedHeader({super.key});
@@ -462,49 +463,145 @@ class _FeedViewState extends State<FeedView> {
 
 // ==================== ШОПЫ (КОМПАНИИ) ====================
 
-class _ShopsSliverList extends StatelessWidget {
+class _ShopsSliverList extends StatefulWidget {
   const _ShopsSliverList({super.key});
 
   @override
+  State<_ShopsSliverList> createState() => _ShopsSliverListState();
+}
+
+class _ShopsSliverListState extends State<_ShopsSliverList> {
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
+  String _lastQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {}); // для кнопки очистки
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      final query = value.trim();
+
+      // Как на сайте: пустой или >= 2 символов
+      if (query.isNotEmpty && query.length < 2) return;
+      if (query == _lastQuery) return;
+
+      _lastQuery = query;
+
+      if (!mounted) return;
+      context.read<FeedBloc>().add(FeedSearchShopsEvent(query: query));
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _lastQuery = '';
+    setState(() {});
+    context.read<FeedBloc>().add(FeedSearchShopsEvent(query: ''));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FeedBloc, FeedState>(
-      builder: (context, state) {
-        final shops = state.shops;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
 
-        print('📋 [ShopList] Total shops: ${shops.length}');
-
-        // 👇 ДОБАВЛЯЕМ ДЕТАЛЬНЫЙ ЛОГ КАЖДОГО МАГАЗИНА
-        for (var i = 0; i < shops.length; i++) {
-          final shop = shops[i];
-          print(
-            '📋 [ShopList] Shop #$i: ID=${shop.id}, Title="${shop.title}", Logo=${shop.logo?.substring(0, 30) ?? 'null'}...',
-          );
-        }
-
-        if (shops.isEmpty) {
-          return const SliverToBoxAdapter(
-            child: SizedBox(
-              height: 300,
-              child: Center(
-                child: Text(
-                  'Магазины не найдены',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+    return SliverMainAxisGroup(
+      slivers: [
+        // 👇 ПОЛЕ ПОИСКА
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              textInputAction: TextInputAction.search,
+              style: GoogleFonts.montserrat(fontSize: 14, color: textColor),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: inputBgColor,
+                hintText: 'Поиск магазинов...',
+                hintStyle: GoogleFonts.montserrat(
+                  fontSize: 14,
+                  color: isDark ? Colors.white54 : const Color(0xff999999),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: isDark ? Colors.white54 : const Color(0xff999999),
+                  size: 20,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xff999999),
+                          size: 18,
+                        ),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
               ),
             ),
-          );
-        }
-
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final shop = shops[index];
-              return _ShopListCard(shop: shop);
-            }, childCount: shops.length),
           ),
-        );
-      },
+        ),
+
+        // 👇 СПИСОК МАГАЗИНОВ
+        BlocBuilder<FeedBloc, FeedState>(
+          builder: (context, state) {
+            final shops = state.shops;
+
+            print('📋 [ShopList] Total shops: ${shops.length}');
+
+            if (shops.isEmpty) {
+              return SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 300,
+                  child: Center(
+                    child: Text(
+                      _lastQuery.isEmpty
+                          ? 'Магазины не найдены'
+                          : 'Ничего не найдено',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final shop = shops[index];
+                  return _ShopListCard(shop: shop);
+                }, childCount: shops.length),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

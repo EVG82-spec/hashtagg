@@ -17,32 +17,70 @@ class ShopApiRepository {
   /// Получение списка всех магазинов через JSON API
   /// // используется профиль навигатор
   /// Получение списка магазинов
-  Future<List<Shop>> getShops() async {
-    print('📥 [ShopApi] Loading shops...');
+  /// Получение списка магазинов через Laravel JSON API
+  /// Использует тот же поиск, что и сайт: название, описание, товары
+  /// Получение списка магазинов через Laravel JSON API
+  /// Использует тот же поиск, что и сайт: название, описание, товары
+  Future<List<Shop>> getShops({int page = 1, String search = ''}) async {
+    print('📥 [ShopApi] Loading shops... page=$page search="$search"');
     try {
-      // ✅ ВОЗВРАЩАЕМСЯ К РАБОЧЕМУ API
-      final response = await _dio.get(
-        '/systems/api/controller.php',
-        queryParameters: {'key': ApiConfig.apiKey, 'route': 'shops/getShops'},
+      final box = Hive.box('user');
+      final userData = box.get('user') as Map?;
+      final userId = userData?['id']?.toString() ?? '0';
+
+      final response = await _dio.post(
+        '/systems/ajax/controller.php',
+        data: {
+          'action': 'shop/shops_search_json',
+          'page': page,
+          'search': search,
+          'proxy_user_id': userId,
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          validateStatus: (status) => status != null && status < 500,
+        ),
       );
 
-      final data = _parseResponse(response.data);
-      print('📦 [ShopApi] Shops response: $data');
+      print('📦 [ShopApi] Response status: ${response.statusCode}');
 
-      if (data['data'] != null) {
-        final shops = (data['data'] as List).map((json) {
-          return Shop.fromJson(json);
+      final data = response.data is String
+          ? jsonDecode(response.data)
+          : response.data;
+
+      if (data['success'] == true && data['data'] != null) {
+        final shopsJson = data['data']['data'] as List;
+        final shops = shopsJson.map((json) {
+          return Shop.fromJson(json as Map<String, dynamic>);
         }).toList();
 
         print('✅ [ShopApi] Loaded ${shops.length} shops');
         return shops;
       }
 
+      print('⚠️ [ShopApi] No shops in response');
       return [];
     } catch (e) {
       print('❌ [ShopApi] Error loading shops: $e');
       return [];
     }
+  }
+
+  /// Хелпер: Shop → Map (для обратной совместимости с текущим кодом)
+  Map<String, dynamic> _shopToJson(Shop shop) {
+    return {
+      'id': shop.id,
+      'id_hash': shop.idHash,
+      'user_id': shop.userId,
+      'title': shop.title,
+      'desc': shop.description,
+      'logo': shop.logo,
+      'banner': shop.banner,
+      'count_ads': shop.adsCount,
+      'count_ads_int': shop.adsCount,
+      'subscribers_count': shop.subscribersCount,
+      'is_owner': shop.isOwner,
+    };
   }
 
   /// Получение данных магазина для редактирования
