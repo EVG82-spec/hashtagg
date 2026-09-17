@@ -6,19 +6,21 @@ class ShopsApiRepository {
   final Dio _dio;
 
   ShopsApiRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               baseUrl: ApiConfig.baseUrl,
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-            ));
+              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            ),
+          );
 
   /// Получение списка магазинов
   /// //INTEGRATED
   Future<Map<String, dynamic>> getShops({
     int page = 1,
     int? catId,
+    String search = '',
   }) async {
     try {
       print('🔵 [ShopsApi] Getting shops - page: $page');
@@ -30,10 +32,9 @@ class ShopsApiRepository {
           'route': 'shops/getShops',
           'page': page,
           if (catId != null) 'cat_id': catId,
+          if (search.isNotEmpty) 'search': search,
         },
-        options: Options(
-          validateStatus: (status) => true,
-        ),
+        options: Options(validateStatus: (status) => true),
       );
 
       print('🔵 [ShopsApi] Shops response status: ${response.statusCode}');
@@ -46,8 +47,13 @@ class ShopsApiRepository {
         print('✅ [ShopsApi] Loaded ${data['data']?.length ?? 0} shops');
         return {'status': true, 'data': data};
       } else {
-        print('🔴 [ShopsApi] Server error ${response.statusCode}: ${response.data}');
-        return {'status': false, 'error': 'Server error: ${response.statusCode}'};
+        print(
+          '🔴 [ShopsApi] Server error ${response.statusCode}: ${response.data}',
+        );
+        return {
+          'status': false,
+          'error': 'Server error: ${response.statusCode}',
+        };
       }
     } on DioException catch (e) {
       print('🔴 [ShopsApi] Shops exception: $e');
@@ -77,9 +83,7 @@ class ShopsApiRepository {
           if (userId != null) 'id_user': userId,
           if (token != null) 'token': token,
         },
-        options: Options(
-          validateStatus: (status) => true,
-        ),
+        options: Options(validateStatus: (status) => true),
       );
 
       print('🔵 [ShopsApi] Shop response status: ${response.statusCode}');
@@ -93,8 +97,13 @@ class ShopsApiRepository {
         print('🔵 [ShopsApi] Full shop data: ${json.encode(data['data'])}');
         return {'status': true, 'data': data['data']};
       } else {
-        print('🔴 [ShopsApi] Server error ${response.statusCode}: ${response.data}');
-        return {'status': false, 'error': 'Server error: ${response.statusCode}'};
+        print(
+          '🔴 [ShopsApi] Server error ${response.statusCode}: ${response.data}',
+        );
+        return {
+          'status': false,
+          'error': 'Server error: ${response.statusCode}',
+        };
       }
     } on DioException catch (e) {
       print('🔴 [ShopsApi] Shop exception: $e');

@@ -5,6 +5,7 @@ import 'package:hashtagg/core/network/shops_api_repository.dart';
 import 'package:hashtagg/core/network/api_config.dart';
 import 'package:hashtagg/features/shop/screens/shop_webview_screen.dart';
 import 'package:hive/hive.dart';
+import 'dart:async';
 
 class ShopsScreen extends StatefulWidget {
   const ShopsScreen({super.key});
@@ -16,12 +17,16 @@ class ShopsScreen extends StatefulWidget {
 class _ShopsScreenState extends State<ShopsScreen> {
   final ShopsApiRepository _shopsApi = ShopsApiRepository();
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
 
   List<Map<String, dynamic>> _shops = [];
   bool _isLoading = false;
   bool _hasMore = true;
   int _currentPage = 1;
   int _totalPages = 1;
+  String _searchQuery = '';
+  Timer? _debounceTimer;
   int _extractCountAds(dynamic countAds) {
     if (countAds is int) return countAds;
     if (countAds is String) {
@@ -50,6 +55,9 @@ class _ShopsScreenState extends State<ShopsScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -62,6 +70,30 @@ class _ShopsScreenState extends State<ShopsScreen> {
     }
   }
 
+  /// Debounce для поиска (400мс как на сайте)
+  void _onSearchChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      final query = value.trim();
+      // Как на сайте: пустой или >= 2 символов
+      if (query.isEmpty || query.length >= 2) {
+        if (query != _searchQuery) {
+          _searchQuery = query;
+          _loadShops();
+        }
+      }
+    });
+    setState(() {}); // Обновить UI для кнопки очистки
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchQuery = '';
+    _loadShops();
+    _searchFocus.requestFocus();
+    setState(() {});
+  }
+
   Future<void> _loadShops() async {
     print('🔴🔴🔴 [ShopsScreen] _loadShops() CALLED!');
     if (_isLoading) return;
@@ -70,7 +102,10 @@ class _ShopsScreenState extends State<ShopsScreen> {
 
     try {
       print('🔴🔴🔴 [ShopsScreen] Calling _shopsApi.getShops()...');
-      final result = await _shopsApi.getShops(page: 1);
+      final result = await _shopsApi.getShops(
+        page: 1,
+        search: _searchQuery, // 👈 передаём поиск
+      );
       print('🔴🔴🔴 [ShopsScreen] Result: $result');
 
       if (result['status'] == true && mounted) {
@@ -116,7 +151,10 @@ class _ShopsScreenState extends State<ShopsScreen> {
 
     try {
       final nextPage = _currentPage + 1;
-      final result = await _shopsApi.getShops(page: nextPage);
+      final result = await _shopsApi.getShops(
+        page: nextPage,
+        search: _searchQuery, // 👈 и тут поиск
+      ); // 👈 и тут поиск
 
       if (result['status'] == true && mounted) {
         final data = result['data'];
@@ -139,37 +177,97 @@ class _ShopsScreenState extends State<ShopsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: _shops.isEmpty && _isLoading
-          ? Center(child: CircularProgressIndicator(color: Color(0xff917dfa)))
-          : RefreshIndicator(
-              onRefresh: _loadShops,
-              color: Color(0xff917dfa),
-              edgeOffset: 40.0,
-              displacement: 20.0,
-              strokeWidth: 3.0,
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: EdgeInsets.all(16),
-                itemCount: _shops.length + (_hasMore ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _shops.length) {
-                    return Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(
-                          color: Color(0xff917dfa),
-                        ),
-                      ),
-                    );
-                  }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final inputBgColor = isDark
+        ? const Color(0xff233040)
+        : const Color(0xFFF5F7FA);
 
-                  final shop = _shops[index];
-                  return _ShopCard(shop: shop);
-                },
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xff151e27) : Colors.white,
+      body: Column(
+        children: [
+          // 👇 ПОЛЕ ПОИСКА (новое)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              textInputAction: TextInputAction.search,
+              style: GoogleFonts.montserrat(fontSize: 14, color: textColor),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: inputBgColor,
+                hintText: 'Поиск магазинов...',
+                hintStyle: GoogleFonts.montserrat(
+                  fontSize: 14,
+                  color: isDark ? Colors.white54 : const Color(0xff999999),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: isDark ? Colors.white54 : const Color(0xff999999),
+                  size: 20,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xff999999),
+                          size: 18,
+                        ),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
+          ),
+
+          // 👇 СПИСОК (существующий, но в Expanded)
+          Expanded(
+            child: _shops.isEmpty && _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(color: Color(0xff917dfa)),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadShops,
+                    color: Color(0xff917dfa),
+                    edgeOffset: 40.0,
+                    displacement: 20.0,
+                    strokeWidth: 3.0,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.all(16),
+                      itemCount: _shops.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _shops.length) {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: CircularProgressIndicator(
+                                color: Color(0xff917dfa),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final shop = _shops[index];
+                        return _ShopCard(shop: shop);
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

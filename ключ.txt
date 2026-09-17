@@ -1,0 +1,17 @@
+﻿Enter keystore password: — придумайте пароль (запомните!)  bu0702nr
+
+Re-enter new password: — повторите bu0702nr
+
+What is your first and last name? — можно Hashtagg
+
+What is the name of your organizational unit? — можно Development
+
+What is the name of your organization? — можно Hashtagg
+
+What is the name of your City or Locality? — ваш город
+
+What is the name of your State or Province? — ваш регион
+
+What is the two-letter country code for this unit? — RU
+
+Is CN=..., OU=..., O=..., L=..., ST=..., C=RU correct? — yes
