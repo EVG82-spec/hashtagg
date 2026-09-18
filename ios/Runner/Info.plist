@@ -79,5 +79,8 @@
         </array>
       </dict>
     </array>
+	<!-- ✅ ДОБАВИТЬ ЭТУ СТРОКУ -->
+    <key>yandex_mapkit_api_key</key>
+    <string>56984492-3dbc-4c22-8b0f-03790464b774</string>
 </dict>
 </plist>
