@@ -1,0 +1,73 @@
+PODS:
+  - device_info_plus (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - flutter_inappwebview_ios (0.0.1):
+    - Flutter
+    - flutter_inappwebview_ios/Core (= 0.0.1)
+    - OrderedSet (~> 6.0.3)
+  - flutter_inappwebview_ios/Core (0.0.1):
+    - Flutter
+    - OrderedSet (~> 6.0.3)
+  - flutter_local_notifications (0.0.1):
+    - Flutter
+  - flutter_secure_storage (6.0.0):
+    - Flutter
+  - native_video_player (4.0.0):
+    - Flutter
+  - OrderedSet (6.0.3)
+  - workmanager_apple (0.0.1):
+    - Flutter
+  - yandex_mapkit (0.0.1):
+    - Flutter
+    - YandexMapsMobile (= 4.22.0-lite)
+  - YandexMapsMobile (4.22.0-lite)
+
+DEPENDENCIES:
+  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
+  - Flutter (from `Flutter`)
+  - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
+  - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - native_video_player (from `.symlinks/plugins/native_video_player/ios`)
+  - workmanager_apple (from `.symlinks/plugins/workmanager_apple/ios`)
+  - yandex_mapkit (from `.symlinks/plugins/yandex_mapkit/ios`)
+
+SPEC REPOS:
+  trunk:
+    - OrderedSet
+    - YandexMapsMobile
+
+EXTERNAL SOURCES:
+  device_info_plus:
+    :path: ".symlinks/plugins/device_info_plus/ios"
+  Flutter:
+    :path: Flutter
+  flutter_inappwebview_ios:
+    :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
+  flutter_local_notifications:
+    :path: ".symlinks/plugins/flutter_local_notifications/ios"
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  native_video_player:
+    :path: ".symlinks/plugins/native_video_player/ios"
+  workmanager_apple:
+    :path: ".symlinks/plugins/workmanager_apple/ios"
+  yandex_mapkit:
+    :path: ".symlinks/plugins/yandex_mapkit/ios"
+
+SPEC CHECKSUMS:
+  device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  flutter_inappwebview_ios: b89ba3482b96fb25e00c967aae065701b66e9b99
+  flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  native_video_player: 6809dec117e8997161dbfb42a6f90d6df71a504d
+  OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
+  workmanager_apple: 904529ae31e97fc5be632cf628507652294a0778
+  yandex_mapkit: bac34ca1bdf97e87252a8c6d09a95b1fe39ba103
+  YandexMapsMobile: c73844c6096bbb240d1491adc511c2ef4a88d88d
+
+PODFILE CHECKSUM: 3d68f7cb47d5f2fb7765407f663653c9b51100f3
+
+COCOAPODS: 1.16.2
