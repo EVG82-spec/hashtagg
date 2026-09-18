@@ -79,8 +79,33 @@
         </array>
       </dict>
     </array>
-	<!-- ✅ ДОБАВИТЬ ЭТУ СТРОКУ -->
+	    <!-- Push Notifications -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- Yandex Maps API Key -->
     <key>yandex_mapkit_api_key</key>
     <string>56984492-3dbc-4c22-8b0f-03790464b774</string>
+
+    <!-- Permissions -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Приложению нужен доступ к фото, чтобы вы могли загружать изображения товаров</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>Приложению нужен доступ к камере, чтобы вы могли фотографировать товары</string>
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Приложению нужен доступ к геолокации, чтобы показывать товары рядом с вами</string>
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Приложению нужен доступ к геолокации, чтобы показывать товары рядом с вами</string>
+
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Приложению нужен доступ к микрофону, чтобы вы могли записывать голосовые сообщения</string>
+
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Приложению нужен доступ к галерее, чтобы сохранять изображения товаров</string>
 </dict>
 </plist>
