@@ -1,5 +1,7 @@
 //G:\hashtagg_app\lib\core\network\dio_client.dart
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'auth_interceptor.dart';
@@ -7,6 +9,12 @@ import 'api_config.dart';
 import 'package:logger/logger.dart';
 
 class DioClient {
+  // ✅ ПРОКСИ ДЛЯ ТЕСТА (через SSH-туннель)
+  // ⚠️ В PRODUCTION УБРАТЬ!
+  static const bool useProxy = false; // ← включить/выключить прокси
+  static const String proxyHost = 'localhost';
+  static const int proxyPort = 1080;
+
   static Dio createDio() {
     // Проверяем режим OAuth
     final box = Hive.box('user');
@@ -36,8 +44,29 @@ class DioClient {
       ),
     );
 
+    // ✅ ПРОКСИ + ОТКЛЮЧЕНИЕ SSL (только для теста)
+    if (useProxy) {
+      (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+        final client = HttpClient();
+
+        // SOCKS5 прокси
+        client.findProxy = (uri) {
+          return 'SOCKS5 $proxyHost:$proxyPort';
+        };
+
+        // ⚠️ Отключение проверки SSL (только для теста!)
+        client.badCertificateCallback = (cert, host, port) => true;
+
+        if (kDebugMode) {
+          debugPrint('[DioClient] 🔌 Прокси: SOCKS5 $proxyHost:$proxyPort');
+          debugPrint('[DioClient] ⚠️ SSL проверка отключена (тест)');
+        }
+
+        return client;
+      };
+    }
+
     dio.interceptors.add(AuthInterceptor());
-    dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
 
     // ===== ЛОГГЕР =====
     dio.interceptors.add(
@@ -47,7 +76,6 @@ class DioClient {
         responseBody: true,
         error: true,
         logPrint: (object) {
-          // Печатаем в консоль
           print('🌐 $object');
         },
       ),

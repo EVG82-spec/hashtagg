@@ -303,8 +303,16 @@ void main() async {
     constraints: Constraints(networkType: NetworkType.connected),
   );
 
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  if (Platform.isAndroid) {
+    try {
+      await Firebase.initializeApp();
+      print('✅ Firebase initialized');
+    } catch (e) {
+      print('⚠️ Firebase not initialized: $e');
+    }
+  } else {
+    print('📱 iOS: Firebase skipped (using APNs)');
+  }
 
   final deepLinkService = DeepLinkService();
   await deepLinkService.init();

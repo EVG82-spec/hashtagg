@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -72,7 +73,9 @@ class NotificationService {
     print('✅ NotificationService initialized successfully');
 
     // 🔥 ДОБАВИТЬ: Регистрация FCM-токена на сервере
+    print('🔔🔔🔔 Проверка: userId=$_currentUserId, authToken=${_currentAuthToken != null}');
     String? fcmToken = await getFcmToken();
+    print('🔔🔔🔔 fcmToken=$fcmToken');
     if (fcmToken != null &&
         _currentUserId != null &&
         _currentAuthToken != null) {
@@ -484,14 +487,48 @@ class NotificationService {
   String? get currentUserId => _currentUserId;
 
   /// Получить FCM-токен устройства
+  static const MethodChannel _apnsChannel = MethodChannel('apns_token');
+  String? _apnsToken;
+
   Future<String?> getFcmToken() async {
     try {
+      print('🔔 [TOKEN] getFcmToken вызван, Platform.isIOS=${Platform.isIOS}');
+      if (Platform.isIOS) {
+        // ✅ iOS: получаем APNs-токен
+        print('🔔 [TOKEN] iOS: ждём APNs-токен');
+        
+        // Слушаем токен из нативного кода
+        _apnsChannel.setMethodCallHandler((call) async {
+          if (call.method == 'onToken') {
+            _apnsToken = call.arguments as String;
+            print('📱 [APNs] Токен получен: $_apnsToken');
+            
+            // Отправляем токен на сервер
+            if (_currentUserId != null && _currentAuthToken != null && _apnsToken != null) {
+              await _registerFcmToken(_apnsToken!);
+            }
+          }
+        });
+        
+        // Ждём токен (максимум 10 секунд)
+        for (int i = 0; i < 60; i++) {
+          if (_apnsToken != null) {
+            return _apnsToken;
+          }
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+        
+        print('❌ [APNs] Токен не получен за 10 секунд');
+        return null;
+      } else {
+      print('🔔 [TOKEN] Android: FCM');
       FirebaseMessaging messaging = FirebaseMessaging.instance;
       String? token = await messaging.getToken();
-      print('📱 [FCM] Токен получен: $token');
+      print('🔔 [TOKEN] FCM token=$token');
       return token;
+      }
     } catch (e) {
-      print('❌ [FCM] Ошибка получения токена: $e');
+      print('❌ [TOKEN] Ошибка: $e');
       return null;
     }
   }
@@ -514,7 +551,7 @@ class NotificationService {
         body: {
           'user_id': _currentUserId ?? '',
           'token': token,
-          'device_type': 'android',
+          'device_type': Platform.isIOS ? 'ios' : 'android',
           // 'auth_token': _currentAuthToken ?? '',  // ← УДАЛИТЬ (или оставить, но не обязательно)
         },
       );
