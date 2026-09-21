@@ -14,7 +14,7 @@ import YandexMapsMobile
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    YMKMapKit.setApiKey("56984492-3dbc-4c22-8b0f-03790464b774")
+    YMKMapKit.setApiKey("4aab5e00-30ab-4a8a-b428-63d00203f440")
     YMKMapKit.sharedInstance()
     
     if #available(iOS 10.0, *) {
