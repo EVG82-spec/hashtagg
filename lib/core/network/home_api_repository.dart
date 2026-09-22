@@ -139,7 +139,11 @@ class FeedAd {
       text: json['ads_text'] as String? ?? '',
       cityName: cityName,
       cityArea: json['city_area'] as String?,
-      countView: json['ads_count_display'] as int? ?? 0,
+      countView:
+          int.tryParse(
+            (json['count_view'] ?? json['ads_count_display'] ?? '0').toString(),
+          ) ??
+          0,
       dateTimeAdd: json['ads_datetime_add'] as String? ?? 'Дата не указана',
       user: user,
       markers: {},

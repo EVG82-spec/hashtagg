@@ -61,13 +61,13 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _selectedCategoryName;
   String? _cityDeclination;
   String _sortOption = 'Без сортировки';
-  bool _isGridView = false;
+  bool _isGridView = true;
   SearchFilters _filters = const SearchFilters();
 
   // Для подкатегорий и breadcrumbs
   List<Map<String, dynamic>> _subcategories = [];
   String _breadcrumb = '';
-  bool _isLoadingSubcategories = false;
+  bool _isLoadingSubcategories = true;
   int? _parentCategoryId; // ID родительской категории для показа siblings
 
   // Для фильтров (из SearchFiltersScreen)
