@@ -19,6 +19,27 @@ class AuctionPlace {
     required this.isEmpty,
   });
 
+  /// Стартовая цена слота (500/400/300/200/100)
+  double get startPrice {
+    switch (place) {
+      case 1:
+        return 500;
+      case 2:
+        return 400;
+      case 3:
+        return 300;
+      case 4:
+        return 200;
+      case 5:
+        return 100;
+      default:
+        return 0;
+    }
+  }
+
+  /// Цена для действия (выкуп или занятие)
+  double get actionPrice => isEmpty ? startPrice : nextBid;
+
   factory AuctionPlace.fromJson(Map<String, dynamic> json) {
     return AuctionPlace(
       place: _parseInt(json['place']),

@@ -4,11 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../bloc/auction_bloc.dart';
 import '../bloc/auction_event.dart';
 import '../bloc/auction_state.dart';
-import '../widgets/auction_balance_block.dart';
-import '../widgets/auction_participant_status.dart';
-import '../widgets/auction_mode_switcher.dart';
 import '../widgets/auction_manual_mode.dart';
-import '../widgets/auction_auto_mode.dart';
 import '../repository/auction_api_repository.dart';
 
 class AuctionModal extends StatefulWidget {
@@ -34,12 +30,11 @@ class AuctionModal extends StatefulWidget {
 }
 
 class _AuctionModalState extends State<AuctionModal> {
-  String _mode = 'manual';
+  bool _showHistory = false;
 
   @override
   void initState() {
     super.initState();
-    // Запускаем автообновление
     context.read<AuctionBloc>().add(StartAutoUpdate(shopId: widget.shopId));
   }
 
@@ -53,63 +48,60 @@ class _AuctionModalState extends State<AuctionModal> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff1a1a2e) : Colors.white;
+    final headerColor = const Color(0xff1a1a2e);
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 40),
       child: Container(
         width: double.infinity,
         constraints: BoxConstraints(
-          maxWidth: 600,
+          maxWidth: 640,
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Заголовок
+              // ── Заголовок ──
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isDark ? Colors.white12 : Colors.grey.shade200,
-                    ),
-                  ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
+                color: headerColor,
                 child: Row(
                   children: [
-                    const Text('⚡', style: TextStyle(fontSize: 24)),
+                    const Text('⚡', style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Битва за ТОП',
                         style: GoogleFonts.montserrat(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(
                         Icons.close,
-                        color: isDark ? Colors.white : Colors.black,
+                        color: Colors.white70,
+                        size: 22,
                       ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
               ),
 
-              // Контент (скроллится)
+              // ── Контент ──
               Flexible(
                 child: BlocBuilder<AuctionBloc, AuctionState>(
                   builder: (context, state) {
@@ -133,16 +125,16 @@ class _AuctionModalState extends State<AuctionModal> {
                             children: [
                               const Icon(
                                 Icons.error_outline,
-                                size: 64,
+                                size: 56,
                                 color: Colors.red,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               Text(
                                 state.message,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.montserrat(fontSize: 14),
+                                style: GoogleFonts.montserrat(fontSize: 13),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: () {
                                   context.read<AuctionBloc>().add(
@@ -165,63 +157,42 @@ class _AuctionModalState extends State<AuctionModal> {
 
                     if (state is AuctionLoaded) {
                       return SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Баланс
-                            AuctionBalanceBlock(
-                              balance: state.status.balance,
-                              onTopUp: () => _showTopUpInfo(context),
+                            // ── Баланс + Пополнить (одна строка) ──
+                            _buildBalanceRow(context, state.status.balance),
+
+                            const SizedBox(height: 10),
+
+                            // ── Статус участия (одна строка) ──
+                            _buildStatusRow(context, state.status),
+
+                            const SizedBox(height: 12),
+
+                            // ── Жёлтый блок для очереди ──
+                            if (state.status.isOutsideTop &&
+                                state.status.myPlace != null &&
+                                state.status.myPlace! > 5) ...[
+                              _buildQueueBanner(context, state.status.myPlace!),
+                              const SizedBox(height: 10),
+                            ],
+
+                            // ── Таблица ──
+                            AuctionManualMode(
+                              status: state.status,
+                              isBidding: state.isBidding,
+                              onBid: (place) => _onBid(context, place),
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
 
-                            // Статус участия
-                            AuctionParticipantStatus(
-                              isParticipant: state.status.isParticipant,
-                              expireDate: state.status.expireDate,
-                              onActivate: () => _onActivate(context),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Переключатель режимов
-                            AuctionModeSwitcher(
-                              mode: _mode,
-                              onModeChanged: (m) => setState(() => _mode = m),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Ручной режим
-                            if (_mode == 'manual')
-                              AuctionManualMode(
-                                status: state.status,
-                                isBidding: state.isBidding,
-                                onBid: (place) => _onBid(context, place),
-                              ),
-
-                            // Авто режим
-                            if (_mode == 'auto')
-                              AuctionAutoMode(
-                                status: state.status,
-                                onSave: (enabled, limit, interval) =>
-                                    _onSaveAuto(
-                                      context,
-                                      enabled,
-                                      limit,
-                                      interval,
-                                    ),
-                              ),
-
-                            const SizedBox(height: 16),
-
-                            // Ошибка
+                            // ── Ошибка ──
                             if (state.errorMessage != null)
                               Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(10),
+                                margin: const EdgeInsets.only(bottom: 10),
                                 decoration: BoxDecoration(
                                   color: Colors.red.shade50,
                                   borderRadius: BorderRadius.circular(8),
@@ -230,13 +201,13 @@ class _AuctionModalState extends State<AuctionModal> {
                                   state.errorMessage!,
                                   style: GoogleFonts.montserrat(
                                     color: Colors.red.shade800,
-                                    fontSize: 13,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
 
-                            // 👇 ИСТОРИЯ ОПЕРАЦИЙ
-                            _buildHistoryBlock(state),
+                            // ── История (свёрнутая) ──
+                            _buildHistoryToggle(context, state),
                           ],
                         ),
                       );
@@ -253,129 +224,390 @@ class _AuctionModalState extends State<AuctionModal> {
     );
   }
 
-  /// Блок истории операций
-  /// Блок истории операций
-  Widget _buildHistoryBlock(AuctionLoaded state) {
+  // ─────────────────────────────────────────────────
+  // Баланс (компактно)
+  // ─────────────────────────────────────────────────
+  Widget _buildBalanceRow(BuildContext context, double balance) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
-    final history = state.status.balanceLog;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xff2a2a3e) : const Color(0xFFf8f9fa),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.grey.shade200,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Text('💰', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Text(
+            'Доступный баланс:',
+            style: GoogleFonts.montserrat(
+              fontSize: 12,
+              color: textColor.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${balance.toStringAsFixed(2)} ₽',
+              style: GoogleFonts.montserrat(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2ecc71),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _showTopUpInfo(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3498db),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add, color: Colors.white, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Пополнить',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────
+  // Статус участия (компактно)
+  // ─────────────────────────────────────────────────
+  Widget _buildStatusRow(BuildContext context, dynamic status) {
+    if (status.isParticipant) {
+      // Форматируем дату
+      String expireText = '—';
+      if (status.expireDate != null) {
+        final parts = status.expireDate.toString().split(' ');
+        if (parts.isNotEmpty) {
+          final dateParts = parts[0].split('-');
+          if (dateParts.length == 3) {
+            expireText = '${dateParts[2]}.${dateParts[1]}.${dateParts[0]}';
+          }
+        }
+      }
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFe8f5e9),
+          borderRadius: BorderRadius.circular(8),
+          border: const Border(
+            left: BorderSide(color: Color(0xFF4caf50), width: 3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Text('✅', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(
+              'Участие активно',
+              style: GoogleFonts.montserrat(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2e7d32),
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'до $expireText',
+              style: GoogleFonts.montserrat(
+                fontSize: 11,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFfff3cd),
+        borderRadius: BorderRadius.circular(8),
+        border: const Border(
+          left: BorderSide(color: Color(0xFFffc107), width: 3),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Text('🔒', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Участие не активировано',
+              style: GoogleFonts.montserrat(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF856404),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _onActivate(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFf7971e),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'Активировать 500₽',
+                style: GoogleFonts.montserrat(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1a1a2e),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────
+  // Жёлтый блок очереди
+  // ─────────────────────────────────────────────────
+  Widget _buildQueueBanner(BuildContext context, int position) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFfff3cd),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFffc107)),
+      ),
+      child: Row(
+        children: [
+          const Text('⏳', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Все места ТОП-5 заняты. Ваша позиция: $position',
+              style: GoogleFonts.montserrat(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF856404),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────
+  // История (свёрнутая)
+  // ─────────────────────────────────────────────────
+  Widget _buildHistoryToggle(BuildContext context, AuctionLoaded state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '📊 История операций',
-          style: GoogleFonts.montserrat(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
+        // Потрачено сегодня
         Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xff2a2a3e) : const Color(0xFFf8f9fa),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? Colors.white12 : Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Text('💸', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Text(
+                'Потрачено сегодня:',
+                style: GoogleFonts.montserrat(
+                  fontSize: 12,
+                  color: textColor.withOpacity(0.7),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${state.status.totalSpentToday.toStringAsFixed(2)} ₽',
+                style: GoogleFonts.montserrat(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFe74c3c),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Кнопка "История"
+        GestureDetector(
+          onTap: () => setState(() => _showHistory = !_showHistory),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xff2a2a3e) : const Color(0xFFf8f9fa),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Text('📊', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 6),
+                Text(
+                  'История операций',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  _showHistory
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: textColor,
+                  size: 20,
+                ),
+              ],
             ),
           ),
-          child: history.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      'История пуста',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 13,
-                        color: Colors.grey,
+        ),
+
+        // Развёрнутая история
+        if (_showHistory) ...[
+          const SizedBox(height: 6),
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xff2a2a3e) : const Color(0xFFf8f9fa),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade200,
+              ),
+            ),
+            child: state.status.balanceLog.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'История пуста',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
-                  ),
-                )
-              : Column(
-                  children: history.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final item = entry.value;
-                    final isLast = index == history.length - 1;
-                    final isNegative = item.summa < 0;
+                  )
+                : Column(
+                    children: state.status.balanceLog.asMap().entries.map((
+                      entry,
+                    ) {
+                      final index = entry.key;
+                      final item = entry.value;
+                      final isLast =
+                          index == state.status.balanceLog.length - 1;
+                      final isNegative = item.summa < 0;
 
-                    // Форматируем дату
-                    String date = item.datetime;
-                    String time = '';
-                    if (item.datetime.contains(' ')) {
-                      final parts = item.datetime.split(' ');
-                      date = parts[0];
-                      if (parts.length > 1) {
-                        time = parts[1].length >= 5
-                            ? parts[1].substring(0, 5)
-                            : parts[1];
+                      String date = item.datetime;
+                      String time = '';
+                      if (item.datetime.contains(' ')) {
+                        final parts = item.datetime.split(' ');
+                        date = parts[0];
+                        if (parts.length > 1) {
+                          time = parts[1].length >= 5
+                              ? parts[1].substring(0, 5)
+                              : parts[1];
+                        }
                       }
-                    }
 
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        border: isLast
-                            ? null
-                            : Border(
-                                bottom: BorderSide(
-                                  color: isDark
-                                      ? Colors.white10
-                                      : Colors.grey.shade100,
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          border: isLast
+                              ? null
+                              : Border(
+                                  bottom: BorderSide(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : Colors.grey.shade100,
+                                  ),
                                 ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '$date $time',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.name,
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '$date $time',
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
                             ),
-                          ),
-                          Text(
-                            '${isNegative ? '' : '+'}${item.summa.toStringAsFixed(2)} ₽',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: isNegative
-                                  ? const Color(0xFFe74c3c)
-                                  : const Color(0xFF2ecc71),
+                            Text(
+                              '${isNegative ? '' : '+'}${item.summa.toStringAsFixed(0)} ₽',
+                              style: GoogleFonts.montserrat(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isNegative
+                                    ? const Color(0xFFe74c3c)
+                                    : const Color(0xFF2ecc71),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-        ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
       ],
     );
   }
 
+  // ─────────────────────────────────────────────────
+  // Действия
+  // ─────────────────────────────────────────────────
   void _onBid(BuildContext context, int place) {
     context.read<AuctionBloc>().add(
       PlaceBid(shopId: widget.shopId, targetPlace: place),
@@ -406,22 +638,6 @@ class _AuctionModalState extends State<AuctionModal> {
             child: const Text('Активировать'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _onSaveAuto(
-    BuildContext context,
-    bool enabled,
-    double limit,
-    int interval,
-  ) {
-    context.read<AuctionBloc>().add(
-      SaveAutoSettings(
-        shopId: widget.shopId,
-        isEnabled: enabled,
-        dailyLimit: limit,
-        bidIntervalMinutes: interval,
       ),
     );
   }

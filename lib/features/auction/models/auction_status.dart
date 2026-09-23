@@ -9,6 +9,7 @@ class AuctionStatus {
   final List<AuctionPlace> topPlaces;
   final int? myPlace;
   final double? myBid;
+  final bool isOutsideTop;
   final List<BalanceLogItem> balanceLog;
   final double totalSpentToday;
   final AutoSettings? autoSettings;
@@ -20,6 +21,7 @@ class AuctionStatus {
     required this.topPlaces,
     this.myPlace,
     this.myBid,
+    this.isOutsideTop = false,
     required this.balanceLog,
     required this.totalSpentToday,
     this.autoSettings,
@@ -42,6 +44,8 @@ class AuctionStatus {
           [],
       myPlace: json['my_place'] != null ? _parseInt(json['my_place']) : null,
       myBid: json['my_bid'] != null ? _parseDouble(json['my_bid']) : null,
+      isOutsideTop:
+          json['is_outside_top'] == true || json['is_outside_top'] == 1,
       balanceLog:
           (json['balance_log'] as List?)
               ?.map((e) => BalanceLogItem.fromJson(e as Map<String, dynamic>))

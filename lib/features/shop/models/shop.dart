@@ -32,6 +32,9 @@ class Shop {
   final String? slug;
   final Uint8List? qrBytes;
   final String? banner;
+  final int?
+  auctionPlace; // 👈 ДОБАВИТЬ (1-5, 6+ = очередь, null = не в аукционе)
+  final bool isInAuction; // 👈 ДОБАВИТЬ (участвует ли в аукционе)
 
   // ============================================================
   // ГЕТТЕРЫ ДЛЯ МЕДИА
@@ -90,6 +93,8 @@ class Shop {
     this.slug,
     this.qrBytes,
     this.banner,
+    this.auctionPlace,
+    this.isInAuction = false,
   });
 
   // ============================================================
@@ -398,9 +403,11 @@ class Shop {
       pages: pages,
       links: links,
       adsCount: adsCount,
-      subscribersCount: subscribersCount, // 👈 ТЕПЕРЬ ОПРЕДЕЛЕНА!
+      subscribersCount: subscribersCount,
       qrCode: qrCode,
       slug: slug,
+      auctionPlace: json['place'] != null ? _parseInt(json['place']) : null,
+      isInAuction: json['is_in_auction'] == true || json['is_in_auction'] == 1,
     );
   }
 
@@ -432,6 +439,8 @@ class Shop {
     int? adsCount,
     int? subscribersCount,
     Uint8List? qrBytes,
+    int? auctionPlace,
+    bool? isInAuction,
   }) {
     return Shop(
       id: id ?? this.id,
@@ -455,6 +464,8 @@ class Shop {
       subscribersCount: subscribersCount ?? this.subscribersCount,
       qrCode: qrCode ?? this.qrCode,
       qrBytes: qrBytes ?? this.qrBytes,
+      auctionPlace: auctionPlace ?? this.auctionPlace,
+      isInAuction: isInAuction ?? this.isInAuction,
     );
   }
 }
