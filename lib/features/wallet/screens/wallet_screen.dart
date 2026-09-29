@@ -16,8 +16,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:hashtagg/features/wallet/presentation/widgets/payment_waiting_modal.dart'; // Наш новый виджет
 
-
-
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
 
@@ -34,35 +32,30 @@ class _WalletScreenState extends State<WalletScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _cardColor = _cardColors[Random().nextInt(_cardColors.length)];
-    
+
     // Обновляем баланс пользователя после построения виджета
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshUserData();
     });
-    
+
     // Загружаем историю транзакций
     final authState = context.read<AuthBloc>().state;
     if (authState.user != null) {
       final token = _getAuthToken();
-      context.read<WalletBloc>().add(LoadWalletHistory(
-        userId: authState.user!.id,
-        token: token,
-      ));
+      context.read<WalletBloc>().add(
+        LoadWalletHistory(userId: authState.user!.id, token: token),
+      );
     }
   }
 
   // Набор из 8 светлых полупрозрачных цветов для карточки баланса
   static const _cardColors = [
-    Color(0xff917dfa), // фиолетовый
-    Color(0xff4fc3f7), // голубой
-    Color(0xff81c784), // зелёный
-    Color(0xffffb74d), // оранжевый
-    Color(0xfff06292), // розовый
-    Color(0xff4dd0e1), // бирюзовый
-    Color(0xffaed581), // лаймовый
-    Color(0xffff8a65), // коралловый
+    Color.fromARGB(255, 74, 35, 228), // фиолетовый
+    Color.fromARGB(255, 12, 78, 133), // голубой
+    Color.fromARGB(255, 11, 100, 16), // зелёный
+    Color.fromARGB(255, 177, 93, 9), // оранжевый
+    Color.fromARGB(255, 167, 7, 66), // розовый
   ];
-
   late Color _cardColor;
 
   // Баланс берётся из AuthBloc
@@ -84,7 +77,7 @@ class _WalletScreenState extends State<WalletScreen>
     final str = balance.toString();
     final result = StringBuffer();
     var count = 0;
-    
+
     for (var i = str.length - 1; i >= 0; i--) {
       if (count > 0 && count % 3 == 0) {
         result.write(' ');
@@ -92,7 +85,7 @@ class _WalletScreenState extends State<WalletScreen>
       result.write(str[i]);
       count++;
     }
-    
+
     return result.toString().split('').reversed.join('');
   }
 
@@ -112,7 +105,7 @@ class _WalletScreenState extends State<WalletScreen>
 
   void _showPaymentConfirmModal(int amount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -147,7 +140,7 @@ class _WalletScreenState extends State<WalletScreen>
           child: BlocBuilder<WalletBloc, WalletState>(
             builder: (context, walletState) {
               final isLoading = walletState is WalletLoading;
-              
+
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -186,19 +179,25 @@ class _WalletScreenState extends State<WalletScreen>
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: isLoading ? null : () {
-                        final authState = context.read<AuthBloc>().state;
-                        if (authState.user != null) {
-                          final token = _getAuthToken();
-                          print('🔵 [WalletScreen] Sending InitiatePayment');
-                          context.read<WalletBloc>().add(InitiatePayment(
-                            userId: authState.user!.id,
-                            token: token,
-                            amount: amount.toDouble(),
-                            codePayment: _codePayment,
-                          ));
-                        }
-                      },
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              final authState = context.read<AuthBloc>().state;
+                              if (authState.user != null) {
+                                final token = _getAuthToken();
+                                print(
+                                  '🔵 [WalletScreen] Sending InitiatePayment',
+                                );
+                                context.read<WalletBloc>().add(
+                                  InitiatePayment(
+                                    userId: authState.user!.id,
+                                    token: token,
+                                    amount: amount.toDouble(),
+                                    codePayment: _codePayment,
+                                  ),
+                                );
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xff917dfa),
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -246,23 +245,26 @@ class _WalletScreenState extends State<WalletScreen>
 
       // 2. Сразу показываем наше новое модальное окно ожидания
       if (mounted) {
-        print('🟢 [WalletScreen] ОТКРЫВАЕМ НОВОЕ МОДАЛЬНОЕ ОКНО PaymentWaitingModal');
+        print(
+          '🟢 [WalletScreen] ОТКРЫВАЕМ НОВОЕ МОДАЛЬНОЕ ОКНО PaymentWaitingModal',
+        );
         showDialog(
           context: context,
           barrierDismissible: false, // Нельзя закрыть кликом вне окна
           builder: (context) => PaymentWaitingModal(
             orderId: orderId,
             onPaymentComplete: () {
-              print('✅ [WalletScreen] Оплата подтверждена, обновляем данные...');
+              print(
+                '✅ [WalletScreen] Оплата подтверждена, обновляем данные...',
+              );
               _refreshUserData();
 
               final authState = context.read<AuthBloc>().state;
               if (authState.user != null) {
                 final token = _getAuthToken();
-                context.read<WalletBloc>().add(LoadWalletHistory(
-                  userId: authState.user!.id,
-                  token: token,
-                ));
+                context.read<WalletBloc>().add(
+                  LoadWalletHistory(userId: authState.user!.id, token: token),
+                );
               }
             },
           ),
@@ -276,7 +278,7 @@ class _WalletScreenState extends State<WalletScreen>
 
   void _showPaymentLinkOptions(String url, int orderId) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? const Color(0xff233040) : Colors.white,
@@ -298,11 +300,7 @@ class _WalletScreenState extends State<WalletScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              Icon(
-                Icons.info_outline,
-                size: 48,
-                color: Colors.orange,
-              ),
+              Icon(Icons.info_outline, size: 48, color: Colors.orange),
               const SizedBox(height: 16),
               Text(
                 'Не удалось открыть браузер',
@@ -323,7 +321,7 @@ class _WalletScreenState extends State<WalletScreen>
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              
+
               // Кнопка "Скопировать ссылку"
               SizedBox(
                 width: double.infinity,
@@ -363,7 +361,8 @@ class _WalletScreenState extends State<WalletScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => PaymentWaitingModal( // <-- ЗДЕСЬ БЫЛО _PaymentWaitingDialog
+      builder: (context) => PaymentWaitingModal(
+        // <-- ЗДЕСЬ БЫЛО _PaymentWaitingDialog
         orderId: orderId,
         onPaymentComplete: () {
           // Обновляем баланс и историю
@@ -371,10 +370,9 @@ class _WalletScreenState extends State<WalletScreen>
           final authState = context.read<AuthBloc>().state;
           if (authState.user != null) {
             final token = _getAuthToken();
-            context.read<WalletBloc>().add(LoadWalletHistory(
-              userId: authState.user!.id,
-              token: token,
-            ));
+            context.read<WalletBloc>().add(
+              LoadWalletHistory(userId: authState.user!.id, token: token),
+            );
           }
         },
       ),
@@ -390,10 +388,7 @@ class _WalletScreenState extends State<WalletScreen>
           'Оплата',
           style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
         ),
-        content: Text(
-          'Вы завершили оплату?',
-          style: GoogleFonts.montserrat(),
-        ),
+        content: Text('Вы завершили оплату?', style: GoogleFonts.montserrat()),
         actions: [
           TextButton(
             onPressed: () {
@@ -423,11 +418,13 @@ class _WalletScreenState extends State<WalletScreen>
     final authState = context.read<AuthBloc>().state;
     if (authState.user != null) {
       final token = _getAuthToken();
-      context.read<WalletBloc>().add(CheckPaymentStatus(
-        userId: authState.user!.id,
-        token: token,
-        orderId: orderId,
-      ));
+      context.read<WalletBloc>().add(
+        CheckPaymentStatus(
+          userId: authState.user!.id,
+          token: token,
+          orderId: orderId,
+        ),
+      );
     }
   }
 
@@ -441,8 +438,10 @@ class _WalletScreenState extends State<WalletScreen>
 
     try {
       final token = _getAuthToken();
-      print('🔵 [WalletScreen] Token: ${token.isEmpty ? "EMPTY" : "present (${token.length} chars)"}');
-      
+      print(
+        '🔵 [WalletScreen] Token: ${token.isEmpty ? "EMPTY" : "present (${token.length} chars)"}',
+      );
+
       // Получаем обновленные данные профиля через ProfileApiRepository
       final profileRepo = context.read<ProfileBloc>().repository;
       final result = await profileRepo.getUserData(
@@ -451,22 +450,23 @@ class _WalletScreenState extends State<WalletScreen>
       );
 
       print('🔵 [WalletScreen] getUserData result: ${result['status']}');
-      
+
       if (result['status'] == true) {
         final data = result['data'];
         print('🔵 [WalletScreen] Profile data received: ${data.keys}');
-        
+
         // Парсим баланс (может быть строкой с символом валюты)
         final balanceStr = data['balance']?.toString() ?? '0';
         print('🔵 [WalletScreen] Balance string from API: "$balanceStr"');
-        
-        final balance = int.tryParse(balanceStr.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+
+        final balance =
+            int.tryParse(balanceStr.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
         print('🔵 [WalletScreen] Parsed balance: $balance');
-        
+
         // Обновляем пользователя в AuthBloc
         final updatedUser = authState.user!.copyWith(walletBalance: balance);
         context.read<AuthBloc>().add(UserUpdated(updatedUser));
-        
+
         print('✅ [WalletScreen] User balance updated: $balance');
       } else {
         print('🔴 [WalletScreen] Failed to get user data: ${result['error']}');
@@ -479,7 +479,7 @@ class _WalletScreenState extends State<WalletScreen>
   void _showCustomAmountModal() {
     final controller = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -601,10 +601,9 @@ class _WalletScreenState extends State<WalletScreen>
             final authState = context.read<AuthBloc>().state;
             if (authState.user != null) {
               final token = _getAuthToken();
-              context.read<WalletBloc>().add(LoadWalletHistory(
-                userId: authState.user!.id,
-                token: token,
-              ));
+              context.read<WalletBloc>().add(
+                LoadWalletHistory(userId: authState.user!.id, token: token),
+              );
             }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -628,11 +627,18 @@ class _WalletScreenState extends State<WalletScreen>
               scrolledUnderElevation: 0,
               systemOverlayStyle: SystemUiOverlayStyle(
                 statusBarColor: Theme.of(context).appBarTheme.backgroundColor,
-                statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-                statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+                statusBarIconBrightness: isDark
+                    ? Brightness.light
+                    : Brightness.dark,
+                statusBarBrightness: isDark
+                    ? Brightness.dark
+                    : Brightness.light,
               ),
               leading: IconButton(
-                icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
                 onPressed: () => context.pop(),
               ),
               title: Text(
@@ -675,7 +681,7 @@ class _WalletScreenState extends State<WalletScreen>
 
   Widget _buildTopUpTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return RefreshIndicator(
       onRefresh: () async {
         await _refreshUserData();
@@ -683,121 +689,123 @@ class _WalletScreenState extends State<WalletScreen>
       color: const Color(0xff917dfa),
       displacement: 60.0,
       child: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Баланс
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-          decoration: BoxDecoration(
-            color: isDark 
-                ? const Color(0xff233040) // Второстепенный цвет в темной теме
-                : _cardColor.withValues(alpha: 0.325), // Случайный цвет в светлой теме
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  final balance = state.user?.walletBalance ?? 0;
-                  return Text(
-                    '${_formatBalance(balance)} ₽',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white, // Всегда белый цвет для баланса
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Баланс кошелька',
-                style: GoogleFonts.montserrat(
-                  fontSize: 14,
-                  color: Colors.white70,
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Баланс
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xff233040) // Второстепенный цвет в темной теме
+                  : _cardColor.withValues(
+                      alpha: 0.85,
+                    ), // Случайный цвет в светлой теме
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final balance = state.user?.walletBalance ?? 0;
+                    return Text(
+                      '${_formatBalance(balance)} ₽',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white, // Всегда белый цвет для баланса
+                      ),
+                    );
+                  },
                 ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Платёжная система
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xff233040) : const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Платежная система',
-                style: GoogleFonts.montserrat(
-                  fontSize: 13,
-                  color: Colors.grey[600],
+                const SizedBox(height: 8),
+                Text(
+                  'Баланс кошелька',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  // Иконка карты
-                  Container(
-                    width: 40,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4FC3F7), Color(0xFF7E57C2)],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Платёжная система
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xff233040) : const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Платежная система',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Иконка карты
+                    Container(
+                      width: 40,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF4FC3F7), Color(0xFF7E57C2)],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.credit_card,
+                        size: 18,
+                        color: Colors.white,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.credit_card,
-                      size: 18,
-                      color: Colors.white,
+                    const SizedBox(width: 10),
+                    Text(
+                      '$_paymentMethod  $_paymentProvider',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '$_paymentMethod  $_paymentProvider',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black,
+                    const Spacer(),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      color: isDark ? Colors.white54 : Colors.black54,
                     ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    color: isDark ? Colors.white54 : Colors.black54,
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
 
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-        // Суммы пополнения
-        _buildAmountTile(500),
-        const SizedBox(height: 8),
-        _buildAmountTile(1000),
-        const SizedBox(height: 8),
-        _buildAmountTile(3000),
-        const SizedBox(height: 8),
-        _buildAmountTile(null), // Другая сумма
-      ],
+          // Суммы пополнения
+          _buildAmountTile(500),
+          const SizedBox(height: 8),
+          _buildAmountTile(1000),
+          const SizedBox(height: 8),
+          _buildAmountTile(3000),
+          const SizedBox(height: 8),
+          _buildAmountTile(null), // Другая сумма
+        ],
       ),
     );
   }
 
   Widget _buildAmountTile(int? amount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return InkWell(
       onTap: () => _onAmountTap(amount),
       borderRadius: BorderRadius.circular(14),
@@ -830,152 +838,150 @@ class _WalletScreenState extends State<WalletScreen>
 
   Widget _buildHistoryTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return RefreshIndicator(
       onRefresh: () async {
         await _refreshUserData();
         final authState = context.read<AuthBloc>().state;
         if (authState.user != null) {
           final token = _getAuthToken();
-          context.read<WalletBloc>().add(LoadWalletHistory(
-            userId: authState.user!.id,
-            token: token,
-          ));
+          context.read<WalletBloc>().add(
+            LoadWalletHistory(userId: authState.user!.id, token: token),
+          );
         }
         await Future.delayed(Duration(milliseconds: 500));
       },
       color: const Color(0xff917dfa),
       displacement: 60.0,
       child: BlocBuilder<WalletBloc, WalletState>(
-      builder: (context, state) {
-        if (state is WalletLoading) {
-          return Center(
-            child: CircularProgressIndicator(
-              color: Color(0xff917dfa),
-            ),
-          );
-        }
-        
-        if (state is WalletError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
-                SizedBox(height: 16),
-                Text(
-                  state.message,
-                  style: GoogleFonts.montserrat(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        }
-        
-        if (state is WalletHistoryLoaded) {
-          if (state.history.isEmpty) {
+        builder: (context, state) {
+          if (state is WalletLoading) {
+            return Center(
+              child: CircularProgressIndicator(color: Color(0xff917dfa)),
+            );
+          }
+
+          if (state is WalletError) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 64,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  SizedBox(height: 16),
                   Text(
-                    'История пуста',
+                    state.message,
                     style: GoogleFonts.montserrat(
                       fontSize: 16,
-                      color: Colors.grey[500],
+                      color: Colors.grey[600],
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: state.history.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final item = state.history[index];
-              final action = item['action']?.toString() ?? '';
-              final isTopUp = action == '+';
-              final summa = item['summa']?.toString() ?? '0';
-              final name = item['name']?.toString() ?? '';
-              
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xff233040) : const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
+          if (state is WalletHistoryLoaded) {
+            if (state.history.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isTopUp
-                            ? const Color(0xff917dfa).withValues(alpha: 0.12)
-                            : Colors.red.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        isTopUp ? Icons.arrow_downward : Icons.arrow_upward,
-                        color: isTopUp ? const Color(0xff917dfa) : Colors.red,
-                        size: 20,
-                      ),
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 64,
+                      color: Colors.grey[300],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name.isNotEmpty ? name : (isTopUp ? 'Пополнение' : 'Списание'),
-                            style: GoogleFonts.montserrat(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      '${isTopUp ? '+' : '-'}$summa',
+                      'История пуста',
                       style: GoogleFonts.montserrat(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isTopUp ? const Color(0xff917dfa) : Colors.red,
+                        fontSize: 16,
+                        color: Colors.grey[500],
                       ),
                     ),
                   ],
                 ),
               );
-            },
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: state.history.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final item = state.history[index];
+                final action = item['action']?.toString() ?? '';
+                final isTopUp = action == '+';
+                final summa = item['summa']?.toString() ?? '0';
+                final name = item['name']?.toString() ?? '';
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xff233040)
+                        : const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isTopUp
+                              ? const Color(0xff917dfa).withValues(alpha: 0.12)
+                              : Colors.red.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isTopUp ? Icons.arrow_downward : Icons.arrow_upward,
+                          color: isTopUp ? const Color(0xff917dfa) : Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name.isNotEmpty
+                                  ? name
+                                  : (isTopUp ? 'Пополнение' : 'Списание'),
+                              style: GoogleFonts.montserrat(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${isTopUp ? '+' : '-'}$summa',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isTopUp ? const Color(0xff917dfa) : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          }
+
+          // Initial state
+          return Center(
+            child: CircularProgressIndicator(color: Color(0xff917dfa)),
           );
-        }
-        
-        // Initial state
-        return Center(
-          child: CircularProgressIndicator(
-            color: Color(0xff917dfa),
-          ),
-        );
-      },
+        },
       ),
     );
   }

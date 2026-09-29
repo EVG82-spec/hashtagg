@@ -35,6 +35,7 @@ class Shop {
   final int?
   auctionPlace; // 👈 ДОБАВИТЬ (1-5, 6+ = очередь, null = не в аукционе)
   final bool isInAuction; // 👈 ДОБАВИТЬ (участвует ли в аукционе)
+  final int isFirstPage;
 
   // ============================================================
   // ГЕТТЕРЫ ДЛЯ МЕДИА
@@ -95,6 +96,7 @@ class Shop {
     this.banner,
     this.auctionPlace,
     this.isInAuction = false,
+    this.isFirstPage = 1,
   });
 
   // ============================================================
@@ -408,6 +410,9 @@ class Shop {
       slug: slug,
       auctionPlace: json['place'] != null ? _parseInt(json['place']) : null,
       isInAuction: json['is_in_auction'] == true || json['is_in_auction'] == 1,
+      isFirstPage: json['is_first_page'] != null
+          ? _parseInt(json['is_first_page'])
+          : 1,
     );
   }
 

@@ -570,6 +570,12 @@ class _ShopsSliverListState extends State<_ShopsSliverList> {
             final shops = state.shops;
 
             print('📋 [ShopList] Total shops: ${shops.length}');
+            for (var i = 0; i < shops.length; i++) {
+              final shop = shops[i];
+              print(
+                '📋 [ShopList] #$i: ID=${shop.id}, Place=${shop.auctionPlace}, InAuction=${shop.isInAuction}, Title="${shop.title}"',
+              );
+            }
 
             if (shops.isEmpty) {
               return SliverToBoxAdapter(
@@ -597,6 +603,76 @@ class _ShopsSliverListState extends State<_ShopsSliverList> {
                   final shop = shops[index];
                   return _ShopListCard(shop: shop);
                 }, childCount: shops.length),
+              ),
+            );
+          },
+        ),
+
+        // 👇 КНОПКА "ПОКАЗАТЬ ЕЩЁ"
+        BlocBuilder<FeedBloc, FeedState>(
+          builder: (context, state) {
+            // Показываем только если есть ещё и не загружается
+            if (!state.shopsHasMore && !state.shopsIsLoadingMore) {
+              return const SliverToBoxAdapter(child: SizedBox.shrink());
+            }
+
+            return SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                child: Center(
+                  child: state.shopsIsLoadingMore
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF8956FF),
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: () {
+                            print('🔘 [ShopList] Show more tapped');
+                            context.read<FeedBloc>().add(
+                              const LoadMoreShopsEvent(),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8956FF).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: const Color(0xFF8956FF).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Показать ещё',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF8956FF),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Color(0xFF8956FF),
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
               ),
             );
           },
@@ -638,9 +714,30 @@ class _ShopListCard extends StatelessWidget {
 
   const _ShopListCard({super.key, required this.shop});
 
+  /// Окантовка по месту в аукционе
+  /// 1 → Золото 6px, 2 → Серебро 4px, 3 → Бронза 3px, остальные → Обычная 1px
+  BorderSide _getAuctionBorderSide() {
+    // 👇 Окантовка только на первой странице
+    if (shop.isFirstPage != 1) {
+      return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
+    }
+    if (!shop.isInAuction || shop.auctionPlace == null) {
+      return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
+    }
+
+    final place = shop.auctionPlace!;
+
+    if (place == 1) return const BorderSide(color: Color(0xFFFFD700), width: 6);
+    if (place == 2) return const BorderSide(color: Color(0xFFC0C0C0), width: 4);
+    if (place == 3) return const BorderSide(color: Color(0xFFCD7F32), width: 3);
+
+    return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bannerUrl = shop.banner ?? shop.bannerUrl;
+    final borderSide = _getAuctionBorderSide(); // 👈 ДОБАВЛЕНО
 
     return GestureDetector(
       onTap: () {
@@ -653,6 +750,7 @@ class _ShopListCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
+          border: Border.fromBorderSide(borderSide), // 👈 ОКАНТОВКА
           image: bannerUrl != null && bannerUrl.isNotEmpty
               ? DecorationImage(
                   image: NetworkImage(bannerUrl),
@@ -664,6 +762,26 @@ class _ShopListCard extends StatelessWidget {
                 )
               : null,
           boxShadow: [
+            // 👇 Цветная тень по месту
+            if (shop.auctionPlace == 1)
+              BoxShadow(
+                color: const Color(0xFFFFD700).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            if (shop.auctionPlace == 2)
+              BoxShadow(
+                color: const Color(0xFFC0C0C0).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            if (shop.auctionPlace == 3)
+              BoxShadow(
+                color: const Color(0xFFCD7F32).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            // Обычная тень
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
               blurRadius: 12,
@@ -738,31 +856,45 @@ class _ShopListCard extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(height: 8),
-                      // Статистика
+
+                      // Статистика (компактно, с иконками)
                       Row(
                         children: [
+                          // Объявления
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Text(
-                              "${shop.adsCount} ${_pluralize(shop.adsCount)}",
-                              style: GoogleFonts.montserrat(
-                                fontSize: 12,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.local_offer_outlined,
+                                  size: 12,
+                                  color: Colors.white.withOpacity(0.95),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "${shop.adsCount}",
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
+                          // Подписчики
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
+                              horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
@@ -772,12 +904,17 @@ class _ShopListCard extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 12,
+                                  color: Colors.white.withOpacity(0.85),
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  "${shop.subscribersCount} ${_pluralizeSubscribers(shop.subscribersCount)}",
+                                  "${shop.subscribersCount}",
                                   style: GoogleFonts.montserrat(
                                     fontSize: 12,
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withOpacity(0.85),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -831,19 +968,5 @@ class _ShopListCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _pluralize(int count) {
-    if (count % 10 == 1 && count % 100 != 11) return 'объявление';
-    if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100))
-      return 'объявления';
-    return 'объявлений';
-  }
-
-  String _pluralizeSubscribers(int count) {
-    if (count % 10 == 1 && count % 100 != 11) return 'подписчик';
-    if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100))
-      return 'подписчика';
-    return 'подписчиков';
   }
 }

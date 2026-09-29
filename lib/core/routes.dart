@@ -263,8 +263,11 @@ final router = GoRouter(
     GoRoute(
       parentNavigatorKey: _rootNavigatorKey,
       path: '/listing-add',
-      pageBuilder: (context, state) =>
-          const CupertinoPage(child: AddListingScreen()),
+      pageBuilder: (context, state) {
+        final shopIdStr = state.uri.queryParameters['shopId'];
+        final shopId = shopIdStr != null ? int.tryParse(shopIdStr) : null;
+        return CupertinoPage(child: AddListingScreen(shopId: shopId));
+      },
     ),
     GoRoute(
       parentNavigatorKey: _rootNavigatorKey,

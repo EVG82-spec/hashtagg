@@ -6,6 +6,7 @@ import '../bloc/auction_event.dart';
 import '../bloc/auction_state.dart';
 import '../widgets/auction_manual_mode.dart';
 import '../repository/auction_api_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class AuctionModal extends StatefulWidget {
   final int shopId;
@@ -244,14 +245,6 @@ class _AuctionModalState extends State<AuctionModal> {
         children: [
           const Text('💰', style: TextStyle(fontSize: 16)),
           const SizedBox(width: 8),
-          Text(
-            'Доступный баланс:',
-            style: GoogleFonts.montserrat(
-              fontSize: 12,
-              color: textColor.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(width: 6),
           Expanded(
             child: Text(
               '${balance.toStringAsFixed(2)} ₽',
@@ -262,29 +255,17 @@ class _AuctionModalState extends State<AuctionModal> {
               ),
             ),
           ),
+          // 👇 Компактная кнопка [+] без текста
           GestureDetector(
-            onTap: () => _showTopUpInfo(context),
+            onTap: () => _showTopUpSheet(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF3498db),
-                borderRadius: BorderRadius.circular(20),
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Color(0xFF3498db),
+                shape: BoxShape.circle,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.add, color: Colors.white, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Пополнить',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -642,20 +623,168 @@ class _AuctionModalState extends State<AuctionModal> {
     );
   }
 
-  void _showTopUpInfo(BuildContext context) {
-    showDialog(
+  /// BottomSheet с выбором суммы пополнения
+  void _showTopUpSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xff1a1a2e) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Пополнение баланса'),
-        content: const Text(
-          'Для пополнения баланса перейдите в раздел "Кошелёк" в профиле.',
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Понятно'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Заголовок
+            Row(
+              children: [
+                const Text('💳', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Пополнение баланса',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(sheetContext),
+                  child: Icon(Icons.close, color: textColor, size: 22),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Плитки с суммами ──
+            Row(
+              children: [
+                _buildAmountTile(sheetContext, 500),
+                const SizedBox(width: 8),
+                _buildAmountTile(sheetContext, 1000, isPopular: true),
+                const SizedBox(width: 8),
+                _buildAmountTile(sheetContext, 1500),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Переход в кошелёк ──
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.pop(context); // Закрыть модалку аукциона
+
+                  // 👇 Переход в кошелёк
+                  context.push('/wallet');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3498db),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Перейти в кошелёк',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              'Полное пополнение доступно в разделе "Кошелёк"',
+              style: GoogleFonts.montserrat(fontSize: 11, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Плитка с суммой
+  Widget _buildAmountTile(
+    BuildContext context,
+    double amount, {
+    bool isPopular = false,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.pop(context);
+          // 👇 Открыть кошелёк с предзаполненной суммой
+          // Пока просто открываем кошелёк
+          context.push('/wallet');
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xff2a2a3e) : const Color(0xFFf8f9fa),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isPopular ? const Color(0xFF2ecc71) : Colors.transparent,
+              width: 2,
+            ),
           ),
-        ],
+          child: Column(
+            children: [
+              Text(
+                '${amount.toInt()} ₽',
+                style: GoogleFonts.montserrat(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+              if (isPopular) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Популярное',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF2ecc71),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

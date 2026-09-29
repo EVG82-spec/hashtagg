@@ -66,6 +66,67 @@ class ShopApiRepository {
     }
   }
 
+  /// Получение магазинов с пагинацией
+  ///
+  /// Возвращает:
+  /// - `shops`: List<Shop>
+  /// - `has_more`: bool (есть ли следующая страница)
+  /// - `total`: int (всего магазинов)
+  Future<Map<String, dynamic>> getShopsWithPagination({
+    int page = 1,
+    String search = '',
+  }) async {
+    print('📥 [ShopApi] Loading shops (page=$page, search="$search")...');
+
+    try {
+      final box = Hive.box('user');
+      final userData = box.get('user') as Map?;
+      final userId = userData?['id']?.toString() ?? '0';
+
+      final response = await _dio.post(
+        '/systems/ajax/controller.php',
+        data: {
+          'action': 'shop/shops_search_json',
+          'page': page,
+          'search': search,
+          'proxy_user_id': userId,
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      print('📦 [ShopApi] Response status: ${response.statusCode}');
+
+      final data = response.data is String
+          ? jsonDecode(response.data)
+          : response.data;
+
+      if (data['success'] == true && data['data'] != null) {
+        final shopsJson = data['data']['data'] as List;
+        final shops = shopsJson.map((json) {
+          return Shop.fromJson(json as Map<String, dynamic>);
+        }).toList();
+
+        final hasMore = data['data']['has_more'] == true;
+        final total = data['data']['total'] ?? 0;
+
+        print(
+          '✅ [ShopApi] Loaded ${shops.length} shops, hasMore: $hasMore, total: $total',
+        );
+
+        return {'shops': shops, 'has_more': hasMore, 'total': total};
+      }
+
+      print('⚠️ [ShopApi] No shops in response');
+      return {'shops': <Shop>[], 'has_more': false, 'total': 0};
+    } catch (e) {
+      print('❌ [ShopApi] Error loading shops: $e');
+      return {'shops': <Shop>[], 'has_more': false, 'total': 0};
+    }
+  }
+
   /// Хелпер: Shop → Map (для обратной совместимости с текущим кодом)
   Map<String, dynamic> _shopToJson(Shop shop) {
     return {

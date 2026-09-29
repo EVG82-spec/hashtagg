@@ -21,7 +21,9 @@ import 'package:hashtagg/shared/presentation/screens/gallery_picker_screen.dart'
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class AddListingScreen extends StatefulWidget {
-  const AddListingScreen({super.key});
+  final int? shopId; // 👈 ДОБАВЛЕНО
+
+  const AddListingScreen({super.key, this.shopId});
 
   @override
   State<AddListingScreen> createState() => _AddListingScreenState();
@@ -1057,6 +1059,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
         if (_phoneController.text.isNotEmpty)
           'phone': _phoneController.text.trim(),
         'filters': jsonEncode(filtersList),
+        if (widget.shopId != null && widget.shopId! > 0)
+          'ads_id_shop': widget.shopId,
       };
 
       // Создаем объявление

@@ -183,58 +183,65 @@ class ShopActions extends StatelessWidget {
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      height: 44, // 👈 было 48
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                      ), // 👈 было 10
                       decoration: BoxDecoration(
                         color: const Color(0xFF8956FF),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _SocialIcon(
-                            iconUrl: 'https://hashtagg.ru/templates/img/tg.png',
-                            url: socialLinks['telegram'] ?? '',
-                            isEditing: isEditing,
-                            label: 'Telegram',
-                            onEdit: onSocialEdit,
-                          ),
-                          const SizedBox(width: 5),
-                          _SocialIcon(
-                            iconUrl: 'https://hashtagg.ru/templates/img/vk.png',
-                            url: socialLinks['vk'] ?? '',
-                            isEditing: isEditing,
-                            label: 'VK',
-                            onEdit: onSocialEdit,
-                          ),
-                          const SizedBox(width: 5),
-                          _SocialIcon(
-                            iconUrl:
-                                'https://hashtagg.ru/templates/img/max.png',
-                            url: socialLinks['max'] ?? '',
-                            isEditing: isEditing,
-                            label: 'Max',
-                            onEdit: onSocialEdit,
-                          ),
-                          // Карандаш (только в режиме редактора)
-                          if (isEditing && onSocialEdit != null && hasService)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: GestureDetector(
-                                onTap: onSocialEdit,
-                                child: Icon(
-                                  Icons.edit,
-                                  size: 16,
-                                  color: Colors.white,
+                      child: FittedBox(
+                        // 👈 ДОБАВИТЬ
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _SocialIcon(
+                              iconUrl:
+                                  'https://hashtagg.ru/templates/img/tg.png',
+                              url: socialLinks['telegram'] ?? '',
+                              isEditing: isEditing,
+                              label: 'Telegram',
+                              onEdit: onSocialEdit,
+                            ),
+                            const SizedBox(width: 4), // 👈 было 5
+                            _SocialIcon(
+                              iconUrl:
+                                  'https://hashtagg.ru/templates/img/vk.png',
+                              url: socialLinks['vk'] ?? '',
+                              isEditing: isEditing,
+                              label: 'VK',
+                              onEdit: onSocialEdit,
+                            ),
+                            const SizedBox(width: 4), // 👈 было 5
+                            _SocialIcon(
+                              iconUrl:
+                                  'https://hashtagg.ru/templates/img/max.png',
+                              url: socialLinks['max'] ?? '',
+                              isEditing: isEditing,
+                              label: 'Max',
+                              onEdit: onSocialEdit,
+                            ),
+                            // Карандаш (только в режиме редактора)
+                            if (isEditing && onSocialEdit != null && hasService)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: GestureDetector(
+                                  onTap: onSocialEdit,
+                                  child: const Icon(
+                                    Icons.edit,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-
               // ЕСЛИ НЕТ УСЛУГИ И ЭТО ЧЕРНОВИК/МОДЕРАЦИЯ - ЗАМОЧЕК
               if (!hasService &&
                   isOwner &&
@@ -258,7 +265,7 @@ class ShopActions extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => context.push('/listing-add'),
+                onPressed: () => context.push('/listing-add?shopId=${shop.id}'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8956FF),
                   foregroundColor: Colors.white,
@@ -506,21 +513,22 @@ class _SocialIcon extends StatelessWidget {
         }
       },
       child: Container(
-        width: 30,
-        height: 30,
+        width: 26, // 👈 было 30
+        height: 26, // 👈 было 30
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.2),
           shape: BoxShape.circle,
         ),
+        clipBehavior: Clip.antiAlias, // 👈 ДОБАВИТЬ (обрезает всё лишнее)
         child: Center(
           child: Image.network(
             iconUrl,
-            width: 20,
-            height: 20,
-            fit: BoxFit.contain,
+            width: 16, // 👈 было 20
+            height: 16, // 👈 было 20
+            fit: BoxFit.contain, // 👈 гарантирует, что не выйдет
             color: Colors.white,
             errorBuilder: (_, __, ___) =>
-                Icon(Icons.link, size: 16, color: Colors.white),
+                const Icon(Icons.link, size: 14, color: Colors.white),
           ),
         ),
       ),
