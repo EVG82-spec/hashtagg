@@ -20,6 +20,9 @@ import 'package:hashtagg/shared/presentation/bloc/auth_bloc.dart';
 import 'package:hashtagg/shared/presentation/screens/gallery_picker_screen.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
+import 'package:flutter_image_compress/flutter_image_compress.dart'; // 👈 НОВЫЙ
+import 'package:path_provider/path_provider.dart'; // 👈 НОВЫЙ
+
 class AddListingScreen extends StatefulWidget {
   final int? shopId; // 👈 ДОБАВЛЕНО
 
@@ -667,14 +670,72 @@ class _AddListingScreenState extends State<AddListingScreen> {
       limit: 30 - _photoFiles.length,
     );
 
-    if (images != null && images.isNotEmpty) {
-      // Конвертируем XFile → File (правильный способ)
-      final List<File> files = images.map((xFile) => File(xFile.path)).toList();
+    if (images == null || images.isEmpty) return;
+
+    print('📸 [AddPhoto] Selected ${images.length} images');
+
+    // Показываем загрузку (конвертация занимает время)
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xff917dfa)),
+        ),
+      );
+    }
+
+    try {
+      final List<File> files = [];
+      final dir = await getTemporaryDirectory();
+
+      for (int i = 0; i < images.length; i++) {
+        final xFile = images[i];
+
+        try {
+          // Читаем байты
+          final bytes = await xFile.readAsBytes();
+          print(
+            '📸 [AddPhoto] #$i original: ${(bytes.length / 1024 / 1024).toStringAsFixed(2)} MB',
+          );
+
+          // ✅ Сжимаем + конвертируем в JPEG (решает HEIC)
+          final compressedBytes = await FlutterImageCompress.compressWithList(
+            bytes,
+            quality: 85,
+            minWidth: 1920,
+            minHeight: 1920,
+            format: CompressFormat.jpeg,
+          );
+
+          print(
+            '📸 [AddPhoto] #$i compressed: ${(compressedBytes.length / 1024 / 1024).toStringAsFixed(2)} MB',
+          );
+
+          // Сохраняем в постоянную папку
+          final newPath =
+              '${dir.path}/photo_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+          final newFile = File(newPath);
+          await newFile.writeAsBytes(compressedBytes);
+
+          files.add(newFile);
+        } catch (e) {
+          print('❌ [AddPhoto] Error processing #$i: $e');
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Закрываем диалог загрузки
 
       setState(() {
         _photoFiles.addAll(files);
       });
       print('✅ [AddListing] Added ${files.length} photos');
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      print('❌ [AddPhoto] Fatal error: $e');
+      showSwipeDownNotification(context, message: 'Ошибка обработки фото: $e');
     }
   }
 
@@ -1687,6 +1748,21 @@ class _AddListingScreenState extends State<AddListingScreen> {
                                       width: 90,
                                       height: 90,
                                       fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        print(
+                                          '❌ [Photo] Error rendering #$index: $error',
+                                        );
+                                        return Container(
+                                          width: 90,
+                                          height: 90,
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.broken_image,
+                                            color: Colors.grey,
+                                            size: 30,
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
                                   // Водяной знак – точно по центру
