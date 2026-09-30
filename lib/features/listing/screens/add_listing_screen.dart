@@ -1104,7 +1104,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       });
 
       final adData = {
-        'c_id': _categoryId!,
+        'cat_id': _categoryId!,
         'title': _titleController.text.trim(),
         'text': _descriptionController.text.trim(),
         'city_id': _cityId!,
@@ -1121,7 +1121,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
           'phone': _phoneController.text.trim(),
         'filters': jsonEncode(filtersList),
         if (widget.shopId != null && widget.shopId! > 0)
-          'shop_id': widget.shopId,
+          'ads_id_shop': widget.shopId,
       };
 
       // Создаем объявление
