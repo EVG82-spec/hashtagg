@@ -1138,22 +1138,28 @@ class _AddListingScreenState extends State<AddListingScreen> {
         final adId = result['id'];
         final adStatus = result['ad_status'];
 
-        // Если статус 6 (Ждет оплаты), перенаправляем на профиль в архивные
         if (adStatus == 6) {
+          // Ждёт оплаты → архив
           showSwipeDownNotification(
             context,
-            message:
-                'Необходимо внести оплату для публикации. Нажмите на меню управления объявлением, чтобы произвести оплату.',
-            duration: Duration(seconds: 15),
+            message: 'Необходимо внести оплату для публикации.',
+            duration: const Duration(seconds: 15),
           );
-          // Переходим на профиль с сортировкой "archive"
           context.go('/profile?sorting=archive');
+        } else if (adStatus == 7) {
+          // 👈 НОВОЕ: отклонено (некорректный заголовок / чёрный список)
+          showSwipeDownNotification(
+            context,
+            message: 'Объявление отклонено. Проверьте заголовок и описание.',
+            duration: const Duration(seconds: 5),
+          );
+          context.go('/profile'); // ← в профиль, НЕ на объявление
         } else {
+          // ✅ OK (0 — модерация, 1 — активно)
           showSwipeDownNotification(
             context,
             message: 'Объявление создано успешно!',
           );
-          // Переходим к просмотру объявления
           context.go('/listing/$adId');
         }
       } else {
