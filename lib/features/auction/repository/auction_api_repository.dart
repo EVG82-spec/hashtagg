@@ -63,6 +63,7 @@ class AuctionApiRepository {
   Future<Map<String, dynamic>> placeBid({
     required int shopId,
     required int targetPlace,
+    required double bidPrice,
   }) async {
     final auth = _getAuthData();
 
@@ -74,6 +75,7 @@ class AuctionApiRepository {
         'action': 'auction/bid',
         'shop_id': shopId,
         'target_place': targetPlace,
+        'bid_price': bidPrice, // 👈 ДОБАВИТЬ
         'proxy_user_id': auth['user_id'],
         'token': auth['token'],
       },
