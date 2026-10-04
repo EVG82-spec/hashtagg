@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hashtagg/features/auction/models/auction_place.dart';
 import '../bloc/auction_bloc.dart';
 import '../bloc/auction_event.dart';
 import '../bloc/auction_state.dart';
 import '../widgets/auction_manual_mode.dart';
 import '../repository/auction_api_repository.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/auction_bid_modal.dart';
+import '../models/auction_place.dart';
 
 class AuctionModal extends StatefulWidget {
   final int shopId;
@@ -32,6 +35,7 @@ class AuctionModal extends StatefulWidget {
 
 class _AuctionModalState extends State<AuctionModal> {
   bool _showHistory = false;
+  bool _agreementChecked = false;
 
   @override
   void initState() {
@@ -276,6 +280,9 @@ class _AuctionModalState extends State<AuctionModal> {
   // ─────────────────────────────────────────────────
   // Статус участия (компактно)
   // ─────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
+  // Статус участия (компактно)
+  // ─────────────────────────────────────────────────
   Widget _buildStatusRow(BuildContext context, dynamic status) {
     if (status.isParticipant) {
       // Форматируем дату
@@ -324,8 +331,9 @@ class _AuctionModalState extends State<AuctionModal> {
       );
     }
 
+    // ── Не активировано: чекбокс + кнопка ──
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFfff3cd),
         borderRadius: BorderRadius.circular(8),
@@ -333,34 +341,97 @@ class _AuctionModalState extends State<AuctionModal> {
           left: BorderSide(color: Color(0xFFffc107), width: 3),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('🔒', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              'Участие не активировано',
-              style: GoogleFonts.montserrat(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF856404),
+          // ── Заголовок ──
+          Row(
+            children: [
+              const Text('🔒', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Text(
+                'Участие не активировано',
+                style: GoogleFonts.montserrat(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF856404),
+                ),
               ),
-            ),
+            ],
           ),
-          GestureDetector(
-            onTap: () => _onActivate(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFf7971e),
-                borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 10),
+
+          // ── Чекбокс + ссылка ──
+          Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Checkbox(
+                  value: _agreementChecked,
+                  onChanged: (v) {
+                    setState(() {
+                      _agreementChecked = v ?? false;
+                    });
+                  },
+                  activeColor: const Color(0xFF2ecc71),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'Я согласен с ',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 11,
+                        color: const Color(0xFF856404),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showAgreementModal(context),
+                      child: Text(
+                        'условиями аукциона',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 11,
+                          color: const Color(0xFF3498db),
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // ── Кнопка "Активировать" ──
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _agreementChecked ? () => _onActivate(context) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFf7971e),
+                disabledBackgroundColor: const Color(0xFFe0e0e0),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
               ),
               child: Text(
-                'Активировать 500₽',
+                'Активировать за 500 ₽',
                 style: GoogleFonts.montserrat(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1a1a2e),
+                  color: _agreementChecked
+                      ? const Color(0xFF1a1a2e)
+                      : Colors.grey.shade500,
                 ),
               ),
             ),
@@ -368,9 +439,8 @@ class _AuctionModalState extends State<AuctionModal> {
         ],
       ),
     );
-  }
+  } // ─────────────────────────────────────────────────
 
-  // ─────────────────────────────────────────────────
   // Жёлтый блок очереди
   // ─────────────────────────────────────────────────
   Widget _buildQueueBanner(BuildContext context, int position) {
@@ -589,13 +659,58 @@ class _AuctionModalState extends State<AuctionModal> {
   // ─────────────────────────────────────────────────
   // Действия
   // ─────────────────────────────────────────────────
-  void _onBid(BuildContext context, int place) {
-    context.read<AuctionBloc>().add(
-      PlaceBid(shopId: widget.shopId, targetPlace: place),
+  void _onBid(BuildContext context, AuctionPlace place) {
+    // Если пустое — сразу "Занять за стартовую"
+    if (place.isEmpty) {
+      context.read<AuctionBloc>().add(
+        PlaceBid(
+          shopId: widget.shopId,
+          targetPlace: place.place,
+          bidPrice: place.startPrice,
+        ),
+      );
+      return;
+    }
+
+    // Если чужое — открываем мини-модалку
+    if (!place.isMyShop) {
+      _showBidModal(context, place);
+    }
+  }
+
+  void _showBidModal(BuildContext context, AuctionPlace place) {
+    final state = context.read<AuctionBloc>().state;
+    if (state is! AuctionLoaded) return;
+
+    AuctionBidModal.show(
+      context: context,
+      place: place,
+      userBalance: state.status.balance,
+      onConfirm: (bidPrice) {
+        context.read<AuctionBloc>().add(
+          PlaceBid(
+            shopId: widget.shopId,
+            targetPlace: place.place,
+            bidPrice: bidPrice,
+          ),
+        );
+      },
     );
   }
 
   void _onActivate(BuildContext context) {
+    // Проверка чекбокса
+    if (!_agreementChecked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Необходимо согласиться с условиями аукциона'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Подтверждение
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -785,6 +900,165 @@ class _AuctionModalState extends State<AuctionModal> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAgreementModal(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xff1a1a2e) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: 600,
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Заголовок ──
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1a1a2e),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Условия участия в аукционе',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(dialogContext),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white70,
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Тело ──
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _agreementSection(
+                        '1. Общие положения',
+                        'Участие в аукционе даёт право выкупить любое место в ТОП-5 '
+                            'или встать в очередь. Активация участия не гарантирует место в ТОП-5.',
+                        textColor,
+                      ),
+                      _agreementSection(
+                        '2. Стоимость участия',
+                        'Стоимость активации — 500 ₽. Срок действия участия — 30 дней '
+                            'с момента активации. По истечении срока участие нужно активировать заново.',
+                        textColor,
+                      ),
+                      _agreementSection(
+                        '3. Правила ставок',
+                        'Шаг аукциона — 100 ₽. Минимальная ставка = текущая цена места + 100 ₽. '
+                            'Максимальная ставка — 100 000 ₽. Свободное место = стартовая цена слота.',
+                        textColor,
+                      ),
+                      _agreementSection(
+                        '4. Каскадное смещение',
+                        'При выкупе места все магазины ниже сдвигаются на +1 позицию. '
+                            'Магазин с 5-го места вылетает в очередь. Цены упавших магазинов не меняются.',
+                        textColor,
+                      ),
+                      _agreementSection(
+                        '5. Возврат средств',
+                        'Средства, потраченные на активацию и ставки, не возвращаются. '
+                            'Даже если магазин вылетел из ТОП-5, деньги не возвращаются.',
+                        textColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Кнопка "Понятно" ──
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1a1a2e),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'Понятно',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _agreementSection(String title, String text, Color textColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.montserrat(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            style: GoogleFonts.montserrat(
+              fontSize: 13,
+              height: 1.5,
+              color: textColor.withOpacity(0.8),
+            ),
+          ),
+        ],
       ),
     );
   }

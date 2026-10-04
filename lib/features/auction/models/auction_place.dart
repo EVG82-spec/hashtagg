@@ -4,7 +4,7 @@ class AuctionPlace {
   final int? shopId;
   final String shopName;
   final double bidPrice;
-  final double nextBid;
+  final double minimumBid; // 👈 переименовали nextBid → minimumBid
   final bool isMyShop;
   final bool isEmpty;
 
@@ -14,7 +14,7 @@ class AuctionPlace {
     this.shopId,
     required this.shopName,
     required this.bidPrice,
-    required this.nextBid,
+    required this.minimumBid,
     required this.isMyShop,
     required this.isEmpty,
   });
@@ -37,8 +37,16 @@ class AuctionPlace {
     }
   }
 
-  /// Цена для действия (выкуп или занятие)
-  double get actionPrice => isEmpty ? startPrice : nextBid;
+  /// Цена для действия (выкуп занятого места или занятие пустого)
+  /// Занятое → текущая цена (bid_price) — её показываем на кнопке
+  /// Пустое → стартовая цена
+  double get actionPrice => isEmpty ? startPrice : bidPrice;
+
+  /// Минимальная ставка для выкупа (bid_price + 100)
+  double get minBidPrice => isEmpty ? startPrice : minimumBid;
+
+  /// Есть ли возможность поднять (не пустое)
+  bool get canRaise => !isEmpty && !isMyShop;
 
   factory AuctionPlace.fromJson(Map<String, dynamic> json) {
     return AuctionPlace(
@@ -47,7 +55,7 @@ class AuctionPlace {
       shopId: json['shop_id'] != null ? _parseInt(json['shop_id']) : null,
       shopName: json['shop_name']?.toString() ?? '—',
       bidPrice: _parseDouble(json['bid_price']),
-      nextBid: _parseDouble(json['next_bid']),
+      minimumBid: _parseDouble(json['minimum_bid'] ?? json['next_bid']),
       isMyShop: json['is_my_shop'] == true || json['is_my_shop'] == 1,
       isEmpty: json['is_empty'] == true || json['is_empty'] == 1,
     );

@@ -42,17 +42,16 @@ class AuctionBloc extends Bloc<AuctionEvent, AuctionState> {
     if (state is! AuctionLoaded) return;
     final currentState = state as AuctionLoaded;
 
-    // Оптимистичное обновление
     emit(currentState.copyWith(isBidding: true, errorMessage: null));
 
     try {
       final response = await repository.placeBid(
         shopId: event.shopId,
         targetPlace: event.targetPlace,
+        bidPrice: event.bidPrice, // 👈 ДОБАВИТЬ
       );
 
       if (response['success'] == true) {
-        // Перезагружаем данные
         final status = await repository.getStatus(shopId: event.shopId);
         emit(AuctionLoaded(status: status));
       } else {
@@ -64,7 +63,6 @@ class AuctionBloc extends Bloc<AuctionEvent, AuctionState> {
         );
       }
     } catch (e) {
-      print('❌ [AuctionBloc] PlaceBid error: $e');
       emit(
         currentState.copyWith(
           isBidding: false,

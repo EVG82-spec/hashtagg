@@ -20,11 +20,16 @@ class LoadAuctionStatus extends AuctionEvent {
 class PlaceBid extends AuctionEvent {
   final int shopId;
   final int targetPlace;
+  final double bidPrice; // 👈 ДОБАВИТЬ
 
-  const PlaceBid({required this.shopId, required this.targetPlace});
+  const PlaceBid({
+    required this.shopId,
+    required this.targetPlace,
+    required this.bidPrice, // 👈 ДОБАВИТЬ
+  });
 
   @override
-  List<Object?> get props => [shopId, targetPlace];
+  List<Object?> get props => [shopId, targetPlace, bidPrice]; // 👈
 }
 
 class ActivateParticipation extends AuctionEvent {

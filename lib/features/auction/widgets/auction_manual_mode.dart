@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hashtagg/features/auction/models/auction_place.dart';
 import '../models/auction_status.dart';
 
 class AuctionManualMode extends StatelessWidget {
   final AuctionStatus status;
   final bool isBidding;
-  final ValueChanged<int> onBid;
+  final ValueChanged<AuctionPlace> onBid; // 👈 было ValueChanged<int>
 
   const AuctionManualMode({
     Key? key,
@@ -41,8 +42,6 @@ class AuctionManualMode extends StatelessWidget {
               children: [
                 _headerCell('Место', flex: 16),
                 _headerCell('Магазин', flex: 30),
-                _headerCell('Текущая\nставка', flex: 18),
-                _headerCell('Следующая\nставка', flex: 18),
                 _headerCell('Действие', flex: 18),
               ],
             ),
@@ -85,17 +84,13 @@ class AuctionManualMode extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(BuildContext context, place) {
+  Widget _buildRow(BuildContext context, AuctionPlace place) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
 
-    // Логика кнопки:
-    // 1. Моё место → заблокирована
-    // 2. Баланс < цена → заблокирована
-    // 3. Пустое → "Занять за X ₽"
-    // 4. Чужое → "↑ X ₽"
-    final price = place.actionPrice;
-    final hasEnoughBalance = status.balance >= price;
+    // 👇 ПРАВИЛЬНАЯ ЛОГИКА:
+    // Для проверки баланса нужно минимум, чтобы выкупить
+    final hasEnoughBalance = status.balance >= place.minBidPrice;
 
     final bool canBid =
         status.isParticipant && !place.isMyShop && hasEnoughBalance;
@@ -152,43 +147,8 @@ class AuctionManualMode extends StatelessWidget {
             ),
           ),
 
-          // Текущая ставка
-          Expanded(
-            flex: 18,
-            child: Text(
-              place.isEmpty ? '—' : '${place.bidPrice.toInt()} ₽',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Следующая ставка
-          Expanded(
-            flex: 18,
-            child: Text(
-              '${place.nextBid.toInt()} ₽',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFFe67e22),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
           // Действие
-          Expanded(
-            flex: 18,
-            child: _buildActionButton(context, place, canBid, price),
-          ),
+          Expanded(flex: 18, child: _buildActionButton(context, place, canBid)),
         ],
       ),
     );
@@ -196,26 +156,49 @@ class AuctionManualMode extends StatelessWidget {
 
   Widget _buildActionButton(
     BuildContext context,
-    dynamic place,
+    AuctionPlace place,
     bool canBid,
-    double price,
   ) {
-    // Моё место → пусто (без кнопки)
+    // 1. Моё место → «Ваше место» (заблокирована)
     if (place.isMyShop) {
       return Center(
-        child: Text(
-          '—',
-          style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            'Ваше место',
+            style: GoogleFonts.montserrat(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       );
     }
 
-    // Кнопка
+    // 2. Чужое место → «Поднять за X ₽» (bid_price — текущая)
+    // 3. Пустое место → «Занять за X ₽» (startPrice — стартовая)
+    final displayPrice = place.isEmpty ? place.startPrice : place.bidPrice;
+    final actionText = place.isEmpty
+        ? 'Занять за ${displayPrice.toInt()} ₽'
+        : 'Поднять за ${displayPrice.toInt()} ₽';
+
     return Center(
       child: SizedBox(
         height: 28,
         child: ElevatedButton(
-          onPressed: canBid && !isBidding ? () => onBid(place.place) : null,
+          onPressed: canBid && !isBidding
+              ? () =>
+                    onBid(
+                      place,
+                    ) // 👈 передаём весь place, не только place.place
+              : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: canBid
                 ? const Color(0xFF2ecc71)
@@ -239,11 +222,9 @@ class AuctionManualMode extends StatelessWidget {
                   ),
                 )
               : Text(
-                  place.isEmpty
-                      ? 'Занять ${price.toInt()}₽'
-                      : '↑ ${price.toInt()}₽',
+                  actionText,
                   style: GoogleFonts.montserrat(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
