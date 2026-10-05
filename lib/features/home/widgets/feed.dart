@@ -517,7 +517,7 @@ class _ShopsSliverListState extends State<_ShopsSliverList> {
 
     return SliverMainAxisGroup(
       slivers: [
-        // 👇 ПОЛЕ ПОИСКА
+        // ── 1. ПОЛЕ ПОИСКА ──
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -564,7 +564,62 @@ class _ShopsSliverListState extends State<_ShopsSliverList> {
           ),
         ),
 
-        // 👇 СПИСОК МАГАЗИНОВ
+        // ── 2. КНОПКА «БИТВА ЗА ТОП» (только владельцам) ──
+        SliverToBoxAdapter(
+          child: BlocBuilder<FeedBloc, FeedState>(
+            builder: (context, state) {
+              if (state.userShopId <= 0) {
+                return const SizedBox.shrink();
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: GestureDetector(
+                  onTap: () => AuctionModal.show(context, state.userShopId),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFf7971e), Color(0xFFffd200)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFf7971e).withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('⚡', style: TextStyle(fontSize: 18)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Участвуйте в аукционе',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1a1a2e),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // ── 3. СПИСОК МАГАЗИНОВ ──
         BlocBuilder<FeedBloc, FeedState>(
           builder: (context, state) {
             final shops = state.shops;
@@ -608,10 +663,9 @@ class _ShopsSliverListState extends State<_ShopsSliverList> {
           },
         ),
 
-        // 👇 КНОПКА "ПОКАЗАТЬ ЕЩЁ"
+        // ── 4. КНОПКА «ПОКАЗАТЬ ЕЩЁ» ──
         BlocBuilder<FeedBloc, FeedState>(
           builder: (context, state) {
-            // Показываем только если есть ещё и не загружается
             if (!state.shopsHasMore && !state.shopsIsLoadingMore) {
               return const SliverToBoxAdapter(child: SizedBox.shrink());
             }
@@ -928,42 +982,6 @@ class _ShopListCard extends StatelessWidget {
                 ),
               ],
             ),
-
-            // 👇 КНОПКА "В ТОП" в правом верхнем углу
-            if (shop.isOwner)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: () => AuctionModal.show(context, shop.id),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFf7971e), Color(0xFFffd200)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFf7971e).withOpacity(0.4),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.arrow_upward,
-                        color: Color(0xFF1a1a2e),
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),

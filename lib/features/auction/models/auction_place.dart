@@ -76,4 +76,11 @@ class AuctionPlace {
     if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
   }
+
+  /// Можно ли поднять это место
+  /// Если моё место выше (меньше) этого — нельзя
+  bool canRaiseFromMyPlace(int? myPlace) {
+    if (myPlace == null) return true; // вне ТОП-5 → всё доступно
+    return place < myPlace; // моё место 3 → доступны 1, 2
+  }
 }

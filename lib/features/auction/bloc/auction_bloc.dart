@@ -133,7 +133,7 @@ class AuctionBloc extends Bloc<AuctionEvent, AuctionState> {
     _autoUpdateTimer?.cancel();
     _currentShopId = event.shopId;
     _autoUpdateTimer = Timer.periodic(
-      const Duration(seconds: 3),
+      const Duration(seconds: 15),
       (_) => add(AuctionTick(shopId: event.shopId)),
     );
   }
