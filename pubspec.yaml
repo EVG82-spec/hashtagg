@@ -1,12 +1,7 @@
 name: hashtagg
 description: "A new Flutter project."
 publish_to: 'none'
-<<<<<<< HEAD
-version: 1.0.2+13
-=======
 version: 1.0.2+14
->>>>>>> 31a2ae15d662f49260b6e484f005ddec73ef5b0f
-
 environment:
   sdk: ^3.11.0
 
