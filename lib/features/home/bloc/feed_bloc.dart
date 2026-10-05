@@ -51,6 +51,10 @@ class FeedState {
   final bool shopsHasMore;
   final bool shopsIsLoadingMore;
 
+  // 👇 НОВЫЕ
+  final int userShopId;
+  final String userShopName;
+
   const FeedState({
     this.category = FeedCategory.recommendations,
     this.currentPage = 1,
@@ -62,6 +66,8 @@ class FeedState {
     this.shopsCurrentPage = 1,
     this.shopsHasMore = false,
     this.shopsIsLoadingMore = false,
+    this.userShopId = 0,
+    this.userShopName = '',
   });
 
   FeedState copyWith({
@@ -75,6 +81,8 @@ class FeedState {
     int? shopsCurrentPage,
     bool? shopsHasMore,
     bool? shopsIsLoadingMore,
+    int? userShopId,
+    String? userShopName,
   }) {
     return FeedState(
       category: category ?? this.category,
@@ -87,6 +95,8 @@ class FeedState {
       shopsCurrentPage: shopsCurrentPage ?? this.shopsCurrentPage,
       shopsHasMore: shopsHasMore ?? this.shopsHasMore,
       shopsIsLoadingMore: shopsIsLoadingMore ?? this.shopsIsLoadingMore,
+      userShopId: userShopId ?? this.userShopId,
+      userShopName: userShopName ?? this.userShopName,
     );
   }
 }
@@ -123,6 +133,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
       final shops = result['shops'] as List<Shop>;
       final hasMore = result['has_more'] as bool;
+      final userShopId = result['user_shop_id'] as int? ?? 0;
+      final userShopName = result['user_shop_name'] as String? ?? '';
 
       print('✅ [FeedBloc] Found ${shops.length} shops, hasMore: $hasMore');
 
@@ -133,6 +145,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
           shopsCurrentPage: 1,
           shopsHasMore: hasMore,
           shopsIsLoadingMore: false,
+          userShopId: userShopId,
+          userShopName: userShopName,
         ),
       );
     } catch (e) {
@@ -161,6 +175,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
         final shops = result['shops'] as List<Shop>;
         final hasMore = result['has_more'] as bool;
+        final userShopId = result['user_shop_id'] as int? ?? 0;
+        final userShopName = result['user_shop_name'] as String? ?? '';
 
         print('✅ [FeedBloc] Loaded ${shops.length} shops, hasMore: $hasMore');
 
@@ -173,6 +189,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
             shopsHasMore: hasMore,
             shopsIsLoadingMore: false,
             ads: const [],
+            userShopId: userShopId,
+            userShopName: userShopName,
           ),
         );
       } catch (e) {
@@ -217,6 +235,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
       final newShops = result['shops'] as List<Shop>;
       final hasMore = result['has_more'] as bool;
+      final userShopId = result['user_shop_id'] as int? ?? 0;
+      final userShopName = result['user_shop_name'] as String? ?? '';
 
       print(
         '✅ [FeedBloc] Loaded ${newShops.length} more shops, hasMore: $hasMore',
@@ -224,10 +244,12 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
       emit(
         state.copyWith(
-          shops: [...state.shops, ...newShops], // append
+          shops: [...state.shops, ...newShops],
           shopsCurrentPage: nextPage,
           shopsHasMore: hasMore,
           shopsIsLoadingMore: false,
+          userShopId: userShopId,
+          userShopName: userShopName,
         ),
       );
     } catch (e) {

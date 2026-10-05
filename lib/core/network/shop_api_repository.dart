@@ -115,19 +115,38 @@ class ShopApiRepository {
         print(
           '✅ [ShopApi] Loaded ${shops.length} shops, hasMore: $hasMore, total: $total',
         );
+        print('🏪 [ShopApi] user_shop_id: ${data['data']['user_shop_id']}');
 
-        return {'shops': shops, 'has_more': hasMore, 'total': total};
-      }
+        return {
+          'shops': shops,
+          'has_more': hasMore,
+          'total': total,
+          'user_shop_id': data['data']['user_shop_id'] ?? 0,
+          'user_shop_name': data['data']['user_shop_name'] ?? '',
+        };
+      } // 👈 ЗАКРЫВАЮЩАЯ СКОБКА для if — ЭТО ПРОПУСТИЛИ!
 
       print('⚠️ [ShopApi] No shops in response');
-      return {'shops': <Shop>[], 'has_more': false, 'total': 0};
+      return {
+        'shops': <Shop>[],
+        'has_more': false,
+        'total': 0,
+        'user_shop_id': 0,
+        'user_shop_name': '',
+      };
     } catch (e) {
       print('❌ [ShopApi] Error loading shops: $e');
-      return {'shops': <Shop>[], 'has_more': false, 'total': 0};
+      return {
+        'shops': <Shop>[],
+        'has_more': false,
+        'total': 0,
+        'user_shop_id': 0,
+        'user_shop_name': '',
+      };
     }
   }
 
-  /// Хелпер: Shop → Map (для обратной совместимости с текущим кодом)
+  // Хелпер: Shop → Map (для обратной совместимости с текущим кодом)
   Map<String, dynamic> _shopToJson(Shop shop) {
     return {
       'id': shop.id,

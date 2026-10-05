@@ -88,12 +88,19 @@ class AuctionManualMode extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
 
+    // 👈 Проверка блокировки "ниже своего места"
+    final isBelowMyPlace =
+        status.myPlace != null && place.place > status.myPlace!;
+
     // 👇 ПРАВИЛЬНАЯ ЛОГИКА:
     // Для проверки баланса нужно минимум, чтобы выкупить
     final hasEnoughBalance = status.balance >= place.minBidPrice;
 
     final bool canBid =
-        status.isParticipant && !place.isMyShop && hasEnoughBalance;
+        status.isParticipant &&
+        !place.isMyShop &&
+        !isBelowMyPlace &&
+        hasEnoughBalance;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
@@ -159,19 +166,21 @@ class AuctionManualMode extends StatelessWidget {
     AuctionPlace place,
     bool canBid,
   ) {
-    // 1. Моё место → «Ваше место» (заблокирована)
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // 1. Моё место → «Ваше место»
     if (place.isMyShop) {
       return Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
+            color: isDark ? Colors.white10 : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             'Ваше место',
             style: GoogleFonts.montserrat(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade600,
             ),
@@ -182,30 +191,26 @@ class AuctionManualMode extends StatelessWidget {
       );
     }
 
-    // 2. Чужое место → «Поднять за X ₽» (bid_price — текущая)
-    // 3. Пустое место → «Занять за X ₽» (startPrice — стартовая)
+    // 2. Цена на кнопке:
+    // - Пустое → startPrice
+    // - Занятое → bidPrice (текущая цена)
     final displayPrice = place.isEmpty ? place.startPrice : place.bidPrice;
     final actionText = place.isEmpty
-        ? 'Занять за ${displayPrice.toInt()} ₽'
-        : 'Поднять за ${displayPrice.toInt()} ₽';
+        ? 'Занять ${displayPrice.toInt()}₽'
+        : '↑ ${displayPrice.toInt()}₽';
 
     return Center(
       child: SizedBox(
-        height: 28,
+        height: 32,
         child: ElevatedButton(
-          onPressed: canBid && !isBidding
-              ? () =>
-                    onBid(
-                      place,
-                    ) // 👈 передаём весь place, не только place.place
-              : null,
+          onPressed: canBid && !isBidding ? () => onBid(place) : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: canBid
                 ? const Color(0xFF2ecc71)
                 : const Color(0xFFe0e0e0),
             foregroundColor: canBid ? Colors.white : Colors.grey,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            minimumSize: const Size(0, 28),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            minimumSize: const Size(0, 32),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
@@ -214,8 +219,8 @@ class AuctionManualMode extends StatelessWidget {
           ),
           child: isBidding
               ? const SizedBox(
-                  width: 12,
-                  height: 12,
+                  width: 14,
+                  height: 14,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Colors.white,
@@ -224,7 +229,7 @@ class AuctionManualMode extends StatelessWidget {
               : Text(
                   actionText,
                   style: GoogleFonts.montserrat(
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
