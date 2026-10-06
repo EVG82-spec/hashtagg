@@ -1110,6 +1110,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
         'city_id': _cityId!,
         'period': _selectedPeriod,
         'images': jsonEncode(uploadedPhotos),
+        'from_app': 1,
         if (_priceController.text.isNotEmpty)
           'price': double.tryParse(_priceController.text) ?? 0,
         if (_videoController.text.isNotEmpty)
@@ -1125,6 +1126,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
       };
 
       // Создаем объявление
+      print('🔴🔴🔴 [AddListing] adData SENT: $adData');
+      print('🔴🔴🔴 [AddListing] from_app: ${adData['from_app']}');
       final result = await _adsApi.createAd(
         userId: userId,
         token: token,
