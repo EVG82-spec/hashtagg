@@ -1151,7 +1151,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   Widget _buildSettingItem(
     BuildContext context, {
     required String title,
@@ -1642,10 +1641,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               final userIndex = index - 1;
                               final user = state.users[userIndex];
                               final userName = user['name'] ?? 'Пользователь';
-                              final avatar = ApiConfig.replaceMediaUrl(
-                                user['avatar']?.toString() ?? '',
-                              );
+
+                              // 👇 ИСПРАВЛЕНО: превью = первый сторис, фолбэк = аватар
                               final stories = user['stories'] as List? ?? [];
+                              final String previewUrl;
+                              if (stories.isNotEmpty &&
+                                  stories[0]['url'] != null) {
+                                previewUrl = stories[0]['url'].toString();
+                              } else {
+                                previewUrl = user['avatar']?.toString() ?? '';
+                              }
+                              final avatar = ApiConfig.replaceMediaUrl(
+                                previewUrl,
+                              );
+
                               final hasUnviewed = stories.any(
                                 (s) => s['status'] == 1,
                               );

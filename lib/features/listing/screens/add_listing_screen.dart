@@ -20,11 +20,11 @@ import 'package:hashtagg/shared/presentation/bloc/auth_bloc.dart';
 import 'package:hashtagg/shared/presentation/screens/gallery_picker_screen.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
-import 'package:flutter_image_compress/flutter_image_compress.dart'; // 👈 НОВЫЙ
-import 'package:path_provider/path_provider.dart'; // 👈 НОВЫЙ
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AddListingScreen extends StatefulWidget {
-  final int? shopId; // 👈 ДОБАВЛЕНО
+  final int? shopId;
 
   const AddListingScreen({super.key, this.shopId});
 
@@ -35,7 +35,7 @@ class AddListingScreen extends StatefulWidget {
 class _AddListingScreenState extends State<AddListingScreen> {
   final AdsApiRepository _adsApi = AdsApiRepository();
   final ImagePicker _imagePicker = ImagePicker();
-  late final MaskTextInputFormatter _phoneMask; // 👈 ЭТО В КЛАССЕ
+  late final MaskTextInputFormatter _phoneMask;
 
   // ── Данные формы ────────────────────────────────────────────────────────────
   int? _categoryId;
@@ -47,6 +47,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
   final _videoController = TextEditingController();
   final _priceController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _scrollController = ScrollController();
 
   int? _cityId;
   String? _cityName;
@@ -101,8 +102,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
     print('🔵 [AddListing] phoneMask initialized');
 
-    _titleController.addListener(() => setState(() {}));
-    _descriptionController.addListener(() => setState(() {}));
+    // ✅ Используем ValueListenableBuilder или setState только там, где нужно
+    // (счётчики символов в buildCounter)
 
     // ✅ ВЫЗЫВАЕМ ЯВНО
     print('🔵 [AddListing] Calling _loadPhoneFromProfile()...');
@@ -122,6 +123,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
     _videoController.dispose();
     _priceController.dispose();
     _phoneController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -164,6 +166,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       print('🔵 [AddListing] Full options response: ${result['data']}');
 
       if (result['status'] == true) {
+        FocusScope.of(context).unfocus();
         setState(() {
           _categoryOptions = result['data'];
           _isLoadingOptions = false;
@@ -197,6 +200,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       print(
         '🔵 [AddListing] Selected category ID: ${result['id']}, Name: ${result['name']}',
       );
+      FocusScope.of(context).unfocus();
       setState(() {
         _categoryId = result['id'] as int;
         _categoryName = result['name'] as String;
@@ -291,6 +295,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
     if (!mounted) return;
 
     if (result != null) {
+      FocusScope.of(context).unfocus();
       setState(() {
         // Безопасное получение данных с проверкой на null
         final id = result['id'];
@@ -405,6 +410,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
     if (!mounted) return;
     if (result != null) {
+      FocusScope.of(context).unfocus();
       setState(() {
         _address = result['address'];
         _latitude = result['lat'];
@@ -527,6 +533,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
 
     if (selected != null) {
+      FocusScope.of(context).unfocus();
       setState(() {
         _cityId = selected['city_id'] as int;
         _cityName = selected['city_name'] as String;
@@ -628,6 +635,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
 
     if (selected != null) {
+      FocusScope.of(context).unfocus();
       setState(() {
         _selectedFilters[filter['id'].toString()] = [selected];
       });
@@ -726,7 +734,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
       if (!mounted) return;
       Navigator.pop(context); // Закрываем диалог загрузки
-
+      FocusScope.of(context).unfocus();
       setState(() {
         _photoFiles.addAll(files);
       });
@@ -1194,28 +1202,34 @@ class _AddListingScreenState extends State<AddListingScreen> {
     final hintColor = isDark ? Colors.white54 : const Color(0xff999999);
     final iconColor = isDark ? Colors.white54 : const Color(0xff999999);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: inputBgColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value ?? label,
-                style: GoogleFonts.montserrat(
-                  fontSize: 15,
-                  color: value != null ? textColor : hintColor,
+    return Focus(
+      canRequestFocus: false, // 👈 НЕ забирает фокус у TextField
+      child: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus(); // 👈 дополнительно снимаем фокус
+          onTap();
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: inputBgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value ?? label,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 15,
+                    color: value != null ? textColor : hintColor,
+                  ),
                 ),
               ),
-            ),
-            Icon(Icons.chevron_right, color: iconColor),
-          ],
+              Icon(Icons.chevron_right, color: iconColor),
+            ],
+          ),
         ),
       ),
     );
@@ -1324,6 +1338,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1491,18 +1506,22 @@ class _AddListingScreenState extends State<AddListingScreen> {
                                   ),
                                 ),
                               ),
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _isEditingPhone = true;
-                                  });
-                                },
-                                child: Text(
-                                  'Изменить',
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xff917dfa),
+                              Focus(
+                                canRequestFocus: false,
+                                child: TextButton(
+                                  onPressed: () {
+                                    FocusScope.of(context).unfocus();
+                                    setState(() {
+                                      _isEditingPhone = true;
+                                    });
+                                  },
+                                  child: Text(
+                                    'Изменить',
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xff917dfa),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1542,26 +1561,32 @@ class _AddListingScreenState extends State<AddListingScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: _savePhone,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xff917dfa),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 14,
+                            Focus(
+                              canRequestFocus: false,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  FocusScope.of(context).unfocus();
+                                  _savePhone();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xff917dfa),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                _categoryOptions!['added_phone'] == true
-                                    ? 'Обновить'
-                                    : 'Сохранить',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                                child: Text(
+                                  _categoryOptions!['added_phone'] == true
+                                      ? 'Обновить'
+                                      : 'Сохранить',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1582,43 +1607,49 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
                         if (filter['view'] == 'select') ...[
                           // Селектор для одиночного выбора
-                          GestureDetector(
-                            onTap: () => _showFilterSelector(filter),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: inputBgColor,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _getFilterSelectedName(filter) ??
-                                          'Выберите ${filter['name'].toLowerCase()}',
-                                      style: GoogleFonts.montserrat(
-                                        fontSize: 15,
-                                        color:
-                                            _getFilterSelectedName(filter) !=
-                                                null
-                                            ? textColor
-                                            : (isDark
-                                                  ? Colors.white54
-                                                  : const Color(0xff999999)),
+                          Focus(
+                            canRequestFocus: false,
+                            child: GestureDetector(
+                              onTap: () {
+                                FocusScope.of(context).unfocus();
+                                _showFilterSelector(filter);
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: inputBgColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _getFilterSelectedName(filter) ??
+                                            'Выберите ${filter['name'].toLowerCase()}',
+                                        style: GoogleFonts.montserrat(
+                                          fontSize: 15,
+                                          color:
+                                              _getFilterSelectedName(filter) !=
+                                                  null
+                                              ? textColor
+                                              : (isDark
+                                                    ? Colors.white54
+                                                    : const Color(0xff999999)),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Icon(
-                                    Icons.chevron_right,
-                                    color: isDark
-                                        ? Colors.white54
-                                        : const Color(0xff999999),
-                                  ),
-                                ],
+                                    Icon(
+                                      Icons.chevron_right,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : const Color(0xff999999),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -1639,42 +1670,46 @@ class _AddListingScreenState extends State<AddListingScreen> {
                                   ) ??
                                   false;
 
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    if (!_selectedFilters.containsKey(
-                                      filterId,
-                                    )) {
-                                      _selectedFilters[filterId] = [];
-                                    }
-                                    if (isSelected) {
-                                      _selectedFilters[filterId]!.remove(
-                                        itemId,
-                                      );
-                                    } else {
-                                      _selectedFilters[filterId]!.add(itemId);
-                                    }
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? const Color(0xff917dfa)
-                                        : const Color(0xFFF0F4F8),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    item['name'],
-                                    style: GoogleFonts.montserrat(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
+                              return Focus(
+                                canRequestFocus: false,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    FocusScope.of(context).unfocus();
+                                    setState(() {
+                                      if (!_selectedFilters.containsKey(
+                                        filterId,
+                                      )) {
+                                        _selectedFilters[filterId] = [];
+                                      }
+                                      if (isSelected) {
+                                        _selectedFilters[filterId]!.remove(
+                                          itemId,
+                                        );
+                                      } else {
+                                        _selectedFilters[filterId]!.add(itemId);
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
                                       color: isSelected
-                                          ? Colors.white
-                                          : Colors.black87,
+                                          ? const Color(0xff917dfa)
+                                          : const Color(0xFFF0F4F8),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      item['name'],
+                                      style: GoogleFonts.montserrat(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1817,33 +1852,41 @@ class _AddListingScreenState extends State<AddListingScreen> {
                       const SizedBox(height: 10),
                     ],
 
-                    GestureDetector(
-                      onTap: _photoFiles.length < 30 ? _addPhoto : null,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xff917dfa),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.image_outlined,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Добавить фото',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                    Focus(
+                      canRequestFocus: false,
+                      child: GestureDetector(
+                        onTap: _photoFiles.length < 30
+                            ? () {
+                                FocusScope.of(context).unfocus();
+                                _addPhoto();
+                              }
+                            : null,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff917dfa),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.image_outlined,
                                 color: Colors.white,
+                                size: 22,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Text(
+                                'Добавить фото',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1892,39 +1935,47 @@ class _AddListingScreenState extends State<AddListingScreen> {
 
                     // Кнопка истории адресов
                     if (_getLocationHistory().isNotEmpty) ...[
-                      GestureDetector(
-                        onTap: _showLocationHistory,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xff917dfa).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xff917dfa).withOpacity(0.29),
-                              width: 1,
+                      Focus(
+                        canRequestFocus: false,
+                        child: GestureDetector(
+                          onTap: () {
+                            FocusScope.of(context).unfocus();
+                            _showLocationHistory();
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.history,
-                                color: Color(0xff917dfa),
-                                size: 20,
+                            decoration: BoxDecoration(
+                              color: const Color(0xff917dfa).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(
+                                  0xff917dfa,
+                                ).withOpacity(0.29),
+                                width: 1,
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Выбрать из истории',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xff917dfa),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.history,
+                                  color: Color(0xff917dfa),
+                                  size: 20,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Выбрать из истории',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xff917dfa),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -1955,25 +2006,31 @@ class _AddListingScreenState extends State<AddListingScreen> {
                       runSpacing: 8,
                       children: _periodOptions.map((days) {
                         final isSelected = _selectedPeriod == days;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedPeriod = days),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xff917dfa)
-                                  : inputBgColor,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '$days дней',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: isSelected ? Colors.white : textColor,
+                        return Focus(
+                          canRequestFocus: false,
+                          child: GestureDetector(
+                            onTap: () {
+                              FocusScope.of(context).unfocus();
+                              setState(() => _selectedPeriod = days);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xff917dfa)
+                                    : inputBgColor,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$days дней',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isSelected ? Colors.white : textColor,
+                                ),
                               ),
                             ),
                           ),

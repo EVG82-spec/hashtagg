@@ -1014,16 +1014,21 @@ class _SearchScreenState extends State<SearchScreen> {
                       },
                     );
                   }
-
                   // Остальные элементы - сторисы пользователей
                   final userIndex = index - 1;
                   final user = state.users[userIndex];
                   final userName = user['name'] ?? 'Пользователь';
-                  final avatar = ApiConfig.replaceMediaUrl(
-                    user['avatar']?.toString() ?? '',
-                  );
                   final stories = user['stories'] as List? ?? [];
                   final hasUnviewed = stories.any((s) => s['status'] == 1);
+
+                  // 👇 Превью кружка: первый сторис, иначе аватар
+                  String previewUrl;
+                  if (stories.isNotEmpty && stories[0]['url'] != null) {
+                    previewUrl = stories[0]['url'].toString();
+                  } else {
+                    previewUrl = user['avatar']?.toString() ?? '';
+                  }
+                  final avatar = ApiConfig.replaceMediaUrl(previewUrl);
 
                   return GestureDetector(
                     onTap: () {
