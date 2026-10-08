@@ -13,13 +13,27 @@ import YandexMapsMobile
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    
-    YMKMapKit.setApiKey("4aab5e00-30ab-4a8a-b428-63d00203f440")
-    YMKMapKit.sharedInstance()
-    
-    if #available(iOS 10.0, *) {
-      UNUserNotificationCenter.current().delegate = self
-      let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+
+      // 👇 СБРОС BADGE ПРИ СТАРТЕ
+      if #available(iOS 16.0, *) {
+          UNUserNotificationCenter.current().setBadgeCount(0) { error in
+              if let error = error {
+                  print("❌ [Badge] Reset error: \(error)")
+              } else {
+                  print("✅ [Badge] Reset to 0")
+              }
+          }
+      } else {
+          UIApplication.shared.applicationIconBadgeNumber = 0
+          print("✅ [Badge] Reset to 0 (legacy)")
+      }
+
+      YMKMapKit.setApiKey("4aab5e00-30ab-4a8a-b428-63d00203f440")
+      YMKMapKit.sharedInstance()
+
+      if #available(iOS 10.0, *) {
+          UNUserNotificationCenter.current().delegate = self
+          let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
       UNUserNotificationCenter.current().requestAuthorization(
         options: authOptions,
         completionHandler: { _, _ in }

@@ -114,6 +114,12 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       var data = result.data!['data'] as List;
+      if (data.isNotEmpty) {
+        print(
+          '🔴🔴🔴 [MapScreen] First ad JSON keys: ${(data[0] as Map).keys.toList()}',
+        );
+        print('🔴🔴🔴 [MapScreen] First ad JSON: ${data[0]}');
+      }
       allAds.addAll(data.map((json) => FeedAd.fromJson(json)).toList());
 
       print(

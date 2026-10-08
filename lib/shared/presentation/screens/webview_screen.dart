@@ -4,19 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:provider/provider.dart';
-import 'package:hashtagg/shared/presentation/bloc/loading_notifier.dart';
 import 'package:hashtagg/core/services/deep_link_service.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String url;
   final String? title;
 
-  const WebViewScreen({
-    super.key,
-    required this.url,
-    this.title,
-  });
+  const WebViewScreen({super.key, required this.url, this.title});
 
   @override
   State<WebViewScreen> createState() => _WebViewScreenState();
@@ -24,21 +18,18 @@ class WebViewScreen extends StatefulWidget {
 
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
-  bool _isLoading = true;
   String _pageTitle = '';
 
   @override
   void initState() {
     super.initState();
-    print('🔵 [WebView] Screen initialized');
     print('🔵 [WebView] Loading URL: ${widget.url}');
     _pageTitle = widget.title ?? '';
 
-    print('🔵 [WebView] Creating controller...');
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(
-          'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36'
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
       )
       ..setNavigationDelegate(
         NavigationDelegate(
@@ -46,27 +37,33 @@ class _WebViewScreenState extends State<WebViewScreen> {
             final url = request.url;
             print('🔴 [WebView] Navigation: $url');
 
-            // ===== ПЕРЕХВАТ 3DS СТРАНИЦ =====
-            if (url.contains('3ds') || url.contains('acs') || url.contains('verify')) {
-              print('✅ [WebView] 3DS page detected, opening in browser');
-              await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            // ===== 3DS СТРАНИЦЫ → внешний браузер =====
+            if (url.contains('3ds') ||
+                url.contains('acs') ||
+                url.contains('verify') ||
+                url.toLowerCase().contains('card-auth')) {
+              print('✅ [WebView] 3DS detected, opening in browser');
+              await launchUrl(
+                Uri.parse(url),
+                mode: LaunchMode.externalApplication,
+              );
               return NavigationDecision.prevent;
             }
 
-            // ===== DEEP LINK =====
+            // ===== DEEP LINK hashtagg:// =====
             if (url.startsWith('hashtagg://')) {
-              print('✅ [WebView] Deep link intercepted: $url');
+              print('✅ [WebView] Deep link: $url');
               DeepLinkService().handleDeepLink(url);
-              Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
               return NavigationDecision.prevent;
             }
 
-            // ===== ОБЫЧНЫЕ HTTP/HTTPS =====
+            // ===== HTTP/HTTPS → остаётся в WebView =====
             if (url.startsWith('http://') || url.startsWith('https://')) {
               return NavigationDecision.navigate;
             }
 
-            // ===== НЕСТАНДАРТНЫЕ =====
+            // ===== НЕСТАНДАРТНЫЕ СХЕМЫ (tel:, mailto:, whatsapp:, tg:) → внешний браузер =====
             try {
               final uri = Uri.parse(url);
               if (await canLaunchUrl(uri)) {
@@ -75,33 +72,23 @@ class _WebViewScreenState extends State<WebViewScreen> {
             } catch (e) {
               print('🔴 [WebView] Error: $e');
             }
-
             return NavigationDecision.prevent;
           },
-          onPageStarted: (String url) {
-            print('🟢 [WebView] Page started: $url');
-            setState(() => _isLoading = true);
-
-            // ===== ПЕРЕХВАТ 3DS СТРАНИЦ =====
-            if (url.toLowerCase().contains('3ds') ||
-                url.toLowerCase().contains('acs') ||
-                url.toLowerCase().contains('card-auth')) {
-              print('✅ [WebView] 3DS page detected! Opening in browser...');
-              // Открываем во внешнем браузере
-              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-              // Закрываем WebView
-              Navigator.pop(context);
-            }
-          },
-          onPageFinished: (String url) {
+          onPageFinished: (String url) async {
             print('🟢 [WebView] Page finished: $url');
-            setState(() => _isLoading = false);
 
-            // ===== ПРОВЕРКА НА DEEP LINK =====
+            // Обновляем заголовок из страницы, если не задан
+            if (widget.title == null || widget.title!.isEmpty) {
+              final title = await _controller.getTitle();
+              if (title != null && title.isNotEmpty && mounted) {
+                setState(() => _pageTitle = title);
+              }
+            }
+
+            // Deep link внутри страницы
             if (url.startsWith('hashtagg://')) {
-              print('✅ [WebView] Deep link in page finished!');
               DeepLinkService().handleDeepLink(url);
-              Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
             }
           },
           onWebResourceError: (WebResourceError error) {
@@ -110,54 +97,80 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
+  }
 
-    print('🔵 [WebView] Controller created, loadRequest called');
+  /// Кастомная обработка кнопки "Назад":
+  /// Сначала пытаемся вернуться назад по истории WebView,
+  /// если не можем — закрываем экран
+  Future<bool> _handleBack() async {
+    if (await _controller.canGoBack()) {
+      await _controller.goBack();
+      return false; // остаться в WebView
+    }
+    return true; // закрыть экран
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Theme.of(context).appBarTheme.backgroundColor,
-          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-        ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          _pageTitle,
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : Colors.black,
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldPop = await _handleBack();
+        if (shouldPop && mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Theme.of(context).appBarTheme.backgroundColor,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: isDark ? Colors.white : Colors.black),
-            onPressed: () => _controller.reload(),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xff917dfa),
+          leadingWidth: 110,
+          leading: TextButton.icon(
+            onPressed: () async {
+              final shouldPop = await _handleBack();
+              if (shouldPop && mounted) {
+                Navigator.pop(context);
+              }
+            },
+            icon: Icon(Icons.arrow_back, size: 20, color: textColor),
+            label: Text(
+              'Назад',
+              style: GoogleFonts.montserrat(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: textColor,
               ),
             ),
-        ],
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+          ),
+          title: Text(
+            _pageTitle,
+            style: GoogleFonts.montserrat(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          centerTitle: true,
+        ),
+        body: WebViewWidget(controller: _controller),
       ),
     );
   }

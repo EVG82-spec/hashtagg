@@ -146,18 +146,10 @@ class FeedAd {
           0,
       dateTimeAdd: json['ads_datetime_add'] as String? ?? 'Дата не указана',
       user: user,
-      markers: {},
+      markers: _parseMarkers(json['markers']),
       vip: json['ads_vip'] == 1 || json['ads_vip'] == true,
-      latitude:
-          json['ads_latitude'] != null &&
-              json['ads_latitude'].toString().isNotEmpty
-          ? double.tryParse(json['ads_latitude'].toString())
-          : null,
-      longitude:
-          json['ads_longitude'] != null &&
-              json['ads_longitude'].toString().isNotEmpty
-          ? double.tryParse(json['ads_longitude'].toString())
-          : null,
+      latitude: _parseDouble(json['lat'] ?? json['ads_latitude']),
+      longitude: _parseDouble(json['lon'] ?? json['ads_longitude']),
     );
   }
 
@@ -176,11 +168,12 @@ class FeedAd {
 
   static double? _parseDouble(dynamic value) {
     if (value == null) return null;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
+    if (value is double) return value == 0 ? null : value;
+    if (value is int) return value == 0 ? null : value.toDouble();
     if (value is String) {
       final parsed = double.tryParse(value);
-      return parsed == 0 ? null : parsed;
+      if (parsed == null || parsed == 0) return null;
+      return parsed;
     }
     return null;
   }
