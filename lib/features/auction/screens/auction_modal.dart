@@ -36,10 +36,15 @@ class _AuctionModalState extends State<AuctionModal> {
   bool _showHistory = false;
   bool _agreementChecked = false;
 
+  Map<String, dynamic>? _rules;
+  bool _agreementLoaded = false;
+  bool _agreementSaving = false;
+
   @override
   void initState() {
     super.initState();
     context.read<AuctionBloc>().add(StartAutoUpdate(shopId: widget.shopId));
+    _loadRulesAndAgreement();
   }
 
   @override
@@ -183,13 +188,6 @@ class _AuctionModalState extends State<AuctionModal> {
                               const SizedBox(height: 10),
                             ],
 
-                            // ── Таблица ──
-                            AuctionManualMode(
-                              status: state.status,
-                              isBidding: state.isBidding,
-                              onBid: (place) => _onBid(context, place),
-                            ),
-
                             const SizedBox(height: 10),
 
                             // ── Ошибка ──
@@ -283,19 +281,22 @@ class _AuctionModalState extends State<AuctionModal> {
   // Статус участия (компактно)
   // ─────────────────────────────────────────────────
   Widget _buildStatusRow(BuildContext context, dynamic status) {
-    if (status.isParticipant) {
-      // Форматируем дату
-      String expireText = '—';
-      if (status.expireDate != null) {
-        final parts = status.expireDate.toString().split(' ');
-        if (parts.isNotEmpty) {
-          final dateParts = parts[0].split('-');
-          if (dateParts.length == 3) {
-            expireText = '${dateParts[2]}.${dateParts[1]}.${dateParts[0]}';
-          }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Форматируем дату
+    String expireText = '—';
+    if (status.expireDate != null) {
+      final parts = status.expireDate.toString().split(' ');
+      if (parts.isNotEmpty) {
+        final dateParts = parts[0].split('-');
+        if (dateParts.length == 3) {
+          expireText = '${dateParts[2]}.${dateParts[1]}.${dateParts[0]}';
         }
       }
+    }
 
+    // Активное участие
+    if (status.isParticipant) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -330,7 +331,7 @@ class _AuctionModalState extends State<AuctionModal> {
       );
     }
 
-    // ── Не активировано: чекбокс + кнопка ──
+    // ── Согласие с правилами + кнопка «Сделать ставку» ──
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -343,13 +344,13 @@ class _AuctionModalState extends State<AuctionModal> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Заголовок ──
+          // Заголовок
           Row(
             children: [
               const Text('🔒', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 6),
               Text(
-                'Участие не активировано',
+                'Правила участия',
                 style: GoogleFonts.montserrat(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -360,7 +361,7 @@ class _AuctionModalState extends State<AuctionModal> {
           ),
           const SizedBox(height: 10),
 
-          // ── Чекбокс + ссылка ──
+          // Чекбокс + ссылка
           Row(
             children: [
               SizedBox(
@@ -368,11 +369,9 @@ class _AuctionModalState extends State<AuctionModal> {
                 height: 20,
                 child: Checkbox(
                   value: _agreementChecked,
-                  onChanged: (v) {
-                    setState(() {
-                      _agreementChecked = v ?? false;
-                    });
-                  },
+                  onChanged: _agreementSaving
+                      ? null
+                      : (v) => _onAgreementToggle(v ?? false),
                   activeColor: const Color(0xFF2ecc71),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: VisualDensity.compact,
@@ -405,15 +404,24 @@ class _AuctionModalState extends State<AuctionModal> {
                   ],
                 ),
               ),
+              if (_agreementSaving)
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
             ],
           ),
+
           const SizedBox(height: 10),
 
-          // ── Кнопка "Активировать" ──
+          // ── Кнопка «Сделать ставку» (активна при чекбоксе) ──
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _agreementChecked ? () => _onActivate(context) : null,
+              onPressed: _agreementChecked && !_agreementSaving
+                  ? () => _openManualMode(context, status)
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFf7971e),
                 disabledBackgroundColor: const Color(0xFFe0e0e0),
@@ -424,11 +432,11 @@ class _AuctionModalState extends State<AuctionModal> {
                 elevation: 0,
               ),
               child: Text(
-                'Активировать за 500 ₽',
+                'Сделать ставку',
                 style: GoogleFonts.montserrat(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: _agreementChecked
+                  color: _agreementChecked && !_agreementSaving
                       ? const Color(0xFF1a1a2e)
                       : Colors.grey.shade500,
                 ),
@@ -438,7 +446,7 @@ class _AuctionModalState extends State<AuctionModal> {
         ],
       ),
     );
-  } // ─────────────────────────────────────────────────
+  }
 
   // Жёлтый блок очереди
   // ─────────────────────────────────────────────────
@@ -697,44 +705,37 @@ class _AuctionModalState extends State<AuctionModal> {
     );
   }
 
-  void _onActivate(BuildContext context) {
-    // Проверка чекбокса
-    if (!_agreementChecked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Необходимо согласиться с условиями аукциона'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
+  Future<void> _loadRulesAndAgreement() async {
+    final api = context.read<AuctionApiRepository>();
+    final rules = await api.getAuctionRules();
+    final agreed = await api.getAgreementStatus(shopId: widget.shopId);
+    if (mounted) {
+      setState(() {
+        _rules = rules;
+        _agreementChecked = agreed;
+        _agreementLoaded = true;
+      });
     }
+  }
 
-    // Подтверждение
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Активация участия'),
-        content: const Text('Активировать участие в аукционе за 500 ₽?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<AuctionBloc>().add(
-                ActivateParticipation(shopId: widget.shopId),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8956FF),
-            ),
-            child: const Text('Активировать'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _onAgreementToggle(bool value) async {
+    if (_agreementSaving) return;
+    setState(() => _agreementSaving = true);
+
+    if (value) {
+      final api = context.read<AuctionApiRepository>();
+      final ok = await api.saveAgreement(shopId: widget.shopId);
+      if (mounted) {
+        setState(() {
+          _agreementChecked = ok;
+          _agreementSaving = false;
+        });
+      }
+    } else {
+      // Отменить согласие нельзя (по правилам сохраняется один раз)
+      setState(() => _agreementChecked = true);
+      setState(() => _agreementSaving = false);
+    }
   }
 
   /// BottomSheet с выбором суммы пополнения
@@ -903,6 +904,59 @@ class _AuctionModalState extends State<AuctionModal> {
     );
   }
 
+  /// Открывает мини-модалку выбора места (таблица ТОП-5)
+  void _openManualMode(BuildContext context, dynamic status) {
+    final auctionState = context.read<AuctionBloc>().state;
+    if (auctionState is! AuctionLoaded) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => BlocProvider.value(
+        value: context.read<AuctionBloc>(),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xff1a1a2e)
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Таблица
+                AuctionManualMode(
+                  status: auctionState.status,
+                  isBidding: auctionState.isBidding,
+                  onBid: (place) {
+                    Navigator.pop(ctx);
+                    _onBid(context, place);
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────
+  // Модалка с текстом правил (загружается с API)
+  // ─────────────────────────────────────────────────
   void _showAgreementModal(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xff1a1a2e) : Colors.white;
@@ -940,7 +994,8 @@ class _AuctionModalState extends State<AuctionModal> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Условия участия в аукционе',
+                        (_rules?['title'] ?? 'Условия участия в аукционе')
+                            .toString(),
                         style: GoogleFonts.montserrat(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -967,36 +1022,33 @@ class _AuctionModalState extends State<AuctionModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _agreementSection(
-                        '1. Общие положения',
-                        'Участие в аукционе даёт право выкупить любое место в ТОП-5 '
-                            'или встать в очередь. Активация участия не гарантирует место в ТОП-5.',
-                        textColor,
-                      ),
-                      _agreementSection(
-                        '2. Стоимость участия',
-                        'Стоимость активации — 500 ₽. Срок действия участия — 30 дней '
-                            'с момента активации. По истечении срока участие нужно активировать заново.',
-                        textColor,
-                      ),
-                      _agreementSection(
-                        '3. Правила ставок',
-                        'Шаг аукциона — 100 ₽. Минимальная ставка = текущая цена места + 100 ₽. '
-                            'Максимальная ставка — 100 000 ₽. Свободное место = стартовая цена слота.',
-                        textColor,
-                      ),
-                      _agreementSection(
-                        '4. Каскадное смещение',
-                        'При выкупе места все магазины ниже сдвигаются на +1 позицию. '
-                            'Магазин с 5-го места вылетает в очередь. Цены упавших магазинов не меняются.',
-                        textColor,
-                      ),
-                      _agreementSection(
-                        '5. Возврат средств',
-                        'Средства, потраченные на активацию и ставки, не возвращаются. '
-                            'Даже если магазин вылетел из ТОП-5, деньги не возвращаются.',
-                        textColor,
-                      ),
+                      if (!_agreementLoaded)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF8956FF),
+                            ),
+                          ),
+                        )
+                      else if (_rules == null || _rules!['sections'] == null)
+                        Center(
+                          child: Text(
+                            'Не удалось загрузить правила',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 13,
+                              color: textColor.withOpacity(0.7),
+                            ),
+                          ),
+                        )
+                      else
+                        ...(_rules!['sections'] as List).map((section) {
+                          return _agreementSection(
+                            section['title']?.toString() ?? '',
+                            section['text']?.toString() ?? '',
+                            textColor,
+                          );
+                        }),
                     ],
                   ),
                 ),

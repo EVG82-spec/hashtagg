@@ -28,14 +28,15 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
 
     switch (index) {
       case 0:
-        navNotifier.setSelectedIndex(index);
+        navNotifier.tapHome(); // 👈 вместо setSelectedIndex
         context.go('/');
         break;
       case 1:
         navNotifier.setSelectedIndex(index);
-        Navigator.of(context, rootNavigator: true).push(
-          createEdgeSwipeRoute(builder: (_) => const FavoritesScreen()),
-        );
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).push(createEdgeSwipeRoute(builder: (_) => const FavoritesScreen()));
         break;
       case 2:
         if (state.state.user != null) {
@@ -48,9 +49,10 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
       case 3:
         if (state.state.user != null) {
           navNotifier.setSelectedIndex(index);
-          Navigator.of(context, rootNavigator: true).push(
-            createSwipeableRoute(builder: (_) => ChatsScreen()),
-          );
+          Navigator.of(
+            context,
+            rootNavigator: true,
+          ).push(createSwipeableRoute(builder: (_) => ChatsScreen()));
         } else {
           showAuthModal(context);
         }
@@ -103,10 +105,12 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
               onTap: (index) {
                 _onItemTapped(context, index);
               },
-              selectedLabelStyle:
-                  GoogleFonts.montserrat(fontWeight: FontWeight.w500),
-              unselectedLabelStyle:
-                  GoogleFonts.montserrat(fontWeight: FontWeight.w500),
+              selectedLabelStyle: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w500,
+              ),
+              unselectedLabelStyle: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w500,
+              ),
               unselectedItemColor: Color(0xff666666),
               selectedItemColor: Color(0xff917dfa),
               showSelectedLabels: false,
@@ -167,11 +171,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            Image(
-              image: AssetImage('assets/mail.png'),
-              height: 24,
-              width: 24,
-            ),
+            Image(image: AssetImage('assets/mail.png'), height: 24, width: 24),
             if (unreadCount > 0)
               Positioned(
                 right: -6,
@@ -185,10 +185,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  constraints: BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
+                  constraints: BoxConstraints(minWidth: 16, minHeight: 16),
                   child: Text(
                     unreadCount > 99 ? '99+' : unreadCount.toString(),
                     style: GoogleFonts.montserrat(

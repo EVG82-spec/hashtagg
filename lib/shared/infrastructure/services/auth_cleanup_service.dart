@@ -60,7 +60,7 @@ class AuthCleanupService {
 
       // Сохраняем старые значения для логирования
       final oldPrefsToken = prefs.getString('auth_token');
-      final oldPrefsUserId = prefs.getInt('user_id');
+      final oldPrefsUserId = prefs.get('user_id');
       final oldPrefsIsOAuth = prefs.getBool('is_oauth');
 
       if (logDetails) {
@@ -79,7 +79,7 @@ class AuthCleanupService {
 
       // Проверяем, что удалилось
       final afterPrefsToken = prefs.getString('auth_token');
-      final afterPrefsUserId = prefs.getInt('user_id');
+      final afterPrefsUserId = prefs.get('user_id');
 
       if (logDetails) {
         debugPrint('$_tag 💾 ПОСЛЕ очистки SharedPreferences:');
@@ -130,7 +130,7 @@ class AuthCleanupService {
       // Проверяем SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final prefsToken = prefs.getString('auth_token');
-      final prefsUserId = prefs.getInt('user_id');
+      final prefsUserId = prefs.get('user_id');
       final prefsIsOAuth = prefs.getBool('is_oauth');
 
       debugPrint('$_tag 💾 SharedPreferences:');

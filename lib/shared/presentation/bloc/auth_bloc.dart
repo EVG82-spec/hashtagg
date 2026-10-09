@@ -215,14 +215,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       debugPrint('🔑 [AuthBloc] Начало логина для: ${event.email}');
 
-      // ✅ ПРОВЕРЯЕМ ТЕКУЩЕЕ СОСТОЯНИЕ ПЕРЕД ОЧИСТКОЙ
-      await AuthCleanupService.checkAuthStorage();
-
-      // ✅ ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ВСЕХ ДАННЫХ
-      await AuthCleanupService.clearAllAuthData(logDetails: true);
-
-      // ✅ ПРОВЕРЯЕМ ПОСЛЕ ОЧИСТКИ
-      await AuthCleanupService.checkAuthStorage();
+      // ✅ ПРОВЕРКА + ОЧИСТКА — в try-catch, чтобы не падать
+      try {
+        await AuthCleanupService.checkAuthStorage();
+        await AuthCleanupService.clearAllAuthData(logDetails: true);
+        await AuthCleanupService.checkAuthStorage();
+      } catch (e) {
+        // Не блокируем OAuth, если очистка не удалась
+        debugPrint('⚠️ [AuthBloc] AuthCleanup failed, continuing anyway: $e');
+      }
 
       final User? user = loginUseCase.execute(event.email, event.password);
 
@@ -308,14 +309,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
 
-      // ✅ ПРОВЕРЯЕМ ТЕКУЩЕЕ СОСТОЯНИЕ ПЕРЕД ОЧИСТКОЙ
-      await AuthCleanupService.checkAuthStorage();
-
-      // ✅ ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ВСЕХ ДАННЫХ
-      await AuthCleanupService.clearAllAuthData(logDetails: true);
-
-      // ✅ ПРОВЕРЯЕМ ПОСЛЕ ОЧИСТКИ
-      await AuthCleanupService.checkAuthStorage();
+      // ✅ ПРОВЕРКА + ОЧИСТКА — в try-catch, чтобы не падать
+      try {
+        await AuthCleanupService.checkAuthStorage();
+        await AuthCleanupService.clearAllAuthData(logDetails: true);
+        await AuthCleanupService.checkAuthStorage();
+      } catch (e) {
+        // Не блокируем OAuth, если очистка не удалась
+        debugPrint('⚠️ [AuthBloc] AuthCleanup failed, continuing anyway: $e');
+      }
 
       final authService = ApiAuthService();
       final (user, error) = await authService.loginWithOAuth(
@@ -431,14 +433,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         debugPrint('🔐 [AuthBloc]   - userId: ${event.userId}');
       }
 
-      // ✅ ПРОВЕРЯЕМ ТЕКУЩЕЕ СОСТОЯНИЕ ПЕРЕД ОЧИСТКОЙ
-      await AuthCleanupService.checkAuthStorage();
-
-      // ✅ ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ВСЕХ ДАННЫХ
-      await AuthCleanupService.clearAllAuthData(logDetails: true);
-
-      // ✅ ПРОВЕРЯЕМ ПОСЛЕ ОЧИСТКИ
-      await AuthCleanupService.checkAuthStorage();
+      // ✅ ПРОВЕРКА + ОЧИСТКА — в try-catch, чтобы не падать
+      try {
+        await AuthCleanupService.checkAuthStorage();
+        await AuthCleanupService.clearAllAuthData(logDetails: true);
+        await AuthCleanupService.checkAuthStorage();
+      } catch (e) {
+        // Не блокируем OAuth, если очистка не удалась
+        debugPrint('⚠️ [AuthBloc] AuthCleanup failed, continuing anyway: $e');
+      }
 
       final authService = ApiAuthService();
       final (user, error) = await authService.loginWithToken(

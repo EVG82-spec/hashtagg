@@ -1032,11 +1032,31 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
 
     // Проверка цены - обязательна, если поле цены доступно для категории
-    if (_categoryOptions?['price'] != null &&
-        _priceController.text.trim().isEmpty) {
-      print('🔴 [AddListing] Price validation FAILED');
-      showSwipeDownNotification(context, message: 'Укажите цену');
-      return;
+    if (_categoryOptions?['price'] != null) {
+      final rawPrice = _priceController.text.trim();
+
+      // Пусто
+      if (rawPrice.isEmpty) {
+        print('🔴 [AddListing] Price validation FAILED: empty');
+        showSwipeDownNotification(context, message: 'Укажите цену');
+        return;
+      }
+
+      // Нормализуем: запятая → точка
+      final normalized = rawPrice.replaceAll(',', '.');
+
+      // Парсим
+      final parsedPrice = double.tryParse(normalized);
+
+      // Не парсится или <= 0
+      if (parsedPrice == null || parsedPrice <= 0) {
+        print('🔴 [AddListing] Price validation FAILED: invalid = "$rawPrice"');
+        showSwipeDownNotification(
+          context,
+          message: 'Введите корректную цену (только цифры)',
+        );
+        return;
+      }
     }
     // Проверка телефона - всегда обязателен
     if (_phoneController.text.trim().isEmpty) {
@@ -1120,7 +1140,11 @@ class _AddListingScreenState extends State<AddListingScreen> {
         'images': jsonEncode(uploadedPhotos),
         'from_app': 1,
         if (_priceController.text.isNotEmpty)
-          'price': double.tryParse(_priceController.text) ?? 0,
+          'price':
+              double.tryParse(
+                _priceController.text.trim().replaceAll(',', '.'),
+              ) ??
+              0,
         if (_videoController.text.isNotEmpty)
           'video': _videoController.text.trim(),
         if (_address != null) 'address': _address!,
@@ -1443,7 +1467,15 @@ class _AddListingScreenState extends State<AddListingScreen> {
                       const SizedBox(height: 8),
                       TextField(
                         controller: _priceController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          // ✅ Только цифры и одна точка/запятая
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[.,]?\d*'),
+                          ),
+                        ],
                         style: GoogleFonts.montserrat(
                           fontSize: 15,
                           color: textColor,
@@ -1461,6 +1493,12 @@ class _AddListingScreenState extends State<AddListingScreen> {
                           ),
                           suffixText: '₽',
                           suffixStyle: GoogleFonts.montserrat(color: textColor),
+                          hintText: 'Пример: 10000',
+                          hintStyle: GoogleFonts.montserrat(
+                            color: isDark
+                                ? Colors.white38
+                                : const Color(0xffcccccc),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -1897,7 +1935,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
                     _SectionTitle(title: 'Видео'),
                     const SizedBox(height: 4),
                     Text(
-                      'Укажите ссылку на видео (YouTube, Rutube)',
+                      'Укажите ссылку на видео (Rutube)',
                       style: GoogleFonts.montserrat(
                         fontSize: 13,
                         color: isDark

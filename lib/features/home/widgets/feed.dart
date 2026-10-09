@@ -781,9 +781,9 @@ class _ShopListCard extends StatelessWidget {
 
     final place = shop.auctionPlace!;
 
-    if (place == 1) return const BorderSide(color: Color(0xFFFFD700), width: 6);
-    if (place == 2) return const BorderSide(color: Color(0xFFC0C0C0), width: 4);
-    if (place == 3) return const BorderSide(color: Color(0xFFCD7F32), width: 3);
+    if (place == 1) return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
+    if (place == 2) return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
+    if (place == 3) return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
 
     return const BorderSide(color: Color(0xFFf0f0f0), width: 1);
   }
@@ -819,19 +819,19 @@ class _ShopListCard extends StatelessWidget {
             // 👇 Цветная тень по месту
             if (shop.auctionPlace == 1)
               BoxShadow(
-                color: const Color(0xFFFFD700).withOpacity(0.4),
+                color: const Color(0xFFf0f0f0).withOpacity(0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
             if (shop.auctionPlace == 2)
               BoxShadow(
-                color: const Color(0xFFC0C0C0).withOpacity(0.4),
+                color: const Color(0xFFf0f0f0).withOpacity(0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
             if (shop.auctionPlace == 3)
               BoxShadow(
-                color: const Color(0xFFCD7F32).withOpacity(0.4),
+                color: const Color(0xFFf0f0f0).withOpacity(0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),

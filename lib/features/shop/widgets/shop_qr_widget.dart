@@ -182,12 +182,34 @@ class ShopQrWidget extends StatelessWidget {
 
   void _copyShopLink(BuildContext context) {
     Clipboard.setData(ClipboardData(text: _shopUrl));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Ссылка скопирована!'),
-        duration: Duration(seconds: 2),
+
+    // Показываем через Overlay — работает на любой платформе
+    final overlay = Overlay.of(context);
+    final entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        bottom: MediaQuery.of(ctx).padding.bottom + 120,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text(
+              '✅ Ссылка скопирована!',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       ),
     );
+
+    overlay.insert(entry);
+    Future.delayed(const Duration(seconds: 2), () => entry.remove());
   }
 
   void _shareLink(BuildContext context) async {

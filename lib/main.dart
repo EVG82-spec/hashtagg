@@ -317,7 +317,115 @@ void main() async {
   final deepLinkService = DeepLinkService();
   await deepLinkService.init();
 
+  // 👇 FCM — обработка клика на уведомление
+  if (Platform.isAndroid) {
+    await _setupFCM();
+  }
+
   runApp(MainApp(deepLinkService: deepLinkService));
+}
+
+Future<void> _setupFCM() async {
+  final messaging = FirebaseMessaging.instance;
+
+  // 1. Разрешение на уведомления
+  await messaging.requestPermission(alert: true, badge: false, sound: true);
+
+  // 2. Получить токен
+  final token = await messaging.getToken();
+  if (token != null) {
+    print('🔔 [FCM] Token: $token');
+    // await _registerPushToken(token); // у тебя уже есть
+  }
+
+  // 3. Приложение было ЗАКРЫТО → открылось через клик на уведомление
+  final initial = await messaging.getInitialMessage();
+  if (initial != null) {
+    _handleNotificationTap(initial);
+  }
+
+  // 4. Приложение В ФОНЕ → клик на уведомление
+  FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    print('🔔 [FCM] onMessageOpenedApp: ${message.data}');
+    _handleNotificationTap(message);
+  });
+
+  // 5. Приложение В FOREGROUND → пришёл push
+  FirebaseMessaging.onMessage.listen((message) {
+    print('🔔 [FCM] onMessage: ${message.notification?.title}');
+    _showLocalFcmNotification(message);
+  });
+}
+
+void _handleNotificationTap(RemoteMessage message) {
+  print('🔔 [FCM] Notification tapped: ${message.data}');
+
+  final data = message.data;
+  final link = data['link'] as String?;
+
+  // Приоритет — прямой link
+  if (link != null && link.isNotEmpty) {
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        router.push(link);
+      } catch (e) {
+        print('❌ [FCM] Navigation error: $e');
+      }
+    });
+    return;
+  }
+
+  // Fallback — по screen
+  final screen = data['screen'];
+  if (screen == 'shop') {
+    final shopId = data['shop_id'];
+    if (shopId != null) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        router.push('/shop/$shopId');
+      });
+    }
+  }
+}
+
+Future<void> _showLocalFcmNotification(RemoteMessage message) async {
+  final notification = message.notification;
+  if (notification == null) return;
+
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+    onDidReceiveNotificationResponse: (response) {
+      if (response.payload != null) {
+        try {
+          final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+          final link = data['link'] as String?;
+          if (link != null && link.isNotEmpty) {
+            router.push(link);
+          }
+        } catch (e) {
+          print('❌ [FCM] payload parse error: $e');
+        }
+      }
+    },
+  );
+
+  const androidDetails = AndroidNotificationDetails(
+    'high_importance_channel',
+    'Уведомления',
+    channelDescription: 'Push-уведомления приложения',
+    importance: Importance.high,
+    priority: Priority.high,
+  );
+
+  await plugin.show(
+    DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    notification.title ?? 'Новое уведомление',
+    notification.body ?? '',
+    const NotificationDetails(android: androidDetails),
+    payload: jsonEncode(message.data),
+  );
 }
 
 class MainApp extends StatefulWidget {

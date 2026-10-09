@@ -130,7 +130,7 @@ class ShopActions extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
-                  width: 160, // 👈 ФИКСИРОВАННАЯ ШИРИНА
+                  width: 200, // 👈 ФИКСИРОВАННАЯ ШИРИНА
                   child: isOwner
                       ? ElevatedButton(
                           onPressed: () => _showShopManagement(context),
@@ -169,10 +169,15 @@ class ShopActions extends StatelessWidget {
                       width: 1,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.qr_code,
-                    color: Color(0xFF8956FF),
-                    size: 40,
+                  padding: const EdgeInsets.all(8),
+                  child: Image.network(
+                    'https://hashtagg.ru/media/others/qr_icon.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.qr_code,
+                      color: Color(0xFF8956FF),
+                      size: 40,
+                    ),
                   ),
                 ),
               ),

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:hashtagg/core/network/api_config.dart';
 import 'package:hive/hive.dart';
 import '../models/auction_status.dart';
 
@@ -215,5 +216,104 @@ class AuctionApiRepository {
     );
 
     return response.data as Map<String, dynamic>;
+  }
+
+  /// Проверить, согласился ли пользователь с правилами
+  Future<bool> getAgreementStatus({required int shopId}) async {
+    try {
+      final auth = _getAuthData();
+
+      print('📡 [AuctionApi] getAgreementStatus - shopId: $shopId');
+
+      final response = await _dio.post(
+        '/systems/ajax/controller.php',
+        data: {
+          'action': 'auction/agreement/get',
+          'shop_id': shopId,
+          'proxy_user_id': auth['user_id'],
+          'token': auth['token'],
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      print('📦 [AuctionApi] getAgreementStatus response: ${response.data}');
+
+      if (response.data is Map) {
+        return response.data['agreed'] == true ||
+            response.data['status'] == true;
+      }
+      return false;
+    } catch (e) {
+      print('🔴 [AuctionApi] getAgreementStatus error: $e');
+      return false;
+    }
+  }
+
+  /// Получить текст условий участия в «Битве за ТОП»
+  Future<Map<String, dynamic>?> getAuctionRules() async {
+    try {
+      final auth = _getAuthData();
+
+      print('📡 [AuctionApi] getAuctionRules');
+
+      final response = await _dio.post(
+        '/systems/ajax/controller.php',
+        data: {
+          'action': 'auction/rules/get',
+          'proxy_user_id': auth['user_id'],
+          'token': auth['token'],
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      print('📦 [AuctionApi] getAuctionRules response: ${response.data}');
+
+      if (response.data is Map && response.data['status'] == true) {
+        return response.data['data'];
+      }
+      return null;
+    } catch (e) {
+      print('🔴 [AuctionApi] getAuctionRules error: $e');
+      return null;
+    }
+  }
+
+  /// Сохранить согласие пользователя с правилами
+  Future<bool> saveAgreement({required int shopId}) async {
+    try {
+      final auth = _getAuthData();
+
+      print('📡 [AuctionApi] saveAgreement - shopId: $shopId');
+
+      final response = await _dio.post(
+        '/systems/ajax/controller.php',
+        data: {
+          'action': 'auction/agreement/save',
+          'shop_id': shopId,
+          'proxy_user_id': auth['user_id'],
+          'token': auth['token'],
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      print('📦 [AuctionApi] saveAgreement response: ${response.data}');
+
+      if (response.data is Map) {
+        return response.data['status'] == true;
+      }
+      return false;
+    } catch (e) {
+      print('🔴 [AuctionApi] saveAgreement error: $e');
+      return false;
+    }
   }
 }

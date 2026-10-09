@@ -13,9 +13,11 @@ class AuthInterceptor extends Interceptor {
       var box = Hive.box('user');
       token = box.get('auth_token') as String?;
       isOAuth = box.get('is_oauth', defaultValue: false) as bool;
-      
+
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] 🔑 Reading token from Hive: ${token != null ? _maskToken(token) : 'NULL'}');
+        debugPrint(
+          '[AuthInterceptor] 🔑 Reading token from Hive: ${token != null ? _maskToken(token) : 'NULL'}',
+        );
         debugPrint('[AuthInterceptor] 🔐 OAuth mode: $isOAuth');
       }
     } catch (e) {
@@ -27,30 +29,44 @@ class AuthInterceptor extends Interceptor {
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] ✅ Set Authorization header: Bearer ${_maskToken(token)}');
+        debugPrint(
+          '[AuthInterceptor] ✅ Set Authorization header: Bearer ${_maskToken(token)}',
+        );
       }
     } else {
       if (kDebugMode) {
-        debugPrint('[AuthInterceptor] ⚠️ No token found, skipping Authorization header');
+        debugPrint(
+          '[AuthInterceptor] ⚠️ No token found, skipping Authorization header',
+        );
       }
     }
-    
+
     handler.next(options);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (kDebugMode) {
-      debugPrint('[AuthInterceptor] Ошибка запроса: ${err.requestOptions.path} - ${err.message}');
-    }
-
     if (err.response?.statusCode == 401) {
-      if (kDebugMode) {
-        debugPrint('[AuthInterceptor] Токен недействителен, очистка данных');
+      final responseBody = err.response?.data;
+      final message = responseBody is Map
+          ? responseBody['message']?.toString() ?? ''
+          : '';
+
+      // ✅ Чистим ТОЛЬКО если сервер ЯВНО сказал что токен невалидный
+      final shouldClear =
+          message.contains('token') ||
+          message.contains('Authorization') ||
+          message.contains('unauthorized');
+
+      if (shouldClear) {
+        debugPrint(
+          '[AuthInterceptor] 401 с явным указанием на токен — очищаем',
+        );
+        await _clearAuthData();
+      } else {
+        debugPrint('[AuthInterceptor] 401 без явного указания — НЕ очищаем');
       }
-      await _clearAuthData();
     }
-    
     handler.next(err);
   }
 

@@ -40,6 +40,7 @@ import 'dart:io';
 import 'dart:async';
 import '../widgets/category_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hashtagg/shared/presentation/bloc/navigation_notifier.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? cityDeclination;
   Timer? _hideButtonTimer;
   double _lastOffset = 0;
+  int _lastHomeTapCounter = 0;
 
   // ===== ДОБАВЛЕНЫ ПЕРЕМЕННЫЕ ДЛЯ ГОРОДА =====
   int? _cityId;
@@ -68,10 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
     _loadCachedCity();
-    //_loadSliders();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkFirstLaunch();
+      // ✅ Подписка на NavigationNotifier
+      final navNotifier = context.read<NavigationNotifier>();
+      _lastHomeTapCounter = navNotifier.homeTapCounter;
+      navNotifier.addListener(_onNavigationChanged);
     });
   }
 
@@ -96,6 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _hideButtonTimer?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    // ✅ Отписка от NavigationNotifier
+    try {
+      context.read<NavigationNotifier>().removeListener(_onNavigationChanged);
+    } catch (_) {}
     super.dispose();
   }
 
@@ -243,6 +252,33 @@ class _HomeScreenState extends State<HomeScreen> {
     // Обновляем состояние шапки
     if (_isCollapsed != isCollapsed) {
       setState(() => _isCollapsed = isCollapsed);
+    }
+  }
+
+  /// Слушаем NavigationNotifier: если пользователь тапнул "Домой" — сбрасываем вкладку и скроллим вверх
+  void _onNavigationChanged() {
+    if (!mounted) return;
+    final navNotifier = context.read<NavigationNotifier>();
+
+    // Если счётчик увеличился — значит тапнули "Домой"
+    if (navNotifier.homeTapCounter != _lastHomeTapCounter) {
+      _lastHomeTapCounter = navNotifier.homeTapCounter;
+
+      print('🏠 [HomeScreen] Reset to Recommendations + scroll to top');
+
+      // 1. Сбрасываем вкладку на "Рекомендации"
+      context.read<FeedBloc>().add(
+        const FeedCategoryChangeEvent(category: FeedCategory.recommendations),
+      );
+
+      // 2. Скроллим наверх
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
