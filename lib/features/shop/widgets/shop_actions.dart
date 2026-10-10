@@ -130,7 +130,7 @@ class ShopActions extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
-                  width: 200, // 👈 ФИКСИРОВАННАЯ ШИРИНА
+                  width: 160, // 👈 ФИКСИРОВАННАЯ ШИРИНА
                   child: isOwner
                       ? ElevatedButton(
                           onPressed: () => _showShopManagement(context),
@@ -142,6 +142,13 @@ class ShopActions extends StatelessWidget {
                             ),
                             minimumSize: const Size(double.infinity, 48),
                             elevation: 0,
+                            surfaceTintColor:
+                                Colors.transparent, // 👈 убирает M3-overlay
+                            shadowColor:
+                                Colors.transparent, // 👈 убирает цвет тени
+                            overlayColor: Colors.white.withOpacity(
+                              0.1,
+                            ), // 👈 эффект нажатия
                           ),
                           child: const Text(
                             'Управление',
@@ -160,23 +167,23 @@ class ShopActions extends StatelessWidget {
                 child: Container(
                   width: 50,
                   height: 50,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8956FF).withOpacity(0.1),
+                    color: const Color(0xFF8956FF).withOpacity(1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: const Color(0xFF8956FF).withOpacity(0.2),
+                      color: const Color(0xFF8956FF).withOpacity(1),
                       width: 1,
                     ),
                   ),
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(2),
                   child: Image.network(
                     'https://hashtagg.ru/media/others/qr_icon.png',
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) => const Icon(
                       Icons.qr_code,
                       color: Color(0xFF8956FF),
-                      size: 40,
+                      size: 50,
                     ),
                   ),
                 ),
@@ -188,13 +195,13 @@ class ShopActions extends StatelessWidget {
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: Container(
-                      height: 44, // 👈 было 48
+                      height: 48, // 👈 было 48
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 20,
                       ), // 👈 было 10
                       decoration: BoxDecoration(
                         color: const Color(0xFF8956FF),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                       child: FittedBox(
                         // 👈 ДОБАВИТЬ
@@ -210,7 +217,7 @@ class ShopActions extends StatelessWidget {
                               label: 'Telegram',
                               onEdit: onSocialEdit,
                             ),
-                            const SizedBox(width: 4), // 👈 было 5
+                            const SizedBox(width: 10), // 👈 было 5
                             _SocialIcon(
                               iconUrl:
                                   'https://hashtagg.ru/templates/img/vk.png',
@@ -219,7 +226,7 @@ class ShopActions extends StatelessWidget {
                               label: 'VK',
                               onEdit: onSocialEdit,
                             ),
-                            const SizedBox(width: 4), // 👈 было 5
+                            const SizedBox(width: 10), // 👈 было 5
                             _SocialIcon(
                               iconUrl:
                                   'https://hashtagg.ru/templates/img/max.png',
@@ -518,8 +525,8 @@ class _SocialIcon extends StatelessWidget {
         }
       },
       child: Container(
-        width: 26, // 👈 было 30
-        height: 26, // 👈 было 30
+        width: 40, // 👈 было 30
+        height: 40, // 👈 было 30
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.2),
           shape: BoxShape.circle,
@@ -528,8 +535,8 @@ class _SocialIcon extends StatelessWidget {
         child: Center(
           child: Image.network(
             iconUrl,
-            width: 16, // 👈 было 20
-            height: 16, // 👈 было 20
+            width: 45, // 👈 было 20
+            height: 45, // 👈 было 20
             fit: BoxFit.contain, // 👈 гарантирует, что не выйдет
             color: Colors.white,
             errorBuilder: (_, __, ___) =>

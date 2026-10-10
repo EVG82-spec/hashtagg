@@ -180,6 +180,15 @@ class _AuctionModalState extends State<AuctionModal> {
 
                             const SizedBox(height: 12),
 
+                            // ── Таблица ТОП-5 (всегда) ──
+                            AuctionManualMode(
+                              status: state.status,
+                              isBidding: state.isBidding,
+                              onBid: (place) => _onBid(context, place),
+                            ),
+
+                            const SizedBox(height: 12),
+
                             // ── Жёлтый блок для очереди ──
                             if (state.status.isOutsideTop &&
                                 state.status.myPlace != null &&

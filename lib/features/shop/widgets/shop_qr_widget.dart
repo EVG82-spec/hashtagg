@@ -13,8 +13,14 @@ class ShopQrWidget extends StatelessWidget {
   const ShopQrWidget({Key? key, required this.shop, this.size = 100})
     : super(key: key);
 
-  String get _shopUrl =>
-      'https://hashtagg.ru/shop/${shop.slug ?? shop.idHash ?? shop.id}';
+  String get _shopUrl {
+    final url =
+        'https://hashtagg.ru/shop/${shop.slug ?? shop.idHash ?? shop.id}';
+    print(
+      '🔴🔴🔴 [ShopQrWidget] URL = $url | slug="${shop.slug}" | idHash="${shop.idHash}" | id=${shop.id}',
+    );
+    return url;
+  }
 
   @override
   Widget build(BuildContext context) {

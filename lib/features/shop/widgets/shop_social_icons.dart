@@ -64,7 +64,7 @@ class ShopSocialIcons extends StatelessWidget {
               // Контейнер с иконками
               Container(
                 height: 45,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
                   color: const Color(0xFF8956FF),
                   borderRadius: BorderRadius.circular(80),
@@ -78,14 +78,14 @@ class ShopSocialIcons extends StatelessWidget {
                       isEditing: isEditing,
                       label: 'Telegram',
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 10),
                     _SocialIcon(
                       iconUrl: 'https://hashtagg.ru/templates/img/vk.png',
                       url: socialLinks['vk'] ?? '',
                       isEditing: isEditing,
                       label: 'VK',
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 10),
                     _SocialIcon(
                       iconUrl: 'https://hashtagg.ru/templates/img/max.png',
                       url: socialLinks['max'] ?? '',
