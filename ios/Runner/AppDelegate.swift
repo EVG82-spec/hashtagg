@@ -97,4 +97,43 @@ import YandexMapsMobile
   ) {
     print("❌ APNs registration failed: \(error.localizedDescription)")
   }
+
+    // ✅ Юзер тапнул по пушу (приложение было в фоне / закрыто)
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let userInfo = response.notification.request.content.userInfo
+    print("🔔 [Push] Тап по уведомлению: \(userInfo)")
+
+    // Извлекаем data
+    if let data = userInfo["data"] as? [String: Any] {
+      print("🔔 [Push] data: \(data)")
+
+      // Отправляем во Flutter через MethodChannel
+      if let channel = self.apnsTokenChannel {
+        channel.invokeMethod("onNotificationTap", arguments: data)
+      }
+    }
+
+    completionHandler()
+  }
+
+  // ✅ Пуш пришёл, когда приложение ОТКРЫТО (на переднем плане)
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    print("🔔 [Push] Пришёл на переднем плане: \(userInfo)")
+
+    // Показываем баннер, звук, badge
+    if #available(iOS 14.0, *) {
+      completionHandler([.banner, .sound, .badge, .list])
+    } else {
+      completionHandler([.alert, .sound, .badge])
+    }
+  }
 }
